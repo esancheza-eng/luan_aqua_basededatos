@@ -596,6 +596,15 @@ display: inline-block;
   cursor: pointer; transition: background 0.15s, color 0.15s; white-space: nowrap;
 }
 .btn-editar-fila:hover { background: var(--teal); color: #fff; }
+/* [NEW] Eliminar Pedido — botón rojo al lado de Editar */
+.btn-eliminar-fila {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: #fdecea; color: var(--red); border: 1.5px solid transparent;
+  border-radius: 7px; padding: 5px 10px; margin-left: 6px;
+  font-family: 'DM Sans', sans-serif; font-size: 11px; font-weight: 700;
+  cursor: pointer; transition: background 0.15s, color 0.15s; white-space: nowrap;
+}
+.btn-eliminar-fila:hover { background: var(--red); color: #fff; }
 .editar-overlay {
   display: none; position: fixed; inset: 0;
   background: rgba(10,30,60,0.75); z-index: 320;
@@ -821,11 +830,24 @@ display: inline-block;
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM7.5 12h2c.83 0 1.5.67 1.5 1.5S10.33 15 9.5 15H8v2H7v-5zm1 2h1c.28 0 .5-.22.5-.5s-.22-.5-.5-.5h-1v1zM12 12h2c.55 0 1 .45 1 1v3c0 .55-.45 1-1 1h-2v-5zm1 4h1v-3h-1v3zM16 12h2v1h-1v1h1v1h-1v2h-1v-5z"/></svg>
                 Exportar a PDF
               </button>
-              <div style="display:flex;align-items:center;gap:6px">
-                <span style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);white-space:nowrap">Total mín. $</span>
-                <select id="clienteTotalMinInput" onchange="mostrarDetalleCliente()" style="background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;padding:7px 10px;outline:none;cursor:pointer">
-                  <option value="0">Todos los montos</option>
-                </select>
+              <div id="clienteMontoWrap" style="position:relative;min-width:170px">
+                <button type="button" class="btn-filter" style="background:var(--surface2);color:var(--navy);border:1.5px solid var(--border);width:100%;justify-content:space-between;display:flex;align-items:center;gap:8px" onclick="toggleMontoDropdown()">
+                  <span id="clienteMontoLabel">Total $$</span>
+                  <svg width="11" height="11" viewBox="0 0 12 12" fill="none" style="flex-shrink:0"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div id="clienteMontoDropdownPanel" style="display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:60;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-lg);width:220px;max-height:320px;flex-direction:column">
+                  <div style="padding:10px 10px 6px;border-bottom:1px solid var(--border)">
+                    <label style="display:flex;align-items:center;gap:9px;padding:7px 4px;cursor:pointer;font-size:13px;font-weight:700;color:var(--teal)">
+                      <input type="checkbox" id="clienteMontoSeleccionarTodos" onchange="toggleSeleccionarTodosMontos(this.checked)" style="width:16px;height:16px;accent-color:var(--teal);flex-shrink:0">
+                      Seleccionar todos
+                    </label>
+                  </div>
+                  <div id="clienteMontoCheckList" style="overflow-y:auto;max-height:210px;padding:2px 10px 8px"></div>
+                  <div style="padding:8px 10px;border-top:1px solid var(--border);display:flex;gap:8px">
+                    <button type="button" class="btn-filter" style="flex:1;background:var(--muted)" onclick="limpiarSeleccionMontos()">Limpiar</button>
+                    <button type="button" class="btn-filter" style="flex:1" onclick="cerrarMontoDropdown()">Listo</button>
+                  </div>
+                </div>
               </div>
               <div id="clienteMultiWrap" style="position:relative;min-width:240px">
                 <button type="button" class="btn-filter" style="background:var(--surface2);color:var(--navy);border:1.5px solid var(--border);width:100%;justify-content:space-between;display:flex;align-items:center;gap:8px" onclick="toggleClienteDropdown()">
@@ -1443,7 +1465,7 @@ function renderTabla(pedidos) {
     const pago  = r['FORMA DE PAGO'] ? `<span class="badge badge-teal">${r['FORMA DE PAGO']}</span>` : '';
     /* [NEW] Botón Editar — solo funciona si la fila trae el id real del pedido en Firestore
        (las filas de pagos/gastos no lo traen, pero renderTabla solo recibe pedidos con producto) */
-    const accion = r['_pedidoId'] ? `<button class="btn-editar-fila" onclick="abrirEditarPedido('${r['_pedidoId']}')" title="Editar este pedido">✏ Editar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>';
+    const accion = r['_pedidoId'] ? `<button class="btn-editar-fila" onclick="abrirEditarPedido('${r['_pedidoId']}')" title="Editar este pedido">✏ Editar</button><button class="btn-eliminar-fila" onclick="eliminarPedidoCompleto('${r['_pedidoId']}')" title="Eliminar este pedido permanentemente">🗑 Eliminar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>';
     return `<tr>
       <td style="white-space:nowrap;font-size:12px">${limpiarFecha(r['FECHA'])}</td>
       <td style="font-size:12px">${(r['ASESOR / RUTA']||'').split(':')[1]?.trim()||r['ASESOR / RUTA']||'-'}</td>
@@ -1581,7 +1603,7 @@ function actualizarTablaCentral(datos) {
     const gps   = r['LINK GPS'] ? `<a href="${r['LINK GPS']}" target="_blank" style="color:var(--teal);font-weight:700;font-size:11px">📍 Ver</a>` : '<span style="color:var(--muted);font-size:11px">—</span>';
     const total = r['TOTAL PEDIDO ($)'] ? `<strong style="color:var(--teal)">$${parseFloat(r['TOTAL PEDIDO ($)']).toFixed(2)}</strong>` : '';
     const pago  = r['FORMA DE PAGO'] ? `<span class="badge badge-teal">${r['FORMA DE PAGO']}</span>` : '';
-    const accion = r['_pedidoId'] ? `<button class="btn-editar-fila" onclick="abrirEditarPedido('${r['_pedidoId']}')" title="Editar este pedido">✏ Editar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>';
+    const accion = r['_pedidoId'] ? `<button class="btn-editar-fila" onclick="abrirEditarPedido('${r['_pedidoId']}')" title="Editar este pedido">✏ Editar</button><button class="btn-eliminar-fila" onclick="eliminarPedidoCompleto('${r['_pedidoId']}')" title="Eliminar este pedido permanentemente">🗑 Eliminar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>';
     return `<tr>
       <td style="white-space:nowrap;font-size:12px">${limpiarFecha(r['FECHA'])}</td>
       <td style="font-size:12px">${(r['ASESOR / RUTA']||'').split(':')[1]?.trim()||r['ASESOR / RUTA']||'-'}</td>
@@ -1918,29 +1940,96 @@ function exportarClientePDF() {
 /* [NEW] Buscador multi-selección de clientes (checkboxes) */
 let clientesDisponibles = [];
 let clientesSeleccionados = [];
+let _clienteAutoSeleccionTodos = true; // [NEW] hasta que el usuario toque manualmente la selección, se mantienen todos los clientes marcados por defecto
+/* [NEW] Buscador multi-selección de montos (checkboxes) — reemplaza el select "Total mín." */
+let montosDisponibles = [];
+let montosSeleccionados = [];
+let _montoAutoSeleccionTodos = true; // [NEW] igual que con clientes: por defecto todos los montos quedan marcados
 
 function poblarClienteSelect(datos) {
   // La lista de clientes seleccionables respeta el filtro de fecha/asesor activo arriba
   // (ej. "Hoy" + un asesor específico) — solo aparecen los clientes de ese día/asesor.
   clientesDisponibles = [...new Set(datos.map(r => r['CLIENTE']).filter(Boolean))].sort((a,b) => String(a).localeCompare(String(b)));
-  clientesSeleccionados = clientesSeleccionados.filter(c => clientesDisponibles.includes(c)); // descarta selección que ya no aplica al filtro
+  if (_clienteAutoSeleccionTodos) {
+    clientesSeleccionados = [...clientesDisponibles]; // [NEW] por defecto, todos los clientes seleccionados
+  } else {
+    clientesSeleccionados = clientesSeleccionados.filter(c => clientesDisponibles.includes(c)); // descarta selección que ya no aplica al filtro
+  }
   renderListaClientesCheck(document.getElementById('clienteBuscarInput') ? document.getElementById('clienteBuscarInput').value : '');
   actualizarLabelClientes();
   actualizarCheckTodos(); // [NEW]
   poblarFiltroTotalCliente(datos); // [NEW]
   mostrarDetalleCliente();
 }
-/* [NEW] Llena el desplegable "Total mín." con los montos reales que existen en los pedidos actuales */
+/* [NEW] Llena el filtro "Total $$" (checkboxes) con los montos reales que existen en los pedidos actuales */
 function poblarFiltroTotalCliente(datos) {
-  const sel = document.getElementById('clienteTotalMinInput');
-  if (!sel) return;
-  const valorActual = sel.value;
-  const montos = [...new Set(
+  montosDisponibles = [...new Set(
     datos.map(r => parseFloat(r['TOTAL PEDIDO ($)'])).filter(v => v > 0)
   )].sort((a,b) => a - b);
-  sel.innerHTML = '<option value="0">Todos los montos</option>' +
-    montos.map(v => `<option value="${v}">$${v.toFixed(2)}</option>`).join('');
-  if ([...sel.options].some(o => o.value === valorActual)) sel.value = valorActual;
+  if (_montoAutoSeleccionTodos) {
+    montosSeleccionados = [...montosDisponibles]; // [NEW] por defecto, todos los montos seleccionados
+  } else {
+    montosSeleccionados = montosSeleccionados.filter(m => montosDisponibles.some(d => Math.abs(d - m) < 0.005));
+  }
+  renderListaMontosCheck();
+  actualizarLabelMontos();
+  actualizarCheckTodosMontos();
+}
+function renderListaMontosCheck() {
+  const cont = document.getElementById('clienteMontoCheckList');
+  if (!cont) return;
+  if (!montosDisponibles.length) { cont.innerHTML = '<div style="padding:12px 4px;text-align:center;color:var(--muted);font-size:12px">Sin montos</div>'; return; }
+  cont.innerHTML = montosDisponibles.map(v => {
+    const marcado = montosSeleccionados.some(m => Math.abs(m - v) < 0.005) ? 'checked' : '';
+    return `<label style="display:flex;align-items:center;gap:9px;padding:7px 4px;cursor:pointer;font-size:13px;color:var(--text);border-radius:6px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"><input type="checkbox" ${marcado} onchange="toggleMontoSeleccionado(${v},this.checked)" style="width:16px;height:16px;accent-color:var(--teal);flex-shrink:0"><span>$${v.toFixed(2)}</span></label>`;
+  }).join('');
+}
+function toggleMontoSeleccionado(valor, marcado) {
+  _montoAutoSeleccionTodos = false; // [NEW] el usuario ya tomó control manual del filtro
+  if (marcado) { if (!montosSeleccionados.some(m => Math.abs(m - valor) < 0.005)) montosSeleccionados.push(valor); }
+  else { montosSeleccionados = montosSeleccionados.filter(m => Math.abs(m - valor) >= 0.005); }
+  actualizarLabelMontos();
+  actualizarCheckTodosMontos();
+  mostrarDetalleCliente();
+}
+function toggleSeleccionarTodosMontos(marcado) {
+  _montoAutoSeleccionTodos = false; // [NEW] acción manual del usuario
+  montosSeleccionados = marcado ? [...montosDisponibles] : [];
+  renderListaMontosCheck();
+  actualizarLabelMontos();
+  mostrarDetalleCliente();
+}
+function actualizarCheckTodosMontos() {
+  const chk = document.getElementById('clienteMontoSeleccionarTodos');
+  if (!chk) return;
+  const todosMarcados = montosDisponibles.length > 0 && montosDisponibles.every(v => montosSeleccionados.some(m => Math.abs(m - v) < 0.005));
+  chk.checked = todosMarcados;
+  chk.indeterminate = !todosMarcados && montosSeleccionados.length > 0;
+}
+function actualizarLabelMontos() {
+  const label = document.getElementById('clienteMontoLabel');
+  if (!label) return;
+  if (!montosDisponibles.length || montosSeleccionados.length === montosDisponibles.length) label.textContent = 'Total $$';
+  else if (!montosSeleccionados.length) label.textContent = 'Ningún monto';
+  else label.textContent = `${montosSeleccionados.length} monto(s)`;
+}
+function limpiarSeleccionMontos() {
+  _montoAutoSeleccionTodos = false; // [NEW] acción manual del usuario
+  montosSeleccionados = [];
+  renderListaMontosCheck();
+  actualizarLabelMontos();
+  actualizarCheckTodosMontos();
+  mostrarDetalleCliente();
+}
+function toggleMontoDropdown() {
+  const p = document.getElementById('clienteMontoDropdownPanel');
+  const abrir = p.style.display !== 'flex';
+  p.style.display = abrir ? 'flex' : 'none';
+  if (abrir) renderListaMontosCheck();
+}
+function cerrarMontoDropdown() {
+  const p = document.getElementById('clienteMontoDropdownPanel');
+  if (p) p.style.display = 'none';
 }
 function renderListaClientesCheck(filtro='') {
   const cont = document.getElementById('clienteCheckList');
@@ -1958,6 +2047,7 @@ function filtrarListaClientes() {
   renderListaClientesCheck(document.getElementById('clienteBuscarInput').value);
 }
 function toggleClienteSeleccionado(nombre, marcado) {
+  _clienteAutoSeleccionTodos = false; // [NEW] el usuario ya tomó control manual de la selección
   if (marcado) { if (!clientesSeleccionados.includes(nombre)) clientesSeleccionados.push(nombre); }
   else { clientesSeleccionados = clientesSeleccionados.filter(c => c !== nombre); }
   actualizarLabelClientes();
@@ -1966,6 +2056,7 @@ function toggleClienteSeleccionado(nombre, marcado) {
 }
 /* [NEW] Marca/desmarca todos los clientes disponibles de una sola vez */
 function toggleSeleccionarTodosClientes(marcado) {
+  _clienteAutoSeleccionTodos = false; // [NEW] acción manual del usuario
   clientesSeleccionados = marcado ? [...clientesDisponibles] : [];
   renderListaClientesCheck(document.getElementById('clienteBuscarInput') ? document.getElementById('clienteBuscarInput').value : '');
   actualizarLabelClientes();
@@ -1987,6 +2078,7 @@ function actualizarLabelClientes() {
   else label.textContent = `${clientesSeleccionados.length} clientes seleccionados`;
 }
 function limpiarSeleccionClientes() {
+  _clienteAutoSeleccionTodos = false; // [NEW] acción manual del usuario
   clientesSeleccionados = [];
   renderListaClientesCheck(document.getElementById('clienteBuscarInput') ? document.getElementById('clienteBuscarInput').value : '');
   actualizarLabelClientes();
@@ -2006,6 +2098,8 @@ function cerrarClienteDropdown() {
 document.addEventListener('click', function(e){
   const wrap = document.getElementById('clienteMultiWrap');
   if (wrap && !wrap.contains(e.target)) cerrarClienteDropdown();
+  const wrapMonto = document.getElementById('clienteMontoWrap'); // [NEW]
+  if (wrapMonto && !wrapMonto.contains(e.target)) cerrarMontoDropdown(); // [NEW]
 });
 
 /* [NEW] Agrupa filas consecutivas en "pedidos" reales: cada pedido empieza en la fila
@@ -2034,14 +2128,14 @@ function mostrarDetalleCliente() {
   if (!cont) return;
   if (!clientesSeleccionados.length) { cont.innerHTML = '<div class="empty-state"><div class="icon">👤</div>Selecciona uno o más clientes para ver el detalle</div>'; return; }
 
-  const totalExactoFiltro = parseFloat(document.getElementById('clienteTotalMinInput')?.value) || 0; // [FIX] ahora es coincidencia EXACTA de pedido, no suma acumulada
+  const filtroMontoActivo = montosDisponibles.length > 0 && montosSeleccionados.length < montosDisponibles.length; // [NEW]
   const gruposPedido = _agruparPedidosReales(pedidosDetalleActuales)
     .filter(g => clientesSeleccionados.includes(g.cliente))
-    .filter(g => totalExactoFiltro === 0 || Math.abs(g.total - totalExactoFiltro) < 0.005); // [FIX] solo el/los pedido(s) con ese total exacto
+    .filter(g => !filtroMontoActivo || montosSeleccionados.some(m => Math.abs(g.total - m) < 0.005)); // [NEW] coincide con alguno de los montos marcados
 
   if (!gruposPedido.length) {
-    cont.innerHTML = totalExactoFiltro
-      ? `<div class="empty-state"><div class="icon">💰</div>Ningún pedido de estos clientes tiene un total exacto de $${totalExactoFiltro.toFixed(2)}</div>`
+    cont.innerHTML = filtroMontoActivo
+      ? `<div class="empty-state"><div class="icon">💰</div>Ningún pedido de estos clientes coincide con los montos seleccionados</div>`
       : '<div class="empty-state"><div class="icon">📭</div>Sin pedidos para estos clientes en el filtro actual</div>';
     return;
   }
@@ -2056,7 +2150,7 @@ function mostrarDetalleCliente() {
   });
 
   let totalGeneral = 0;
-  const bloques = clientesSeleccionados.filter(c => porCliente[c]).map(cliente => {
+  const bloques = clientesSeleccionados.filter(c => porCliente[c]).map((cliente, idx) => {
     const c = porCliente[cliente];
     const totalesPedido = c.items.map(r => parseFloat(r['TOTAL PEDIDO ($)']||0)).filter(v => v > 0);
     const totalCliente = totalesPedido.length ? totalesPedido.reduce((s,v) => s+v, 0) : c.items.reduce((s,r) => s+(parseFloat(r['SUBTOTAL']||0)), 0);
@@ -2076,10 +2170,11 @@ function mostrarDetalleCliente() {
     return `
       <div class="cierre-cliente-block" style="margin:0 0 12px">
         <div class="cierre-cliente-header">
-          <span class="cierre-cliente-nombre">👤 ${cliente}</span>
+          <span class="cierre-cliente-nombre" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px" onclick="toggleDetalleClienteBloque(${idx})" title="Clic para ver/ocultar el detalle">👤 ${cliente} <span id="detalleClienteArrow-${idx}" style="font-size:10px;color:var(--teal)">▼</span></span>
           <span class="cierre-cliente-meta">💳 ${c.formaPago||'Sin especificar'}</span>
           <span class="cierre-cliente-total">$${totalCliente.toFixed(2)}</span>
         </div>
+        <div id="detalleClienteBody-${idx}" style="display:none">
         <div style="display:flex;gap:24px;flex-wrap:wrap;padding:10px 14px;background:var(--surface2);border-bottom:1px solid var(--border)">
           <div><div style="font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted)">Cantidad total</div><div style="font-weight:800;color:var(--navy);font-size:14px">${cantidadTotal%1===0?parseInt(cantidadTotal):cantidadTotal.toFixed(1)} unidad(es)</div></div>
           <div><div style="font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted)">Total</div><div style="font-weight:800;color:var(--teal);font-size:14px">$${totalCliente.toFixed(2)}</div></div>
@@ -2089,12 +2184,24 @@ function mostrarDetalleCliente() {
           <thead><tr><th>Producto</th><th>Cant.</th><th>Subtotal</th><th>Total</th><th>Pago</th></tr></thead>
           <tbody>${filas}</tbody>
         </table>
+        </div>
       </div>`;
   }).join('');
   const totalBloque = clientesSeleccionados.filter(c => porCliente[c]).length > 1
     ? `<div class="cierre-total-general" style="margin-top:4px"><div class="cierre-total-label">Total de los pedidos filtrados</div><div class="cierre-total-value">$${totalGeneral.toFixed(2)}</div></div>`
     : '';
   cont.innerHTML = bloques + totalBloque;
+}
+/* [NEW] Expande/oculta el detalle (cantidades, formas de pago, tabla de productos) de un
+   cliente en "Consultar por Cliente" al hacer clic en su nombre — sin tocar Resumen por
+   Cliente ni Cierre del Día, que siguen mostrando el detalle siempre visible. */
+function toggleDetalleClienteBloque(idx){
+  const body = document.getElementById('detalleClienteBody-'+idx);
+  const arrow = document.getElementById('detalleClienteArrow-'+idx);
+  if(!body) return;
+  const abrir = body.style.display === 'none';
+  body.style.display = abrir ? 'block' : 'none';
+  if(arrow) arrow.textContent = abrir ? '▲' : '▼';
 }
 
 function limpiarFecha(fecha) {
@@ -2784,6 +2891,47 @@ async function guardarEdicionPedido(){
     alert('❌ Ocurrió un error al guardar los cambios: ' + err.message);
   }finally{
     btn.disabled = false; btn.textContent = '✅ Guardar Cambios';
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   [NEW] ELIMINAR PEDIDO — con respaldo completo antes de borrar
+   El documento original se copia entero a la colección
+   `pedidosEliminados` (con fecha, hora y usuario admin que lo
+   eliminó) y recién después se borra de `pedidos`. Si algún día
+   hace falta, el pedido completo sigue existiendo ahí — nunca se
+   pierde información, solo se saca de la vista operativa.
+════════════════════════════════════════════════════════════ */
+async function eliminarPedidoCompleto(pedidoId){
+  const p = _pedidosRaw.find(x => x._id === pedidoId);
+  if(!p){ alert('No se encontró el pedido — puede que ya se haya eliminado.'); return; }
+
+  const clienteNombre = p.cliente || 'Sin nombre';
+  const totalPedido = p.total != null ? `$${parseFloat(p.total).toFixed(2)}` : '$0.00';
+  const confirmado = confirm(`¿Eliminar por completo el pedido de "${clienteNombre}" (${totalPedido})?\n\nEsta acción lo saca del dashboard y de la app de asesores. Queda respaldado en el historial de eliminados, pero ya no aparecerá en ningún reporte activo.`);
+  if(!confirmado) return;
+
+  try{
+    // 1) Respaldo completo del documento original + metadata de la eliminación
+    const { _id, ...datosOriginales } = p; // quita el campo interno _id antes de guardar el respaldo
+    await db.collection('pedidosEliminados').doc(pedidoId).set({
+      ...datosOriginales,
+      pedidoIdOriginal: pedidoId,
+      eliminadoPor: ADMIN_ACTUAL.nombre || ADMIN_ACTUAL.uid || 'admin',
+      fechaEliminacion: fechaHoy(),
+      horaEliminacion: new Date().toLocaleTimeString('es-EC'),
+      eliminadoEn: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    // 2) Recién ahora se borra el documento original de "pedidos"
+    await db.collection('pedidos').doc(pedidoId).delete();
+
+    // El listener en tiempo real ya activo quita el pedido de la tabla, KPIs,
+    // Resumen por Cliente y Cuadre de Caja automáticamente — sin recargar.
+    mostrarToastEdicion('🗑 Pedido eliminado y respaldado correctamente.');
+  }catch(err){
+    console.error(err);
+    alert('❌ Ocurrió un error al eliminar el pedido: ' + err.message);
   }
 }
 
