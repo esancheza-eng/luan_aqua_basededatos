@@ -863,13 +863,30 @@ display: inline-block;
   </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore-compat.js"></script>
 <script>
 /* ════════════════════════════════════════
    CONFIG
 ════════════════════════════════════════ */
 const SCRIPT_URL  = "https://script.google.com/macros/s/AKfycbzKcilhv6mJf61EnC1Plows6sPd1DIgirpNoSE5KG751k8LW89l0b8HkTvSot07i9F4/exec";
-const USUARIO     = 'admin';
-const CLAVE_HASH  = '20d8486ecacf2edf84ee11a10d44f5ba386437d562cd6306242666c0661b8055';
+
+/* ══ FIREBASE — Fase 1: Authentication (login del admin) ══ */
+const firebaseConfig = {
+  apiKey: "AIzaSyBOPI_zviuktXtH68F8NY4mSnbYcF1tE7s",
+  authDomain: "luan-aqua.firebaseapp.com",
+  projectId: "luan-aqua",
+  storageBucket: "luan-aqua.firebasestorage.app",
+  messagingSenderId: "1046111203141",
+  appId: "1:1046111203141:web:017cd2d14f1db77c9c582c",
+  measurementId: "G-L0YP0548Y6"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+const DOMINIO_LOGIN = '@luanaqua.app';
+function _emailDeUsuario(usuario){ return usuario.trim().toLowerCase().replace(/[^a-z0-9._-]/g,'') + DOMINIO_LOGIN; }
 
 const RUTA_COLORS = {
   'RUTA 1: Jefferson': '#1565c0',
@@ -923,17 +940,25 @@ function switchTab(tab) {
    LOGIN — [FIX] .toLowerCase() para aceptar Admin/ADMIN/admin
 ════════════════════════════════════════ */
 async function doLogin() {
-  const user = document.getElementById('loginUser').value.trim().toLowerCase();
+  const user = document.getElementById('loginUser').value.trim();
   const pass = document.getElementById('loginPass').value;
   if (!user || !pass) { document.getElementById('loginError').classList.add('show'); return; }
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pass));
-  const passHash = Array.from(new Uint8Array(buf)).map(x=>x.toString(16).padStart(2,'0')).join('');
-  document.getElementById('loginPass').value = '';
-  if (user === USUARIO && passHash === CLAVE_HASH) {
+  try{
+    const email = _emailDeUsuario(user);
+    const cred = await auth.signInWithEmailAndPassword(email, pass);
+    const perfilDoc = await db.collection('usuarios').doc(cred.user.uid).get();
+    document.getElementById('loginPass').value = '';
+    if(!perfilDoc.exists || perfilDoc.data().esAdmin !== true){
+      await auth.signOut();
+      document.getElementById('loginError').classList.add('show');
+      document.getElementById('loginPass').focus();
+      return;
+    }
     document.getElementById('loginOverlay').classList.add('hidden');
     document.getElementById('loginError').classList.remove('show');
     iniciar();
-  } else {
+  }catch(err){
+    console.error(err);
     document.getElementById('loginError').classList.add('show');
     document.getElementById('loginPass').focus();
   }
@@ -941,10 +966,29 @@ async function doLogin() {
 
 function cerrarSesion() {
   clearInterval(autoRefreshInterval);
-  document.getElementById('loginOverlay').classList.remove('hidden');
-  document.getElementById('loginUser').value = '';
-  document.getElementById('loginPass').value = '';
+  auth.signOut(); // la limpieza del overlay ocurre en onAuthStateChanged, más abajo
 }
+
+/* [NEW] Firebase Auth mantiene la sesión sola — si el admin ya había entrado antes
+   (en este navegador o en cualquier otro donde inicie sesión), no le vuelve a pedir clave. */
+auth.onAuthStateChanged(async (user)=>{
+  if(user){
+    try{
+      const perfilDoc = await db.collection('usuarios').doc(user.uid).get();
+      if(perfilDoc.exists && perfilDoc.data().esAdmin===true){
+        document.getElementById('loginOverlay').classList.add('hidden');
+        iniciar();
+      } else {
+        await auth.signOut();
+      }
+    }catch(e){ console.error(e); }
+  } else {
+    clearInterval(autoRefreshInterval);
+    document.getElementById('loginOverlay').classList.remove('hidden');
+    document.getElementById('loginUser').value = '';
+    document.getElementById('loginPass').value = '';
+  }
+});
 
 /* ════════════════════════════════════════
    INICIAR
