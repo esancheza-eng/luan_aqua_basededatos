@@ -638,7 +638,7 @@ display: inline-block;
     <button class="tab-btn" id="tabRutas" onclick="switchTab('rutas')">🗺️ Rutas del Día</button>
   </div>
   <div class="header-right">
-    <div class="update-badge"><div class="pulse-dot"></div><span>Auto-actualiza cada minuto</span></div>
+    <div class="update-badge"><div class="pulse-dot"></div><span>Tiempo real (Firestore)</span></div>
     <button class="btn-refresh" onclick="cargarDatos(true)">
       <svg width="12" height="12" viewBox="0 0 16 16" fill="none" id="refreshIcon"><path d="M14 8A6 6 0 1 1 8 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M14 2v4h-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       Actualizar
@@ -870,7 +870,7 @@ display: inline-block;
 /* ════════════════════════════════════════
    CONFIG
 ════════════════════════════════════════ */
-const SCRIPT_URL  = "https://script.google.com/macros/s/AKfycbzKcilhv6mJf61EnC1Plows6sPd1DIgirpNoSE5KG751k8LW89l0b8HkTvSot07i9F4/exec";
+/* [NEW] SCRIPT_URL eliminado — los datos ahora vienen de Firestore, no de Google Sheets */
 
 /* ══ FIREBASE — Fase 1: Authentication (login del admin) ══ */
 const firebaseConfig = {
@@ -966,6 +966,7 @@ async function doLogin() {
 
 function cerrarSesion() {
   clearInterval(autoRefreshInterval);
+  detenerListenersDashboard(); // [NEW]
   auth.signOut(); // la limpieza del overlay ocurre en onAuthStateChanged, más abajo
 }
 
@@ -984,6 +985,7 @@ auth.onAuthStateChanged(async (user)=>{
     }catch(e){ console.error(e); }
   } else {
     clearInterval(autoRefreshInterval);
+    detenerListenersDashboard(); // [NEW]
     document.getElementById('loginOverlay').classList.remove('hidden');
     document.getElementById('loginUser').value = '';
     document.getElementById('loginPass').value = '';
@@ -996,11 +998,7 @@ auth.onAuthStateChanged(async (user)=>{
 function iniciar() {
   const hoy = fechaHoy();
   document.getElementById('filtroFecha').value = hoy;
-  cargarDatos();
-  autoRefreshInterval = setInterval(() => {
-    const h = new Date().getHours();
-    if (h >= 7 && h < 20) cargarDatos(false);
-  }, 60000);
+  iniciarListenersDashboard(); // [NEW] tiempo real — reemplaza el polling cada 60s
 }
 function fechaHoy() {
   const d = new Date();
@@ -1034,26 +1032,82 @@ function horaAMinutos(str) {
 /* ════════════════════════════════════════
    CARGAR DATOS
 ════════════════════════════════════════ */
+/* ════════════════════════════════════════
+   [NEW] FIRESTORE — Fase 2: datos en tiempo real
+   Construye filas con el MISMO formato que antes venía de Google Sheets
+   (FECHA, ASESOR / RUTA, CLIENTE, PRODUCTO, TOTAL PEDIDO ($), etc.) para
+   que el resto del dashboard (tablas, gráficos, Cierre del Día, exportar
+   PDF) siga funcionando sin tener que reescribirlo.
+════════════════════════════════════════ */
+let _pedidosRaw = [], _pagosRaw = [], _gastosRaw = [];
+let _unsubPedidosAll = null, _unsubPagosAll = null, _unsubGastosAll = null;
+
+function _horaDeTs(ts) {
+  try { const ms = ts?.toMillis ? ts.toMillis() : Date.now(); return new Date(ms).toLocaleTimeString('es-EC', { hour:'2-digit', minute:'2-digit', second:'2-digit' }); }
+  catch { return ''; }
+}
+function _filaProducto(p, prod, esPrimera, esRegalo) {
+  return {
+    'FECHA': p.fecha || '', 'ASESOR / RUTA': p.empleado || '', 'CLIENTE': p.cliente || '',
+    'TELÉFONO': p.telefono || '', 'DIRECCIÓN': p.direccion || '',
+    'PRODUCTO': esRegalo ? `🎁 REGALO: ${prod.nombre || ''}` : (prod.nombre || ''),
+    'CANTIDAD': prod.cantidad != null ? prod.cantidad : '',
+    'PRECIO UNIT.': esRegalo ? 0 : (prod.precio != null ? prod.precio : ''),
+    'SUBTOTAL': esRegalo ? 0 : (prod.subtotal != null ? prod.subtotal : ''),
+    'TOTAL PEDIDO ($)': esPrimera ? (parseFloat(p.total) || 0) : '',
+    'FORMA DE PAGO': p.formapago || '', 'LINK GPS': (p.gps && p.gps.url) ? p.gps.url : '', 'NOTAS': p.notas || '',
+    'LATITUD': (p.gps && p.gps.lat != null) ? p.gps.lat : '', 'LONGITUD': (p.gps && p.gps.lng != null) ? p.gps.lng : '',
+    'PRECISIÓN GPS': (p.gps && p.gps.acc != null) ? `±${p.gps.acc}m` : '',
+    'HORA REGISTRO': _horaDeTs(p.creadoEn)
+  };
+}
+function _expandirPedido(p) {
+  const filas = []; let primera = true;
+  (p.productos || []).forEach(prod => {
+    filas.push(_filaProducto(p, prod, primera, false));
+    primera = false;
+    (prod.regalias || []).forEach(reg => { filas.push(_filaProducto(p, reg, false, true)); });
+  });
+  return filas;
+}
+function _recalcularTodosLosDatos() {
+  let filas = [];
+  _pedidosRaw.forEach(p => { filas = filas.concat(_expandirPedido(p)); });
+  _pagosRaw.forEach(pg => filas.push({
+    'FECHA': pg.fecha || '', 'ASESOR / RUTA': pg.empleado || '', 'CLIENTE': pg.cliente || '',
+    'TELÉFONO': '', 'DIRECCIÓN': '', 'PRODUCTO': '', 'CANTIDAD': '', 'PRECIO UNIT.': '', 'SUBTOTAL': '',
+    'TOTAL PEDIDO ($)': parseFloat(pg.monto) || 0, 'FORMA DE PAGO': pg.forma || '', 'LINK GPS': '', 'NOTAS': pg.notas || ''
+  }));
+  _gastosRaw.forEach(g => filas.push({
+    'FECHA': g.fecha || '', 'ASESOR / RUTA': g.empleado || '', 'CLIENTE': '',
+    'TELÉFONO': '', 'DIRECCIÓN': '', 'PRODUCTO': '', 'CANTIDAD': '', 'PRECIO UNIT.': '', 'SUBTOTAL': '',
+    'TOTAL PEDIDO ($)': -(parseFloat(g.monto) || 0), 'FORMA DE PAGO': '', 'LINK GPS': '', 'NOTAS': g.desc || g.categoria || ''
+  }));
+  todosLosDatos = filas;
+  renderDashboard();
+  document.getElementById('lastUpdate').textContent = 'Actualizado: ' + new Date().toLocaleTimeString('es-EC', { hour:'2-digit', minute:'2-digit' });
+}
+function iniciarListenersDashboard() {
+  if (_unsubPedidosAll) _unsubPedidosAll();
+  if (_unsubPagosAll) _unsubPagosAll();
+  if (_unsubGastosAll) _unsubGastosAll();
+  document.getElementById('kpiGrid').innerHTML = '<div class="loading"><div class="spinner"></div><span>Cargando datos...</span></div>';
+  _unsubPedidosAll = db.collection('pedidos').onSnapshot(snap => { _pedidosRaw = snap.docs.map(d => d.data()); _recalcularTodosLosDatos(); }, err => { console.error('listener pedidos:', err); document.getElementById('kpiGrid').innerHTML = '<div class="loading"><span>⚠️ Error al cargar datos: '+err.message+'</span></div>'; });
+  _unsubPagosAll   = db.collection('pagos').onSnapshot(snap => { _pagosRaw = snap.docs.map(d => d.data()); _recalcularTodosLosDatos(); }, err => console.error('listener pagos:', err));
+  _unsubGastosAll  = db.collection('gastos').onSnapshot(snap => { _gastosRaw = snap.docs.map(d => d.data()); _recalcularTodosLosDatos(); }, err => console.error('listener gastos:', err));
+}
+function detenerListenersDashboard() {
+  if (_unsubPedidosAll) { _unsubPedidosAll(); _unsubPedidosAll = null; }
+  if (_unsubPagosAll)   { _unsubPagosAll();   _unsubPagosAll   = null; }
+  if (_unsubGastosAll)  { _unsubGastosAll();  _unsubGastosAll  = null; }
+}
+/* Botón "Actualizar" — con listeners en tiempo real los datos ya están al día,
+   así que solo forzamos un re-render inmediato con lo último recibido. */
 async function cargarDatos(mostrarSpinner = true) {
-  if (mostrarSpinner) {
-    document.getElementById('kpiGrid').innerHTML = '<div class="loading"><div class="spinner"></div><span>Cargando datos...</span></div>';
-    document.getElementById('chartsGrid').style.display = 'none';
-    document.getElementById('tableCard').style.display = 'none';
-  }
   const icon = document.getElementById('refreshIcon');
-  icon.classList.add('spin-icon');
-  try {
-    const resp = await fetch(SCRIPT_URL + '?t=' + Date.now());
-    const json = await resp.json();
-    if (json.result === 'ok') {
-      todosLosDatos = json.data || [];
-      renderDashboard();
-      document.getElementById('lastUpdate').textContent = 'Actualizado: ' + new Date().toLocaleTimeString('es-EC', { hour:'2-digit', minute:'2-digit' });
-    }
-  } catch(err) {
-    document.getElementById('kpiGrid').innerHTML = '<div class="loading"><span>⚠️ Error al cargar datos. Verifica la conexión.</span></div>';
-  }
-  icon.classList.remove('spin-icon');
+  if (icon) icon.classList.add('spin-icon');
+  _recalcularTodosLosDatos();
+  setTimeout(() => { if (icon) icon.classList.remove('spin-icon'); }, 500);
 }
 
 /* ════════════════════════════════════════
