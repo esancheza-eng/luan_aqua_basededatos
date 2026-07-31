@@ -1102,14 +1102,23 @@ function _iniciarListenersDelDia(u){
     sessionStorage.setItem('aqualuan-historial',JSON.stringify(hist));
     const contHist=document.getElementById('content-historial');
     if(contHist&&contHist.classList.contains('active'))cargarHistorial();
+    // [FIX] Si el "Resumen del Día" ya está abierto (ej. mientras el admin edita un pedido
+    // desde el Dashboard), lo recalcula en vivo en vez de quedarse con los datos viejos
+    // hasta que el asesor lo cierre y lo vuelva a abrir manualmente.
+    const resumenAbierto=document.getElementById('resumenModalOverlay');
+    if(resumenAbierto&&resumenAbierto.classList.contains('open'))_renderResumenDiaContenido();
   },err=>console.error('listener pedidos:',err));
   _unsubPagosHoy=qPagos.onSnapshot(snap=>{
     listaPagos=snap.docs.map(d=>{ const r=d.data(); return {id:d.id,...r,hora:_horaDeTimestamp(r.creadoEn),_ts:r.creadoEn?.toMillis?.()||0}; }).sort((a,b)=>b._ts-a._ts);
     renderPagos(); actualizarResumenPagos();
+    const rAbierto=document.getElementById('resumenModalOverlay'); // [FIX] refresco en vivo del Resumen del Día
+    if(rAbierto&&rAbierto.classList.contains('open'))_renderResumenDiaContenido();
   },err=>console.error('listener pagos:',err));
   _unsubGastosHoy=qGastos.onSnapshot(snap=>{
     listaGastos=snap.docs.map(d=>{ const r=d.data(); return {id:d.id,...r,hora:_horaDeTimestamp(r.creadoEn),_ts:r.creadoEn?.toMillis?.()||0}; }).sort((a,b)=>b._ts-a._ts);
     renderGastos(); actualizarResumenGastos();
+    const rAbierto2=document.getElementById('resumenModalOverlay'); // [FIX] refresco en vivo del Resumen del Día
+    if(rAbierto2&&rAbierto2.classList.contains('open'))_renderResumenDiaContenido();
   },err=>console.error('listener gastos:',err));
 }
 /* [NEW] Catálogo de rutas/asesores en tiempo real — reemplaza la lista fija de
@@ -1728,7 +1737,12 @@ async function crearAsesorReal(){
 document.getElementById('modalAsesorOverlay').addEventListener('click',function(e){ if(e.target===this)cerrarModalAsesor(); });
 
 let _resumenDiaData=null;
-function abrirResumenDia(){
+/* [NEW] Antes el Resumen del Día se calculaba una sola vez, al momento de abrirlo — si
+   el admin editaba un pedido desde el Dashboard mientras el modal seguía abierto en el
+   celular del asesor, nunca se enteraba. Separamos el cálculo/render en su propia función
+   para poder llamarla de nuevo cada vez que llega un cambio en tiempo real, sin necesidad
+   de cerrar y reabrir el modal. */
+function _renderResumenDiaContenido(){
   let hist=[]; try{hist=JSON.parse(sessionStorage.getItem('aqualuan-historial')||'[]');}catch{}
   const contenedor=document.getElementById('resumenDiaContenido'),sub=document.getElementById('resumenDiaSub'),totalBox=document.getElementById('resumenTotalGeneral'),totalValor=document.getElementById('resumenTotalValor');
 
@@ -1746,7 +1760,7 @@ function abrirResumenDia(){
       <span class="resumen-total-general-value">$${netoCaja.toFixed(2)}</span>
     </div>`:'';
 
-  if(!hist.length){ contenedor.innerHTML=cajaHtml+`<div class="empty-msg" style="margin-top:0">No hay pedidos registrados en esta sesión.</div>`; totalBox.style.display='none'; _resumenDiaData={porAsesor:{},totalGeneral:0,formasPagoGlobal:{},hoy:new Date().toLocaleDateString('es-EC',{weekday:'long',day:'numeric',month:'long',year:'numeric'}),totalPedidos:0,totalIngresos,totalEgresos,netoCaja}; document.getElementById('resumenModalOverlay').classList.add('open'); document.body.style.overflow='hidden'; return; }
+  if(!hist.length){ contenedor.innerHTML=cajaHtml+`<div class="empty-msg" style="margin-top:0">No hay pedidos registrados en esta sesión.</div>`; totalBox.style.display='none'; _resumenDiaData={porAsesor:{},totalGeneral:0,formasPagoGlobal:{},hoy:new Date().toLocaleDateString('es-EC',{weekday:'long',day:'numeric',month:'long',year:'numeric'}),totalPedidos:0,totalIngresos,totalEgresos,netoCaja}; return; }
   const hoy=new Date().toLocaleDateString('es-EC',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   sub.textContent=`📅 ${hoy} — ${hist.length} pedido(s) en esta sesión`;
   const porAsesor={};
@@ -1773,6 +1787,10 @@ function abrirResumenDia(){
   contenedor.innerHTML=html;
   totalValor.textContent='$'+totalGeneral.toFixed(2);
   totalBox.style.display='flex';
+}
+/* [NEW] Abre el modal y calcula el resumen por primera vez */
+function abrirResumenDia(){
+  _renderResumenDiaContenido();
   document.getElementById('resumenModalOverlay').classList.add('open');
   document.body.style.overflow='hidden';
 }
