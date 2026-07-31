@@ -662,12 +662,6 @@ display: inline-block;
           <span class="filter-label" style="margin-left:6px">Asesor</span>
           <select id="filtroAsesor">
             <option value="">Todos</option>
-            <option value="RUTA 1: Jefferson">Jefferson</option>
-            <option value="RUTA 2: Luis">Luis</option>
-            <option value="RUTA 3: Vicente">Vicente</option>
-            <option value="RUTA 4: Wilson">Wilson</option>
-            <option value="RUTA 5: Lister">Lister</option>
-            <option value="RUTA 6: Asesora">Asesora</option>
           </select>
           <button class="btn-filter btn-hoy" onclick="filtrarHoy()">Hoy</button>
           <button class="btn-filter" onclick="renderDashboard()">Aplicar</button>
@@ -967,6 +961,7 @@ async function doLogin() {
 function cerrarSesion() {
   clearInterval(autoRefreshInterval);
   detenerListenersDashboard(); // [NEW]
+  detenerListenerAsesoresDash(); // [NEW]
   auth.signOut(); // la limpieza del overlay ocurre en onAuthStateChanged, más abajo
 }
 
@@ -986,6 +981,7 @@ auth.onAuthStateChanged(async (user)=>{
   } else {
     clearInterval(autoRefreshInterval);
     detenerListenersDashboard(); // [NEW]
+    detenerListenerAsesoresDash(); // [NEW]
     document.getElementById('loginOverlay').classList.remove('hidden');
     document.getElementById('loginUser').value = '';
     document.getElementById('loginPass').value = '';
@@ -995,10 +991,28 @@ auth.onAuthStateChanged(async (user)=>{
 /* ════════════════════════════════════════
    INICIAR
 ════════════════════════════════════════ */
+let _unsubAsesoresDash = null;
+function _iniciarListenerAsesoresDash(){
+  if(_unsubAsesoresDash){_unsubAsesoresDash();_unsubAsesoresDash=null;}
+  _unsubAsesoresDash = db.collection('usuarios').where('esAdmin','==',false).onSnapshot(snap => {
+    const rutas = snap.docs.map(d => d.data().ruta).filter(Boolean).sort();
+    const sel = document.getElementById('filtroAsesor');
+    if (!sel) return;
+    const valorActual = sel.value;
+    sel.innerHTML = '<option value="">Todos</option>' + rutas.map(r => {
+      const nombre = r.split(':')[1]?.trim() || r;
+      return `<option value="${r}">${nombre}</option>`;
+    }).join('');
+    if (rutas.includes(valorActual)) sel.value = valorActual;
+  }, err => console.error('listener asesores dash:', err));
+}
+function detenerListenerAsesoresDash(){ if(_unsubAsesoresDash){_unsubAsesoresDash();_unsubAsesoresDash=null;} }
+
 function iniciar() {
   const hoy = fechaHoy();
   document.getElementById('filtroFecha').value = hoy;
   iniciarListenersDashboard(); // [NEW] tiempo real — reemplaza el polling cada 60s
+  _iniciarListenerAsesoresDash(); // [NEW] filtro de asesor real, en vivo
 }
 function fechaHoy() {
   const d = new Date();
