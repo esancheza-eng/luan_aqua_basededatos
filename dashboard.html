@@ -788,6 +788,10 @@ display: inline-block;
             <button class="dash-nav-item" data-section="pedidos" onclick="switchSeccionDash('pedidos')">📋 Detalle de Pedidos</button>
             <button class="dash-nav-item" data-section="cliente" onclick="switchSeccionDash('cliente')">🔍 Consultar por Cliente</button>
             <button class="dash-nav-item" data-section="caja" onclick="switchSeccionDash('caja')">💳 Cuadre de Caja</button>
+            <button class="dash-nav-item" data-section="eliminados" onclick="switchSeccionDash('eliminados')">🗑 Pedidos Eliminados</button>
+            <button class="dash-nav-item" data-section="inventario" onclick="switchSeccionDash('inventario')">📦 Inventario</button>
+            <button class="dash-nav-item" data-section="roles" onclick="switchSeccionDash('roles')">💵 Roles de Pago</button>
+            <button class="dash-nav-item" data-section="importar" onclick="switchSeccionDash('importar')">📤 Importar Datos</button>
           </nav>
           <div class="dash-content">
         <div class="dash-section active" id="seccion-resumen">
@@ -914,6 +918,83 @@ display: inline-block;
           </div>
         </div>
         </div>
+        <div class="dash-section" id="seccion-eliminados">
+        <!-- [NEW] Pedidos Eliminados — respaldo completo con fecha, hora y usuario -->
+        <div class="table-card" id="eliminadosCard">
+          <div class="table-header">
+            <div class="table-title">🗑 Pedidos Eliminados — Respaldo</div>
+            <span class="last-update" id="eliminadosCount" style="margin-left:0">Cargando...</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Fecha Elim.</th><th>Hora Elim.</th><th>Eliminado por</th><th>Cliente</th><th>Asesor</th><th>Fecha pedido</th><th>Total</th><th>Pago</th><th></th></tr></thead>
+              <tbody id="tablaEliminados"></tbody>
+            </table>
+          </div>
+        </div>
+        </div>
+        <div class="dash-section" id="seccion-inventario">
+        <!-- [NEW] Inventario — entradas y salidas con historial -->
+        <div class="table-card" id="inventarioCard">
+          <div class="table-header">
+            <div class="table-title">📦 Inventario — Registrar Movimiento</div>
+          </div>
+          <div style="padding:1.25rem">
+            <div class="editar-grid" style="max-width:900px">
+              <div class="editar-field"><label>Producto</label><select id="invProducto"><option value="">-- Selecciona --</option></select></div>
+              <div class="editar-field"><label>Tipo de movimiento</label><select id="invTipo"><option value="entrada">🟢 Entrada (compra)</option><option value="salida">🔴 Salida (venta / merma / ajuste)</option></select></div>
+              <div class="editar-field"><label>Cantidad</label><input type="number" id="invCantidad" min="1" step="1" placeholder="0"></div>
+              <div class="editar-field"><label>Fecha</label><input type="date" id="invFecha"></div>
+            </div>
+            <div class="editar-field" style="max-width:900px;margin-top:6px"><label>Motivo / Descripción</label><input type="text" id="invMotivo" placeholder="Ej. Compra a proveedor, merma por rotura, ajuste de conteo..."></div>
+            <button class="btn-filter" style="margin-top:12px;background:var(--teal)" onclick="registrarMovimientoInventario()">+ Registrar movimiento</button>
+            <div style="font-size:11px;color:var(--muted);margin-top:8px">⚠️ Este inventario es independiente de las ventas de la app de asesores — cada venta NO descuenta stock automáticamente todavía. Registra aquí las salidas por venta manualmente, o dime si quieres que lo conectemos automático más adelante.</div>
+          </div>
+          <div class="table-header"><div class="table-title">📊 Stock actual por producto</div></div>
+          <div class="table-wrap"><table><thead><tr><th>Producto</th><th style="text-align:right">Entradas</th><th style="text-align:right">Salidas</th><th style="text-align:right">Stock actual</th></tr></thead><tbody id="tablaStockActual"></tbody></table></div>
+          <div class="table-header"><div class="table-title">📋 Historial de movimientos</div></div>
+          <div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Producto</th><th>Tipo</th><th style="text-align:right">Cantidad</th><th>Motivo</th><th>Usuario</th></tr></thead><tbody id="tablaMovimientosInv"></tbody></table></div>
+        </div>
+        </div>
+        <div class="dash-section" id="seccion-roles">
+        <!-- [NEW] Roles de Pago — sueldo + comisión por ventas (comisión configurable por asesor) -->
+        <div class="table-card">
+          <div class="table-header"><div class="table-title">💵 Roles de Pago — Calcular período</div></div>
+          <div style="padding:1rem 1.25rem;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+            <div class="editar-field" style="margin-bottom:0"><label>Desde</label><input type="date" id="rolesDesde"></div>
+            <div class="editar-field" style="margin-bottom:0"><label>Hasta</label><input type="date" id="rolesHasta"></div>
+            <button class="btn-filter" onclick="calcularRolesPago()">Calcular período</button>
+          </div>
+          <div style="padding:0 1.25rem 10px;font-size:11px;color:var(--muted)">⚠️ El % de comisión de cada asesor arranca en 0% — aún no tenemos la tabla de comisiones. Edítalo directamente en la columna "% Comisión" de cada fila (se recuerda para los próximos cálculos).</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Asesor</th><th style="text-align:right">Sueldo base</th><th style="text-align:right">Ventas período</th><th style="text-align:right">% Comisión</th><th style="text-align:right">Comisión $</th><th style="text-align:right">Total a pagar</th><th></th></tr></thead>
+              <tbody id="tablaRolesPago"><tr><td colspan="7"><div class="empty-state"><div class="icon">💵</div>Calcula un período para ver los roles</div></td></tr></tbody>
+            </table>
+          </div>
+          <div style="padding:1rem 1.25rem" id="rolesTotalGeneral"></div>
+        </div>
+        <div class="table-card">
+          <div class="table-header"><div class="table-title">📋 Roles generados (historial)</div></div>
+          <div class="table-wrap"><table><thead><tr><th>Período</th><th>Asesor</th><th style="text-align:right">Total pagado</th><th>Generado por</th><th>Fecha</th></tr></thead><tbody id="tablaRolesHistorial"></tbody></table></div>
+        </div>
+        </div>
+        <div class="dash-section" id="seccion-importar">
+        <!-- [NEW] Importar pedidos históricos desde Excel/CSV -->
+        <div class="table-card">
+          <div class="table-header"><div class="table-title">📤 Importar Pedidos Históricos</div></div>
+          <div style="padding:1.25rem">
+            <div style="background:var(--surface2);border:1.5px dashed var(--border);border-radius:var(--radius);padding:14px 16px;font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.8">
+              <b style="color:var(--navy)">Formato esperado del Excel/CSV</b> (una fila por producto; varias filas con el mismo Cliente + Fecha + Asesor se agrupan automáticamente en un solo pedido):<br>
+              <code>Fecha | Asesor | Cliente | Telefono | Direccion | Producto | Cantidad | Precio | FormaPago | Notas</code><br>
+              La Fecha debe ir en formato AAAA-MM-DD (ej. 2026-03-15).
+            </div>
+            <input type="file" id="importarArchivo" accept=".xlsx,.xls,.csv">
+            <button class="btn-filter" style="background:var(--teal);margin-left:10px" onclick="procesarArchivoImportado()">📂 Leer archivo</button>
+            <div id="importarPreview" style="margin-top:16px"></div>
+          </div>
+        </div>
+        </div>
           </div>
         </div>
         <div class="notas-table-card" id="notasCard" style="display:none">
@@ -987,6 +1068,7 @@ display: inline-block;
 <script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ════════════════════════════════════════
    CONFIG
@@ -1101,6 +1183,9 @@ function cerrarSesion() {
   detenerListenersDashboard(); // [NEW]
   detenerListenerAsesoresDash(); // [NEW]
   detenerListenerProductosDash(); // [NEW]
+  detenerListenerEliminados(); // [NEW]
+  detenerListenerInventario(); // [NEW]
+  detenerListenerRolesHistorial(); // [NEW]
   auth.signOut(); // la limpieza del overlay ocurre en onAuthStateChanged, más abajo
 }
 
@@ -1123,6 +1208,9 @@ auth.onAuthStateChanged(async (user)=>{
     detenerListenersDashboard(); // [NEW]
     detenerListenerAsesoresDash(); // [NEW]
     detenerListenerProductosDash(); // [NEW]
+    detenerListenerEliminados(); // [NEW]
+    detenerListenerInventario(); // [NEW]
+    detenerListenerRolesHistorial(); // [NEW]
     document.getElementById('loginOverlay').classList.remove('hidden');
     document.getElementById('loginUser').value = '';
     document.getElementById('loginPass').value = '';
@@ -1160,12 +1248,62 @@ function _iniciarListenerProductosDash(){
 }
 function detenerListenerProductosDash(){ if(_unsubProductosDash){_unsubProductosDash();_unsubProductosDash=null;} }
 
+/* [NEW] Pedidos Eliminados — respaldo en vivo desde la colección `pedidosEliminados`
+   (se llena automáticamente cada vez que el admin usa el botón 🗑 Eliminar). */
+let _unsubEliminados=null, _eliminadosRaw=[];
+function _iniciarListenerEliminados(){
+  if(_unsubEliminados){_unsubEliminados();_unsubEliminados=null;}
+  _unsubEliminados = db.collection('pedidosEliminados').onSnapshot(snap => {
+    _eliminadosRaw = snap.docs.map(d => ({ _id: d.id, ...d.data() }))
+      .sort((a,b) => (b.eliminadoEn?.toMillis?.()||0) - (a.eliminadoEn?.toMillis?.()||0));
+    renderTablaEliminados();
+  }, err => console.error('listener eliminados:', err));
+}
+function detenerListenerEliminados(){ if(_unsubEliminados){_unsubEliminados();_unsubEliminados=null;} }
+
+/* [NEW] Inventario — entradas y salidas, en vivo */
+let _unsubInventario=null, _movimientosInvRaw=[];
+function _iniciarListenerInventario(){
+  if(_unsubInventario){_unsubInventario();_unsubInventario=null;}
+  _unsubInventario = db.collection('inventarioMovimientos').onSnapshot(snap => {
+    _movimientosInvRaw = snap.docs.map(d => ({ _id: d.id, ...d.data() }))
+      .sort((a,b) => (b.creadoEn?.toMillis?.()||0) - (a.creadoEn?.toMillis?.()||0));
+    renderInventario();
+  }, err => console.error('listener inventario:', err));
+}
+function detenerListenerInventario(){ if(_unsubInventario){_unsubInventario();_unsubInventario=null;} }
+
+/* [NEW] Roles de Pago — historial de roles ya generados, en vivo */
+let _unsubRolesHist=null, _rolesConfig={};
+function _iniciarListenerRolesHistorial(){
+  if(_unsubRolesHist){_unsubRolesHist();_unsubRolesHist=null;}
+  _unsubRolesHist = db.collection('rolesPago').onSnapshot(snap => {
+    const roles = snap.docs.map(d => d.data()).sort((a,b) => (b.creadoEn?.toMillis?.()||0) - (a.creadoEn?.toMillis?.()||0));
+    const tbody = document.getElementById('tablaRolesHistorial');
+    if (!tbody) return;
+    tbody.innerHTML = roles.length ? roles.slice(0,100).map(r => `<tr>
+        <td style="font-size:12px">${r.periodoDesde||'-'} → ${r.periodoHasta||'-'}</td>
+        <td style="font-weight:600">${r.asesorNombre||'-'}</td>
+        <td style="text-align:right;font-weight:700;color:var(--teal)">$${(r.totalPagado||0).toFixed(2)}</td>
+        <td style="font-size:12px">${r.generadoPor||'-'}</td>
+        <td style="font-size:12px;color:var(--muted)">${r.fechaGeneracion||'-'}</td>
+      </tr>`).join('') : '<tr><td colspan="5"><div class="empty-state"><div class="icon">📋</div>Sin roles generados aún</div></td></tr>';
+  }, err => console.error('listener roles:', err));
+}
+function detenerListenerRolesHistorial(){ if(_unsubRolesHist){_unsubRolesHist();_unsubRolesHist=null;} }
+
 function iniciar() {
   const hoy = fechaHoy();
   document.getElementById('filtroFecha').value = hoy;
   iniciarListenersDashboard(); // [NEW] tiempo real — reemplaza el polling cada 60s
   _iniciarListenerAsesoresDash(); // [NEW] filtro de asesor real, en vivo
   _iniciarListenerProductosDash(); // [NEW] catálogo de productos para el modal Editar Pedido
+  _iniciarListenerEliminados(); // [NEW] respaldo de pedidos eliminados
+  _iniciarListenerInventario(); // [NEW] entradas y salidas
+  _iniciarListenerRolesHistorial(); // [NEW] historial de roles de pago
+  document.getElementById('invFecha').value = hoy; // [NEW]
+  document.getElementById('rolesDesde').value = hoy; // [NEW]
+  document.getElementById('rolesHasta').value = hoy; // [NEW]
 }
 function fechaHoy() {
   const d = new Date();
@@ -2933,6 +3071,263 @@ async function eliminarPedidoCompleto(pedidoId){
     console.error(err);
     alert('❌ Ocurrió un error al eliminar el pedido: ' + err.message);
   }
+}
+
+/* ════════════════════════════════════════════════════════════
+   [NEW] VER PEDIDOS ELIMINADOS — tabla de respaldo, con fecha,
+   hora y usuario de la eliminación, más todo el detalle original
+   del pedido (cliente, productos, regalías, pagos, GPS, notas)
+   desplegable con un clic sobre la fila.
+════════════════════════════════════════════════════════════ */
+function renderTablaEliminados(){
+  const tbody = document.getElementById('tablaEliminados');
+  const count = document.getElementById('eliminadosCount');
+  if(!tbody) return;
+  if(count) count.textContent = _eliminadosRaw.length + ' registro' + (_eliminadosRaw.length!==1?'s':'');
+  if(!_eliminadosRaw.length){
+    tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="icon">🗑</div>No hay pedidos eliminados registrados</div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = _eliminadosRaw.map((p, idx) => {
+    const total = p.total != null ? `<strong style="color:var(--red)">$${parseFloat(p.total).toFixed(2)}</strong>` : '—';
+    const pago = p.formapago ? `<span class="badge badge-red">${p.formapago}</span>` : '';
+    const asesorNombre = (p.empleado||'').split(':')[1]?.trim() || p.empleado || '-';
+
+    // Detalle desplegable: productos, regalías, teléfono, dirección, notas, GPS
+    const filasProductos = (p.productos||[]).map(prod => {
+      let fila = `<tr>
+        <td>${prod.nombre||'-'}</td>
+        <td style="text-align:center">${prod.cantidad!=null?prod.cantidad:'-'}</td>
+        <td style="text-align:right">$${parseFloat(prod.precio||0).toFixed(2)}</td>
+        <td style="text-align:right">$${parseFloat(prod.subtotal||0).toFixed(2)}</td>
+      </tr>`;
+      if(prod.regalias && prod.regalias.length){
+        fila += prod.regalias.map(reg => `<tr><td colspan="2" style="font-size:11px;color:var(--teal-dark);font-style:italic">🎁 Regalo: ${reg.nombre||'-'} x${reg.cantidad||1}</td><td colspan="2" style="font-size:11px;color:var(--teal-dark);font-style:italic">Regalo</td></tr>`).join('');
+      }
+      return fila;
+    }).join('');
+    const gpsInfo = (p.gps && p.gps.url) ? `<a href="${p.gps.url}" target="_blank" style="color:var(--teal);font-weight:700">📍 Ver ubicación del pedido</a>` : 'Sin GPS registrado';
+
+    return `<tr>
+      <td style="font-size:12px;white-space:nowrap">${limpiarFecha(p.fechaEliminacion)}</td>
+      <td style="font-size:12px;white-space:nowrap">${p.horaEliminacion||'-'}</td>
+      <td style="font-size:12px;font-weight:700;color:var(--navy)">${p.eliminadoPor||'-'}</td>
+      <td style="font-weight:600">${p.cliente||'-'}</td>
+      <td style="font-size:12px">${asesorNombre}</td>
+      <td style="font-size:12px;color:var(--muted);white-space:nowrap">${limpiarFecha(p.fecha)}</td>
+      <td style="text-align:right">${total}</td>
+      <td>${pago}</td>
+      <td><button class="btn-editar-fila" onclick="toggleEliminadoDetalle(${idx})" id="btnEliminadoToggle-${idx}" title="Ver todo lo que se eliminó">👁 Ver detalle</button></td>
+    </tr>
+    <tr id="filaEliminadoDetalle-${idx}" style="display:none">
+      <td colspan="9" style="background:var(--surface2);padding:14px 18px">
+        <div style="font-size:12px;color:var(--muted);line-height:1.9;margin-bottom:10px">
+          📞 Teléfono: <b style="color:var(--text)">${p.telefono||'-'}</b> &nbsp;·&nbsp;
+          📍 Dirección: <b style="color:var(--text)">${p.direccion||'-'}</b><br>
+          📝 Notas: <b style="color:var(--text)">${p.notas||'-'}</b> &nbsp;·&nbsp; ${gpsInfo}
+        </div>
+        <table class="cierre-cliente-table" style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+          <thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Subtotal</th></tr></thead>
+          <tbody>${filasProductos || '<tr><td colspan="4" style="text-align:center;color:var(--muted)">Sin productos registrados</td></tr>'}</tbody>
+        </table>
+      </td>
+    </tr>`;
+  }).join('');
+}
+function toggleEliminadoDetalle(idx){
+  const fila = document.getElementById('filaEliminadoDetalle-'+idx);
+  const btn = document.getElementById('btnEliminadoToggle-'+idx);
+  if(!fila) return;
+  const abrir = fila.style.display === 'none';
+  fila.style.display = abrir ? 'table-row' : 'none';
+  if(btn) btn.textContent = abrir ? '🙈 Ocultar' : '👁 Ver detalle';
+}
+
+/* ════════════════════════════════════════════════════════════
+   [NEW] INVENTARIO — entradas y salidas con historial completo
+════════════════════════════════════════════════════════════ */
+function renderInventario(){
+  const sel = document.getElementById('invProducto');
+  if (sel && sel.options.length <= 1 && _productosCache.length) {
+    sel.innerHTML = '<option value="">-- Selecciona --</option>' + _productosCache.map(p => `<option value="${escapeAttrDash(p.nombre)}">${p.nombre}</option>`).join('');
+  }
+  const stock = {};
+  _movimientosInvRaw.forEach(m => {
+    if (!stock[m.producto]) stock[m.producto] = { entradas: 0, salidas: 0 };
+    if (m.tipo === 'entrada') stock[m.producto].entradas += parseFloat(m.cantidad) || 0;
+    else stock[m.producto].salidas += parseFloat(m.cantidad) || 0;
+  });
+  const tbodyStock = document.getElementById('tablaStockActual');
+  const entries = Object.entries(stock).sort(([a],[b]) => a.localeCompare(b));
+  if (tbodyStock) {
+    tbodyStock.innerHTML = entries.length ? entries.map(([nombre,d]) => {
+      const actual = d.entradas - d.salidas;
+      return `<tr><td style="font-weight:600">${nombre}</td><td style="text-align:right;color:var(--teal)">${d.entradas}</td><td style="text-align:right;color:var(--red)">${d.salidas}</td><td style="text-align:right;font-weight:800;color:${actual<0?'var(--red)':'var(--navy)'}">${actual}</td></tr>`;
+    }).join('') : '<tr><td colspan="4"><div class="empty-state"><div class="icon">📦</div>Sin movimientos registrados</div></td></tr>';
+  }
+  const tbodyMov = document.getElementById('tablaMovimientosInv');
+  if (tbodyMov) {
+    tbodyMov.innerHTML = _movimientosInvRaw.length ? _movimientosInvRaw.slice(0,150).map(m => {
+      const tipoBadge = m.tipo === 'entrada' ? '<span class="badge badge-teal">🟢 Entrada</span>' : '<span class="badge badge-red">🔴 Salida</span>';
+      return `<tr><td style="font-size:12px">${limpiarFecha(m.fecha)}</td><td style="font-weight:600">${m.producto}</td><td>${tipoBadge}</td><td style="text-align:right;font-weight:700">${m.cantidad}</td><td style="font-size:12px;color:var(--muted)">${m.motivo||'-'}</td><td style="font-size:12px">${m.usuario||'-'}</td></tr>`;
+    }).join('') : '<tr><td colspan="6"><div class="empty-state"><div class="icon">📋</div>Sin historial</div></td></tr>';
+  }
+}
+async function registrarMovimientoInventario(){
+  const producto = document.getElementById('invProducto').value;
+  const tipo = document.getElementById('invTipo').value;
+  const cantidad = parseFloat(document.getElementById('invCantidad').value);
+  const fecha = document.getElementById('invFecha').value || fechaHoy();
+  const motivo = document.getElementById('invMotivo').value.trim();
+  if (!producto) { alert('Selecciona un producto.'); return; }
+  if (!cantidad || cantidad <= 0) { alert('Ingresa una cantidad válida.'); return; }
+  try {
+    await db.collection('inventarioMovimientos').add({
+      producto, tipo, cantidad, fecha, motivo,
+      usuario: ADMIN_ACTUAL.nombre || ADMIN_ACTUAL.uid || 'admin',
+      creadoPor: ADMIN_ACTUAL.uid || null,
+      creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    document.getElementById('invCantidad').value = '';
+    document.getElementById('invMotivo').value = '';
+    mostrarToastEdicion('✅ Movimiento de inventario registrado.');
+  } catch(err) { console.error(err); alert('❌ No se pudo registrar el movimiento: ' + err.message); }
+}
+function escapeAttrDash(s){ return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+/* ════════════════════════════════════════════════════════════
+   [NEW] ROLES DE PAGO — sueldo base + comisión por ventas
+   El % de comisión por asesor está en 0 por defecto (aún no hay
+   tabla de comisiones); se edita fila por fila y se recuerda para
+   los próximos cálculos hasta que definan la tabla oficial.
+════════════════════════════════════════════════════════════ */
+let _rolesCalculados = [];
+function calcularRolesPago(){
+  const desde = document.getElementById('rolesDesde').value;
+  const hasta = document.getElementById('rolesHasta').value;
+  if (!desde || !hasta) { alert('Selecciona el rango de fechas del período.'); return; }
+  const pedidosPeriodo = _pedidosRaw.filter(p => p.fecha >= desde && p.fecha <= hasta);
+  const ventasPorAsesor = {};
+  pedidosPeriodo.forEach(p => { const a = p.empleado || 'Sin asignar'; ventasPorAsesor[a] = (ventasPorAsesor[a]||0) + (parseFloat(p.total)||0); });
+  _rolesCalculados = _asesoresCache.map(ruta => {
+    const nombre = ruta.split(':')[1]?.trim() || ruta;
+    const ventas = ventasPorAsesor[ruta] || 0;
+    const existente = _rolesConfig[ruta] || { sueldoBase: 0, comisionPct: 0 };
+    const comision = ventas * (existente.comisionPct/100);
+    return { ruta, nombre, sueldoBase: existente.sueldoBase, ventas, comisionPct: existente.comisionPct, comision, total: existente.sueldoBase + comision };
+  });
+  renderTablaRolesPago();
+}
+function renderTablaRolesPago(){
+  const tbody = document.getElementById('tablaRolesPago');
+  if (!_rolesCalculados.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="icon">💵</div>Calcula un período para ver los roles</div></td></tr>'; document.getElementById('rolesTotalGeneral').innerHTML = ''; return; }
+  let totalGeneral = 0;
+  tbody.innerHTML = _rolesCalculados.map((r,i) => {
+    totalGeneral += r.total;
+    return `<tr>
+      <td style="font-weight:600">${r.nombre}</td>
+      <td style="text-align:right"><input type="number" min="0" step="0.01" value="${r.sueldoBase}" style="width:90px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;text-align:right" onchange="actualizarRolCampo(${i},'sueldoBase',this.value)"></td>
+      <td style="text-align:right;color:var(--teal);font-weight:700">$${r.ventas.toFixed(2)}</td>
+      <td style="text-align:right"><input type="number" min="0" max="100" step="0.1" value="${r.comisionPct}" style="width:65px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;text-align:right" onchange="actualizarRolCampo(${i},'comisionPct',this.value)">%</td>
+      <td style="text-align:right">$${r.comision.toFixed(2)}</td>
+      <td style="text-align:right;font-weight:800;color:var(--navy)">$${r.total.toFixed(2)}</td>
+      <td><button class="btn-editar-fila" onclick="guardarRolPago(${i})">💾 Guardar rol</button></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('rolesTotalGeneral').innerHTML = `<div class="editar-total-box"><span class="lbl">Total general del período</span><span class="val">$${totalGeneral.toFixed(2)}</span></div>`;
+}
+function actualizarRolCampo(i, campo, valor){
+  _rolesCalculados[i][campo] = parseFloat(valor) || 0;
+  const r = _rolesCalculados[i];
+  r.comision = r.ventas * (r.comisionPct/100);
+  r.total = r.sueldoBase + r.comision;
+  _rolesConfig[r.ruta] = { sueldoBase: r.sueldoBase, comisionPct: r.comisionPct }; // se recuerda para futuros cálculos
+  renderTablaRolesPago();
+}
+async function guardarRolPago(i){
+  const r = _rolesCalculados[i];
+  const desde = document.getElementById('rolesDesde').value, hasta = document.getElementById('rolesHasta').value;
+  try {
+    await db.collection('rolesPago').add({
+      asesorRuta: r.ruta, asesorNombre: r.nombre, periodoDesde: desde, periodoHasta: hasta,
+      sueldoBase: r.sueldoBase, ventasPeriodo: r.ventas, comisionPct: r.comisionPct, comisionCalculada: r.comision, totalPagado: r.total,
+      generadoPor: ADMIN_ACTUAL.nombre || 'admin', fechaGeneracion: fechaHoy(),
+      creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    mostrarToastEdicion('✅ Rol de pago guardado para ' + r.nombre + '.');
+  } catch(err) { console.error(err); alert('❌ No se pudo guardar el rol: ' + err.message); }
+}
+
+/* ════════════════════════════════════════════════════════════
+   [NEW] IMPORTAR DATOS — pedidos históricos desde Excel/CSV
+   Cada fila = un producto; filas con el mismo Cliente+Fecha+Asesor
+   se agrupan en un solo pedido, igual que hace el resto del dashboard.
+════════════════════════════════════════════════════════════ */
+let _pedidosParaImportar = [];
+function procesarArchivoImportado(){
+  const input = document.getElementById('importarArchivo');
+  const file = input.files[0];
+  if (!file) { alert('Selecciona un archivo primero.'); return; }
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try {
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const filas = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      agruparYPrevisualizarImportacion(filas);
+    } catch(err) { console.error(err); alert('No se pudo leer el archivo. Verifica que sea un Excel o CSV válido.'); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+function agruparYPrevisualizarImportacion(filas){
+  const grupos = {};
+  filas.forEach(f => {
+    const fecha = String(f['Fecha']||f['fecha']||'').trim();
+    const asesor = String(f['Asesor']||f['asesor']||'').trim();
+    const cliente = String(f['Cliente']||f['cliente']||'').trim();
+    if (!fecha || !cliente) return;
+    const key = `${cliente}|${fecha}|${asesor}`;
+    if (!grupos[key]) grupos[key] = { fecha, empleado: asesor, cliente, telefono: String(f['Telefono']||f['telefono']||''), direccion: String(f['Direccion']||f['direccion']||''), formapago: String(f['FormaPago']||f['formapago']||'Contado'), notas: String(f['Notas']||f['notas']||''), productos: [] };
+    const cantidad = parseFloat(f['Cantidad']||f['cantidad']) || 0;
+    const precio = parseFloat(f['Precio']||f['precio']) || 0;
+    grupos[key].productos.push({ nombre: String(f['Producto']||f['producto']||'').trim(), cantidad, precio, subtotal: +(cantidad*precio).toFixed(2), regalias: [] });
+  });
+  _pedidosParaImportar = Object.values(grupos).map(p => ({ ...p, total: +p.productos.reduce((s,pr) => s+pr.subtotal, 0).toFixed(2) }));
+  renderPreviewImportacion();
+}
+function renderPreviewImportacion(){
+  const cont = document.getElementById('importarPreview');
+  if (!_pedidosParaImportar.length) { cont.innerHTML = '<div class="empty-state"><div class="icon">📭</div>No se detectaron pedidos válidos en el archivo. Revisa que las columnas coincidan con el formato indicado arriba.</div>'; return; }
+  const filas = _pedidosParaImportar.map(p => `<tr><td style="font-size:12px">${p.fecha}</td><td style="font-size:12px">${p.empleado||'-'}</td><td style="font-weight:600">${p.cliente}</td><td style="text-align:center">${p.productos.length}</td><td style="text-align:right;font-weight:700;color:var(--teal)">$${p.total.toFixed(2)}</td></tr>`).join('');
+  cont.innerHTML = `
+    <div style="margin-bottom:10px;font-size:13px;font-weight:700;color:var(--navy)">Se detectaron ${_pedidosParaImportar.length} pedido(s) — revisa antes de confirmar:</div>
+    <div class="table-wrap" style="border:1px solid var(--border);border-radius:8px;overflow:hidden;max-height:320px;overflow-y:auto">
+      <table><thead><tr><th>Fecha</th><th>Asesor</th><th>Cliente</th><th style="text-align:center">Prod.</th><th style="text-align:right">Total</th></tr></thead><tbody>${filas}</tbody></table>
+    </div>
+    <button class="btn-filter" id="btnConfirmarImportacion" style="background:var(--red);margin-top:14px" onclick="confirmarImportacionMasiva()">⬆ Confirmar e importar ${_pedidosParaImportar.length} pedido(s) a Firestore</button>
+  `;
+}
+async function confirmarImportacionMasiva(){
+  if (!_pedidosParaImportar.length) return;
+  if (!confirm(`¿Importar ${_pedidosParaImportar.length} pedido(s) a la base de datos activa? Cada pedido importado queda marcado como "importado:true" para poder identificarlo y eliminarlo individualmente después si hace falta.`)) return;
+  const btn = document.getElementById('btnConfirmarImportacion');
+  if (btn) { btn.disabled = true; btn.textContent = 'Importando...'; }
+  try {
+    let lote = db.batch(); let contador = 0;
+    for (const p of _pedidosParaImportar) {
+      const ref = db.collection('pedidos').doc();
+      lote.set(ref, { ...p, importado: true, creadoPor: ADMIN_ACTUAL.uid || null, creadoEn: firebase.firestore.FieldValue.serverTimestamp() });
+      contador++;
+      if (contador % 400 === 0) { await lote.commit(); lote = db.batch(); } // límite de Firestore: 500 operaciones por lote
+    }
+    await lote.commit();
+    mostrarToastEdicion(`✅ ${_pedidosParaImportar.length} pedido(s) importado(s) correctamente.`);
+    _pedidosParaImportar = [];
+    document.getElementById('importarPreview').innerHTML = '';
+    document.getElementById('importarArchivo').value = '';
+  } catch(err) { console.error(err); alert('❌ Error al importar: ' + err.message); }
+  finally { if (btn) { btn.disabled = false; btn.textContent = '⬆ Confirmar e importar'; } }
 }
 
 /* [NEW] Notificación flotante simple, reutilizable */
