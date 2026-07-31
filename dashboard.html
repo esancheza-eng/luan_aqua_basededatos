@@ -587,6 +587,111 @@ display: inline-block;
 .cierre-cliente-table td:nth-child(4) { text-align: right; }
 .cierre-cliente-table tr:last-child td { border-bottom: none; }
 
+/* [NEW] Editar Pedido — botón de fila + modal */
+.btn-editar-fila {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--teal-light); color: var(--teal-dark); border: 1.5px solid transparent;
+  border-radius: 7px; padding: 5px 10px;
+  font-family: 'DM Sans', sans-serif; font-size: 11px; font-weight: 700;
+  cursor: pointer; transition: background 0.15s, color 0.15s; white-space: nowrap;
+}
+.btn-editar-fila:hover { background: var(--teal); color: #fff; }
+.editar-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(10,30,60,0.75); z-index: 320;
+  align-items: flex-start; justify-content: center;
+  padding: 2rem 1rem; overflow-y: auto;
+}
+.editar-overlay.open { display: flex; animation: fadeUp 0.25s ease; }
+.editar-modal {
+  background: var(--surface); border-radius: var(--radius-lg);
+  width: 100%; max-width: 760px;
+  box-shadow: var(--shadow-lg);
+  animation: fadeUp 0.3s ease;
+}
+.editar-header {
+  background: var(--navy); border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: 1.1rem 1.5rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.editar-header-title { font-family: 'DM Serif Display', serif; font-size: 1.2rem; color: #fff; display: flex; align-items: center; gap: 10px; }
+.editar-body { padding: 1.5rem; max-height: 72vh; overflow-y: auto; }
+.editar-seccion-label {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--teal); margin: 1.1rem 0 0.6rem; padding-top: 0.9rem; border-top: 1px solid var(--border);
+}
+.editar-seccion-label:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+.editar-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.editar-grid.full { grid-template-columns: 1fr; }
+.editar-field label {
+  display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 5px;
+}
+.editar-field input, .editar-field select, .editar-field textarea {
+  width: 100%; background: var(--surface2); border: 1.5px solid var(--border);
+  border-radius: 8px; color: var(--text); font-family: 'DM Sans', sans-serif;
+  font-size: 13px; font-weight: 600; padding: 9px 11px; outline: none;
+  transition: border-color 0.2s;
+}
+.editar-field input:focus, .editar-field select:focus, .editar-field textarea:focus { border-color: var(--teal); }
+.editar-field textarea { resize: vertical; min-height: 60px; font-weight: 500; }
+.editar-readonly-box {
+  background: var(--surface2); border: 1.5px dashed var(--border); border-radius: var(--radius);
+  padding: 10px 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px;
+  font-size: 12px; color: var(--muted);
+}
+.editar-readonly-box b { color: var(--text); font-weight: 700; }
+.editar-linea-producto {
+  border: 1.5px solid var(--border); border-radius: var(--radius);
+  padding: 12px; margin-bottom: 10px; background: var(--surface2);
+}
+.editar-linea-producto-row { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 8px; align-items: end; }
+.editar-linea-subtotal { font-size: 11px; font-weight: 700; color: var(--teal); margin-top: 6px; }
+.btn-quitar-linea {
+  background: #fdecea; color: var(--red); border: none; border-radius: 8px;
+  width: 36px; height: 36px; cursor: pointer; font-size: 15px; font-weight: 700;
+  transition: background 0.15s;
+}
+.btn-quitar-linea:hover { background: var(--red); color: #fff; }
+.btn-agregar-linea {
+  background: var(--surface); border: 1.5px dashed var(--teal); color: var(--teal-dark);
+  border-radius: 8px; padding: 8px 14px; font-family: 'DM Sans', sans-serif;
+  font-size: 12px; font-weight: 700; cursor: pointer; transition: background 0.15s; width: 100%;
+}
+.btn-agregar-linea:hover { background: var(--teal-light); }
+.editar-regalias-box { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); }
+.editar-regalias-label { font-size: 9px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--purple); margin-bottom: 6px; }
+.editar-regalia-row { display: grid; grid-template-columns: 2fr 1fr auto; gap: 8px; align-items: center; margin-bottom: 6px; }
+.editar-total-box {
+  background: var(--navy); border-radius: var(--radius); padding: 14px 18px; margin-top: 1rem;
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+}
+.editar-total-box .lbl { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.55); }
+.editar-total-box .val { font-family: 'DM Serif Display', serif; font-size: 1.6rem; color: var(--accent); }
+.editar-footer {
+  padding: 1rem 1.5rem; border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+}
+.btn-guardar-edicion {
+  background: var(--teal); color: #fff; border: none; border-radius: 8px;
+  padding: 10px 22px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 800;
+  cursor: pointer; transition: background 0.2s;
+}
+.btn-guardar-edicion:hover { background: var(--teal-dark); }
+.btn-guardar-edicion:disabled { opacity: 0.6; cursor: default; }
+.btn-cancelar-edicion {
+  background: var(--surface2); color: var(--text); border: 1.5px solid var(--border);
+  border-radius: 8px; padding: 10px 22px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 700;
+  cursor: pointer; transition: background 0.2s;
+}
+.btn-cancelar-edicion:hover { background: var(--border); }
+.btn-cerrar-editar {
+  background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 100px; width: 30px; height: 30px; color: rgba(255,255,255,0.8);
+  cursor: pointer; font-size: 14px; transition: background 0.2s;
+}
+.btn-cerrar-editar:hover { background: rgba(255,255,255,0.22); color: #fff; }
+
 @media (max-width: 768px) {
   .charts-grid { grid-template-columns: 1fr; }
   .kpi-grid { grid-template-columns: 1fr 1fr; }
@@ -695,7 +800,7 @@ display: inline-block;
           </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Fecha</th><th>Asesor</th><th>Cliente</th><th>Teléfono</th><th>Producto</th><th>Cant.</th><th>Subtotal</th><th>Total</th><th>Pago</th><th>GPS</th></tr></thead>
+              <thead><tr><th>Fecha</th><th>Asesor</th><th>Cliente</th><th>Teléfono</th><th>Producto</th><th>Cant.</th><th>Subtotal</th><th>Total</th><th>Pago</th><th>GPS</th><th>Acciones</th></tr></thead>
               <tbody id="tablaPedidos"></tbody>
             </table>
           </div>
@@ -908,6 +1013,16 @@ let mapMarkers = [];
 let mapPolylines = [];
 let pedidosDetalleActuales = [];
 
+/* [NEW] Editar Pedido — identidad del admin actual (para el historial de cambios) */
+let ADMIN_ACTUAL = { uid: null, nombre: 'Admin' };
+/* [NEW] Editar Pedido — catálogo de productos en caché para que el modal abra al instante */
+let _productosCache = [];
+let _unsubProductosDash = null;
+/* [NEW] Editar Pedido — lista de rutas/asesores reales en caché (además del <select> de filtro) */
+let _asesoresCache = [];
+/* [NEW] Editar Pedido — pedido que se está editando actualmente en el modal */
+let editandoPedidoActual = null;
+
 /* ════════════════════════════════════════
    TABS
 ════════════════════════════════════════ */
@@ -948,6 +1063,7 @@ async function doLogin() {
       document.getElementById('loginPass').focus();
       return;
     }
+    ADMIN_ACTUAL = { uid: cred.user.uid, nombre: perfilDoc.data().nombre || user }; // [NEW] para el historial de cambios
     document.getElementById('loginOverlay').classList.add('hidden');
     document.getElementById('loginError').classList.remove('show');
     iniciar();
@@ -962,6 +1078,7 @@ function cerrarSesion() {
   clearInterval(autoRefreshInterval);
   detenerListenersDashboard(); // [NEW]
   detenerListenerAsesoresDash(); // [NEW]
+  detenerListenerProductosDash(); // [NEW]
   auth.signOut(); // la limpieza del overlay ocurre en onAuthStateChanged, más abajo
 }
 
@@ -972,6 +1089,7 @@ auth.onAuthStateChanged(async (user)=>{
     try{
       const perfilDoc = await db.collection('usuarios').doc(user.uid).get();
       if(perfilDoc.exists && perfilDoc.data().esAdmin===true){
+        ADMIN_ACTUAL = { uid: user.uid, nombre: perfilDoc.data().nombre || 'Admin' }; // [NEW] para el historial de cambios
         document.getElementById('loginOverlay').classList.add('hidden');
         iniciar();
       } else {
@@ -982,6 +1100,7 @@ auth.onAuthStateChanged(async (user)=>{
     clearInterval(autoRefreshInterval);
     detenerListenersDashboard(); // [NEW]
     detenerListenerAsesoresDash(); // [NEW]
+    detenerListenerProductosDash(); // [NEW]
     document.getElementById('loginOverlay').classList.remove('hidden');
     document.getElementById('loginUser').value = '';
     document.getElementById('loginPass').value = '';
@@ -996,6 +1115,7 @@ function _iniciarListenerAsesoresDash(){
   if(_unsubAsesoresDash){_unsubAsesoresDash();_unsubAsesoresDash=null;}
   _unsubAsesoresDash = db.collection('usuarios').where('esAdmin','==',false).onSnapshot(snap => {
     const rutas = snap.docs.map(d => d.data().ruta).filter(Boolean).sort();
+    _asesoresCache = rutas; // [NEW] disponible para el <select> de Asesor dentro del modal Editar Pedido
     const sel = document.getElementById('filtroAsesor');
     if (!sel) return;
     const valorActual = sel.value;
@@ -1008,11 +1128,22 @@ function _iniciarListenerAsesoresDash(){
 }
 function detenerListenerAsesoresDash(){ if(_unsubAsesoresDash){_unsubAsesoresDash();_unsubAsesoresDash=null;} }
 
+/* [NEW] Editar Pedido — catálogo de productos en vivo, listo antes de abrir el modal
+   (misma colección `productos` que ya usa el panel "Gestionar Productos" en index.html) */
+function _iniciarListenerProductosDash(){
+  if(_unsubProductosDash){_unsubProductosDash();_unsubProductosDash=null;}
+  _unsubProductosDash = db.collection('productos').where('activo','==',true).onSnapshot(snap => {
+    _productosCache = snap.docs.map(d => ({ id: d.id, nombre: d.data().nombre || '' })).sort((a,b) => a.nombre.localeCompare(b.nombre));
+  }, err => console.error('listener productos dash:', err));
+}
+function detenerListenerProductosDash(){ if(_unsubProductosDash){_unsubProductosDash();_unsubProductosDash=null;} }
+
 function iniciar() {
   const hoy = fechaHoy();
   document.getElementById('filtroFecha').value = hoy;
   iniciarListenersDashboard(); // [NEW] tiempo real — reemplaza el polling cada 60s
   _iniciarListenerAsesoresDash(); // [NEW] filtro de asesor real, en vivo
+  _iniciarListenerProductosDash(); // [NEW] catálogo de productos para el modal Editar Pedido
 }
 function fechaHoy() {
   const d = new Date();
@@ -1072,7 +1203,8 @@ function _filaProducto(p, prod, esPrimera, esRegalo) {
     'FORMA DE PAGO': p.formapago || '', 'LINK GPS': (p.gps && p.gps.url) ? p.gps.url : '', 'NOTAS': p.notas || '',
     'LATITUD': (p.gps && p.gps.lat != null) ? p.gps.lat : '', 'LONGITUD': (p.gps && p.gps.lng != null) ? p.gps.lng : '',
     'PRECISIÓN GPS': (p.gps && p.gps.acc != null) ? `±${p.gps.acc}m` : '',
-    'HORA REGISTRO': _horaDeTs(p.creadoEn)
+    'HORA REGISTRO': _horaDeTs(p.creadoEn),
+    '_pedidoId': p._id || '' /* [NEW] id real del documento en Firestore — necesario para poder editarlo */
   };
 }
 function _expandirPedido(p) {
@@ -1106,7 +1238,7 @@ function iniciarListenersDashboard() {
   if (_unsubPagosAll) _unsubPagosAll();
   if (_unsubGastosAll) _unsubGastosAll();
   document.getElementById('kpiGrid').innerHTML = '<div class="loading"><div class="spinner"></div><span>Cargando datos...</span></div>';
-  _unsubPedidosAll = db.collection('pedidos').onSnapshot(snap => { _pedidosRaw = snap.docs.map(d => d.data()); _recalcularTodosLosDatos(); }, err => { console.error('listener pedidos:', err); document.getElementById('kpiGrid').innerHTML = '<div class="loading"><span>⚠️ Error al cargar datos: '+err.message+'</span></div>'; });
+  _unsubPedidosAll = db.collection('pedidos').onSnapshot(snap => { _pedidosRaw = snap.docs.map(d => ({ _id: d.id, ...d.data() })); _recalcularTodosLosDatos(); }, err => { console.error('listener pedidos:', err); document.getElementById('kpiGrid').innerHTML = '<div class="loading"><span>⚠️ Error al cargar datos: '+err.message+'</span></div>'; }); /* [FIX] _id agregado — antes no se guardaba el id del documento, y sin él no era posible editar un pedido puntual */
   _unsubPagosAll   = db.collection('pagos').onSnapshot(snap => { _pagosRaw = snap.docs.map(d => d.data()); _recalcularTodosLosDatos(); }, err => console.error('listener pagos:', err));
   _unsubGastosAll  = db.collection('gastos').onSnapshot(snap => { _gastosRaw = snap.docs.map(d => d.data()); _recalcularTodosLosDatos(); }, err => console.error('listener gastos:', err));
 }
@@ -1304,11 +1436,14 @@ function renderGPS(pedidos) {
 
 function renderTabla(pedidos) {
   const tbody = document.getElementById('tablaPedidos');
-  if (!pedidos.length) { tbody.innerHTML = '<tr><td colspan="10"><div class="empty-state"><div class="icon">📋</div>No hay pedidos en este período</div></td></tr>'; return; }
+  if (!pedidos.length) { tbody.innerHTML = '<tr><td colspan="11"><div class="empty-state"><div class="icon">📋</div>No hay pedidos en este período</div></td></tr>'; return; }
   tbody.innerHTML = pedidos.slice(0,100).map(r => {
     const gps   = r['LINK GPS'] ? `<a href="${r['LINK GPS']}" target="_blank" style="color:var(--teal);font-weight:700;font-size:11px">📍 Ver</a>` : '<span style="color:var(--muted);font-size:11px">—</span>';
     const total = r['TOTAL PEDIDO ($)'] ? `<strong style="color:var(--teal)">$${parseFloat(r['TOTAL PEDIDO ($)']).toFixed(2)}</strong>` : '';
     const pago  = r['FORMA DE PAGO'] ? `<span class="badge badge-teal">${r['FORMA DE PAGO']}</span>` : '';
+    /* [NEW] Botón Editar — solo funciona si la fila trae el id real del pedido en Firestore
+       (las filas de pagos/gastos no lo traen, pero renderTabla solo recibe pedidos con producto) */
+    const accion = r['_pedidoId'] ? `<button class="btn-editar-fila" onclick="abrirEditarPedido('${r['_pedidoId']}')" title="Editar este pedido">✏ Editar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>';
     return `<tr>
       <td style="white-space:nowrap;font-size:12px">${limpiarFecha(r['FECHA'])}</td>
       <td style="font-size:12px">${(r['ASESOR / RUTA']||'').split(':')[1]?.trim()||r['ASESOR / RUTA']||'-'}</td>
@@ -1320,6 +1455,7 @@ function renderTabla(pedidos) {
       <td style="text-align:right">${total}</td>
       <td>${pago}</td>
       <td>${gps}</td>
+      <td>${accion}</td>
     </tr>`;
   }).join('');
 }
@@ -1440,11 +1576,12 @@ function actualizarTablaCentral(datos) {
   pedidosDetalleActuales = datos;
   poblarClienteSelect(datos);
   document.getElementById('clienteCard').style.display = 'block';
-  if (!datos.length) { tbody.innerHTML='<tr><td colspan="10"><div class="empty-state"><div class="icon">📋</div>No hay pedidos con estos filtros</div></td></tr>'; return; }
+  if (!datos.length) { tbody.innerHTML='<tr><td colspan="11"><div class="empty-state"><div class="icon">📋</div>No hay pedidos con estos filtros</div></td></tr>'; return; }
   tbody.innerHTML = datos.map(r => {
     const gps   = r['LINK GPS'] ? `<a href="${r['LINK GPS']}" target="_blank" style="color:var(--teal);font-weight:700;font-size:11px">📍 Ver</a>` : '<span style="color:var(--muted);font-size:11px">—</span>';
     const total = r['TOTAL PEDIDO ($)'] ? `<strong style="color:var(--teal)">$${parseFloat(r['TOTAL PEDIDO ($)']).toFixed(2)}</strong>` : '';
     const pago  = r['FORMA DE PAGO'] ? `<span class="badge badge-teal">${r['FORMA DE PAGO']}</span>` : '';
+    const accion = r['_pedidoId'] ? `<button class="btn-editar-fila" onclick="abrirEditarPedido('${r['_pedidoId']}')" title="Editar este pedido">✏ Editar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>';
     return `<tr>
       <td style="white-space:nowrap;font-size:12px">${limpiarFecha(r['FECHA'])}</td>
       <td style="font-size:12px">${(r['ASESOR / RUTA']||'').split(':')[1]?.trim()||r['ASESOR / RUTA']||'-'}</td>
@@ -1456,6 +1593,7 @@ function actualizarTablaCentral(datos) {
       <td style="text-align:right">${total}</td>
       <td>${pago}</td>
       <td>${gps}</td>
+      <td>${accion}</td>
     </tr>`;
   }).join('');
 }
@@ -2418,6 +2556,251 @@ function exportarExcel() {
   a.href=url; a.download=`NotasVentas_${fecha}_${asesor}.csv`; a.click();
   URL.revokeObjectURL(url);
 }
+
+/* ════════════════════════════════════════════════════════════
+   [NEW] EDITAR PEDIDO — solo visible/usable por el Administrador
+   (todo dashboard.html ya está protegido por el login que exige
+   esAdmin === true, así que llegar hasta aquí ya implica ser admin)
+════════════════════════════════════════════════════════════ */
+const FORMAS_PAGO_FIJAS = ['Contado','Crédito','Transferencia','Cheque'];
+
+function abrirEditarPedido(pedidoId){
+  const p = _pedidosRaw.find(x => x._id === pedidoId);
+  if(!p){ alert('No se encontró el pedido — puede que otro admin lo haya eliminado.'); return; }
+  // Copia editable e independiente, para no mutar los datos en vivo del listener mientras se edita
+  editandoPedidoActual = JSON.parse(JSON.stringify(p));
+  editandoPedidoActual._id = pedidoId;
+  editandoPedidoActual.productos = (editandoPedidoActual.productos || []).map(prod => ({
+    nombre: prod.nombre || '', cantidad: prod.cantidad != null ? prod.cantidad : 1, precio: prod.precio != null ? prod.precio : 0,
+    regalias: (prod.regalias || []).map(r => ({ nombre: r.nombre || '', cantidad: r.cantidad != null ? r.cantidad : 1 }))
+  }));
+  renderModalEditarPedido();
+  document.getElementById('editarOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function cerrarEditarPedido(){
+  document.getElementById('editarOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+  editandoPedidoActual = null;
+}
+
+function _totalCalculadoEdicion(){
+  if(!editandoPedidoActual) return 0;
+  return editandoPedidoActual.productos.reduce((s,prod) => s + ((parseFloat(prod.cantidad)||0) * (parseFloat(prod.precio)||0)), 0);
+}
+
+function renderModalEditarPedido(){
+  const p = editandoPedidoActual;
+  if(!p) return;
+
+  const optionsAsesor = _asesoresCache.map(r => `<option value="${r}" ${p.empleado===r?'selected':''}>${r.split(':')[1]?.trim()||r}</option>`).join('');
+  const optionsPago = FORMAS_PAGO_FIJAS.map(f => `<option value="${f}" ${p.formapago===f?'selected':''}>${f}</option>`).join('');
+
+  document.getElementById('editarBody').innerHTML = `
+    <div class="editar-seccion-label">📋 Datos del pedido</div>
+    <div class="editar-grid">
+      <div class="editar-field"><label>Fecha</label><input type="date" id="editFecha" value="${p.fecha||''}"></div>
+      <div class="editar-field"><label>Asesor</label><select id="editAsesor">${optionsAsesor}</select></div>
+      <div class="editar-field"><label>Forma de Pago</label><select id="editFormaPago">${optionsPago}</select></div>
+      <div class="editar-field"><label>Cliente</label><input type="text" id="editCliente" value="${escapeAttr(p.cliente||'')}"></div>
+      <div class="editar-field"><label>Teléfono</label><input type="text" id="editTelefono" value="${escapeAttr(p.telefono||'')}"></div>
+      <div class="editar-field"><label>Dirección</label><input type="text" id="editDireccion" value="${escapeAttr(p.direccion||'')}"></div>
+    </div>
+    <div class="editar-grid full" style="margin-top:10px">
+      <div class="editar-field"><label>Notas</label><textarea id="editNotas">${p.notas||''}</textarea></div>
+    </div>
+
+    <div class="editar-seccion-label">📦 Productos del pedido</div>
+    <div id="editProductosWrap"></div>
+    <button type="button" class="btn-agregar-linea" onclick="agregarProductoLinea()">+ Agregar producto</button>
+
+    <div class="editar-total-box">
+      <span class="lbl">🧮 Total del pedido (recalculado automáticamente)</span>
+      <span class="val" id="editTotalCalculado">$${_totalCalculadoEdicion().toFixed(2)}</span>
+    </div>
+
+    <div class="editar-seccion-label">📍 Información de registro (solo lectura)</div>
+    <div class="editar-readonly-box">
+      <div>Latitud: <b>${(p.gps && p.gps.lat!=null) ? p.gps.lat : '—'}</b></div>
+      <div>Longitud: <b>${(p.gps && p.gps.lng!=null) ? p.gps.lng : '—'}</b></div>
+      <div>Precisión GPS: <b>${(p.gps && p.gps.acc!=null) ? '±'+p.gps.acc+'m' : '—'}</b></div>
+      <div>Hora de registro: <b>${_horaDeTs(p.creadoEn)}</b></div>
+      <div style="grid-column:1/-1">Link GPS: ${(p.gps && p.gps.url) ? `<a href="${p.gps.url}" target="_blank" style="color:var(--teal);font-weight:700">📍 Abrir en el mapa</a>` : '<b>—</b>'}</div>
+    </div>
+  `;
+  renderProductosEditor();
+}
+
+/* [NEW] Redibuja solo la sección de líneas de producto (y sus regalías) tras cada cambio */
+function renderProductosEditor(){
+  const wrap = document.getElementById('editProductosWrap');
+  if(!wrap || !editandoPedidoActual) return;
+  const opcionesProductos = _productosCache.map(prod => `<option value="${escapeAttr(prod.nombre)}">${prod.nombre}</option>`).join('');
+
+  wrap.innerHTML = editandoPedidoActual.productos.map((prod, i) => {
+    const subtotal = (parseFloat(prod.cantidad)||0) * (parseFloat(prod.precio)||0);
+    const regaliasHtml = (prod.regalias||[]).map((reg, j) => `
+      <div class="editar-regalia-row">
+        <select onchange="actualizarRegaliaLinea(${i},${j},'nombre',this.value)">
+          <option value="">-- Selecciona --</option>
+          ${_productosCache.map(pr => `<option value="${escapeAttr(pr.nombre)}" ${reg.nombre===pr.nombre?'selected':''}>${pr.nombre}</option>`).join('')}
+        </select>
+        <input type="number" min="1" step="1" value="${reg.cantidad}" onchange="actualizarRegaliaLinea(${i},${j},'cantidad',this.value)">
+        <button type="button" class="btn-quitar-linea" onclick="eliminarRegaliaLinea(${i},${j})" title="Quitar regalía">✕</button>
+      </div>`).join('');
+
+    return `
+      <div class="editar-linea-producto">
+        <div class="editar-linea-producto-row">
+          <div class="editar-field" style="margin-bottom:0">
+            <label>Producto</label>
+            <select onchange="actualizarProductoLinea(${i},'nombre',this.value)">
+              <option value="">-- Selecciona --</option>
+              ${_productosCache.map(pr => `<option value="${escapeAttr(pr.nombre)}" ${prod.nombre===pr.nombre?'selected':''}>${pr.nombre}</option>`).join('')}
+            </select>
+          </div>
+          <div class="editar-field" style="margin-bottom:0"><label>Cantidad</label><input type="number" min="1" step="1" value="${prod.cantidad}" onchange="actualizarProductoLinea(${i},'cantidad',this.value)"></div>
+          <div class="editar-field" style="margin-bottom:0"><label>Precio Unit. ($)</label><input type="number" min="0" step="0.01" value="${prod.precio}" onchange="actualizarProductoLinea(${i},'precio',this.value)"></div>
+          <button type="button" class="btn-quitar-linea" onclick="eliminarProductoLinea(${i})" title="Quitar producto">✕</button>
+        </div>
+        <div class="editar-linea-subtotal">Subtotal: $${subtotal.toFixed(2)}</div>
+        <div class="editar-regalias-box">
+          <div class="editar-regalias-label">🎁 Regalías de este producto</div>
+          ${regaliasHtml || '<div style="font-size:11px;color:var(--muted)">Sin regalías agregadas</div>'}
+          <button type="button" class="btn-agregar-linea" style="margin-top:6px" onclick="agregarRegaliaLinea(${i})">+ Agregar regalía</button>
+        </div>
+      </div>`;
+  }).join('') || '<div style="font-size:12px;color:var(--muted);padding:8px 0">Sin productos. Agrega al menos uno.</div>';
+
+  const totalEl = document.getElementById('editTotalCalculado');
+  if(totalEl) totalEl.textContent = '$' + _totalCalculadoEdicion().toFixed(2);
+}
+
+function actualizarProductoLinea(i, campo, valor){
+  const prod = editandoPedidoActual.productos[i];
+  if(!prod) return;
+  prod[campo] = (campo==='cantidad'||campo==='precio') ? (parseFloat(valor)||0) : valor;
+  renderProductosEditor();
+}
+function eliminarProductoLinea(i){
+  editandoPedidoActual.productos.splice(i,1);
+  renderProductosEditor();
+}
+function agregarProductoLinea(){
+  editandoPedidoActual.productos.push({ nombre:'', cantidad:1, precio:0, regalias:[] });
+  renderProductosEditor();
+}
+function actualizarRegaliaLinea(i, j, campo, valor){
+  const reg = editandoPedidoActual.productos[i]?.regalias[j];
+  if(!reg) return;
+  reg[campo] = campo==='cantidad' ? (parseFloat(valor)||1) : valor;
+  renderProductosEditor();
+}
+function eliminarRegaliaLinea(i, j){
+  editandoPedidoActual.productos[i].regalias.splice(j,1);
+  renderProductosEditor();
+}
+function agregarRegaliaLinea(i){
+  editandoPedidoActual.productos[i].regalias.push({ nombre:'', cantidad:1 });
+  renderProductosEditor();
+}
+
+/* [NEW] Guarda solo el documento modificado en Firestore (sin volver a consultar toda la
+   colección) y registra cada campo que cambió en historialCambios para auditoría. */
+async function guardarEdicionPedido(){
+  if(!editandoPedidoActual) return;
+  const original = _pedidosRaw.find(x => x._id === editandoPedidoActual._id);
+  if(!original){ alert('El pedido ya no existe.'); cerrarEditarPedido(); return; }
+
+  const productosLimpios = editandoPedidoActual.productos
+    .filter(prod => (prod.nombre||'').trim() !== '')
+    .map(prod => {
+      const cantidad = parseFloat(prod.cantidad)||0, precio = parseFloat(prod.precio)||0;
+      return {
+        nombre: prod.nombre.trim(), cantidad, precio, subtotal: +(cantidad*precio).toFixed(2),
+        regalias: (prod.regalias||[]).filter(r => (r.nombre||'').trim()!=='').map(r => ({ nombre:r.nombre.trim(), cantidad: parseFloat(r.cantidad)||1 }))
+      };
+    });
+
+  const cliente = document.getElementById('editCliente').value.trim();
+  if(!cliente){ alert('El nombre del cliente no puede quedar vacío.'); return; }
+  if(!productosLimpios.length){ alert('El pedido debe tener al menos un producto con nombre.'); return; }
+
+  const nuevo = {
+    fecha: document.getElementById('editFecha').value,
+    empleado: document.getElementById('editAsesor').value,
+    formapago: document.getElementById('editFormaPago').value,
+    cliente,
+    telefono: document.getElementById('editTelefono').value.trim(),
+    direccion: document.getElementById('editDireccion').value.trim(),
+    notas: document.getElementById('editNotas').value.trim(),
+    productos: productosLimpios,
+    total: +productosLimpios.reduce((s,prod) => s + prod.subtotal, 0).toFixed(2)
+  };
+
+  // Detectar cambios campo por campo para el historial de auditoría
+  const camposSimples = ['fecha','empleado','formapago','cliente','telefono','direccion','notas','total'];
+  const cambios = [];
+  camposSimples.forEach(c => {
+    const antes = original[c] !== undefined ? original[c] : '';
+    const despues = nuevo[c] !== undefined ? nuevo[c] : '';
+    if (String(antes) !== String(despues)) cambios.push({ campo:c, antes, despues });
+  });
+  if (JSON.stringify(original.productos||[]) !== JSON.stringify(nuevo.productos)) {
+    cambios.push({ campo:'productos', antes: JSON.stringify(original.productos||[]), despues: JSON.stringify(nuevo.productos) });
+  }
+
+  const btn = document.getElementById('btnGuardarEdicion');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  try{
+    // [NEW] Solo se actualiza este documento puntual — no se vuelve a leer ni recorrer toda la colección
+    await db.collection('pedidos').doc(editandoPedidoActual._id).update(nuevo);
+
+    if (cambios.length){
+      const lote = db.batch();
+      cambios.forEach(c => {
+        const ref = db.collection('historialCambios').doc();
+        lote.set(ref, {
+          pedidoId: editandoPedidoActual._id,
+          usuarioAdmin: ADMIN_ACTUAL.nombre || ADMIN_ACTUAL.uid || 'admin',
+          fecha: fechaHoy(),
+          hora: new Date().toLocaleTimeString('es-EC'),
+          campo: c.campo,
+          valorAnterior: String(c.antes),
+          valorNuevo: String(c.despues),
+          creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+      await lote.commit();
+    }
+
+    // El listener en tiempo real de "pedidos" ya activo recibe el cambio y recalcula
+    // automáticamente KPIs, gráficos, Resumen por Cliente y Cuadre de Caja — sin recargar.
+    mostrarToastEdicion('✅ Pedido actualizado correctamente.');
+    cerrarEditarPedido();
+  }catch(err){
+    console.error(err);
+    alert('❌ Ocurrió un error al guardar los cambios: ' + err.message);
+  }finally{
+    btn.disabled = false; btn.textContent = '✅ Guardar Cambios';
+  }
+}
+
+/* [NEW] Notificación flotante simple, reutilizable */
+function mostrarToastEdicion(msg){
+  let t = document.getElementById('toastEdicion');
+  if(!t){
+    t = document.createElement('div');
+    t.id = 'toastEdicion';
+    t.style.cssText = "position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:12px 22px;border-radius:100px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;box-shadow:var(--shadow-lg);z-index:999;opacity:0;transition:opacity .25s;pointer-events:none";
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(window._toastEdicionTimer);
+  window._toastEdicionTimer = setTimeout(()=>{ t.style.opacity = '0'; }, 2600);
+}
 </script>
 
 <!-- ═══════════════════ MODAL CIERRE DEL DÍA ═══════════════════ -->
@@ -2438,6 +2821,23 @@ function exportarExcel() {
     </div>
     <div class="cierre-body" id="cierreBody">
       <!-- Se llena dinámicamente -->
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ [NEW] MODAL EDITAR PEDIDO ═══════════════════ -->
+<div class="editar-overlay" id="editarOverlay" onclick="if(event.target===this)cerrarEditarPedido()">
+  <div class="editar-modal">
+    <div class="editar-header">
+      <div class="editar-header-title">✏ Editar Pedido</div>
+      <button class="btn-cerrar-editar" onclick="cerrarEditarPedido()">✕</button>
+    </div>
+    <div class="editar-body" id="editarBody">
+      <!-- Se llena dinámicamente -->
+    </div>
+    <div class="editar-footer">
+      <button class="btn-cancelar-edicion" onclick="cerrarEditarPedido()">❌ Cancelar</button>
+      <button class="btn-guardar-edicion" id="btnGuardarEdicion" onclick="guardarEdicionPedido()">✅ Guardar Cambios</button>
     </div>
   </div>
 </div>
