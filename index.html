@@ -614,13 +614,7 @@ body { padding: 1rem 0.75rem 3rem; }
           <label for="empleado">Ruta / Asesor</label>
           <div id="wrap-empleado">
             <select id="empleado" required>
-              <option value="">-- Selecciona --</option>
-              <option value="RUTA 1: Jefferson">RUTA 1: Jefferson</option>
-              <option value="RUTA 2: Luis">RUTA 2: Luis</option>
-              <option value="RUTA 3: Vicente">RUTA 3: Vicente</option>
-              <option value="RUTA 4: Wilson">RUTA 4: Wilson</option>
-              <option value="RUTA 5: Lister">RUTA 5: Lister</option>
-              <option value="RUTA 6: Asesora">RUTA 6: Asesora</option>
+              <option value="">Cargando...</option>
             </select>
           </div>
         </div>
@@ -668,17 +662,7 @@ body { padding: 1rem 0.75rem 3rem; }
           <label for="sel-producto">Producto</label>
           <div id="wrap-sel-producto">
             <select id="sel-producto">
-              <option value="">-- Selecciona --</option>
-              <option value="BOTELLON 20LT">BOTELLON 20LT</option>
-              <option value="BOTELLON CON LLAVE">BOTELLON CON LLAVE</option>
-              <option value="PACA 625ML AZUL">PACA 625ML AZUL</option>
-              <option value="PACA 600ML VERDE">PACA 600ML VERDE</option>
-              <option value="PACA 1000ML">PACA 1000ML</option>
-              <option value="PACA 400ML">PACA 400ML</option>
-              <option value="GALONES 4LT">GALONES 4LT</option>
-              <option value="POMA 5LTS">POMA 5LTS</option>
-              <option value="ENVASE CON LLAVE">ENVASE CON LLAVE</option>
-              <option value="ENVASE AZUL ADICIONAL">ENVASE AZUL ADICIONAL</option>
+              <option value="">Cargando catálogo...</option>
             </select>
           </div>
         </div>
@@ -747,7 +731,7 @@ body { padding: 1rem 0.75rem 3rem; }
     <div class="card">
       <div class="section-title blue">Registrar pago recibido</div>
       <div class="grid-2">
-        <div class="field"><label>Asesor / Ruta</label><div id="wrap-pago-empleado"><select id="pago-empleado" class="focus-blue"><option value="">-- Selecciona --</option><option value="RUTA 1: Jefferson">RUTA 1: Jefferson</option><option value="RUTA 2: Luis">RUTA 2: Luis</option><option value="RUTA 3: Vicente">RUTA 3: Vicente</option><option value="RUTA 4: Wilson">RUTA 4: Wilson</option><option value="RUTA 5: Lister">RUTA 5: Lister</option><option value="RUTA 6: Asesora">RUTA 6: Asesora</option></select></div></div>
+        <div class="field"><label>Asesor / Ruta</label><div id="wrap-pago-empleado"><select id="pago-empleado" class="focus-blue"><option value="">Cargando...</option></select></div></div>
         <div class="field"><label for="pago-fecha">Fecha</label><input type="date" id="pago-fecha" class="focus-blue"></div>
       </div>
       <div class="field"><label for="pago-cliente">Cliente</label><input type="text" id="pago-cliente" placeholder="Nombre del cliente" autocomplete="off" class="focus-blue" maxlength="100"></div>
@@ -777,7 +761,7 @@ body { padding: 1rem 0.75rem 3rem; }
     <div class="card">
       <div class="section-title red">Registrar gasto</div>
       <div class="grid-2">
-        <div class="field"><label>Responsable</label><div id="wrap-gasto-empleado"><select id="gasto-empleado" class="focus-red"><option value="">-- Selecciona --</option><option value="RUTA 1: Jefferson">RUTA 1: Jefferson</option><option value="RUTA 2: Luis">RUTA 2: Luis</option><option value="RUTA 3: Vicente">RUTA 3: Vicente</option><option value="RUTA 4: Wilson">RUTA 4: Wilson</option><option value="RUTA 5: Lister">RUTA 5: Lister</option><option value="RUTA 6: Asesora">RUTA 6: Asesora</option><option value="Administración">Administración</option></select></div></div>
+        <div class="field"><label>Responsable</label><div id="wrap-gasto-empleado"><select id="gasto-empleado" class="focus-red"><option value="">Cargando...</option></select></div></div>
         <div class="field"><label for="gasto-fecha">Fecha</label><input type="date" id="gasto-fecha" class="focus-red"></div>
       </div>
       <datalist id="gasto-categorias-list"><option value="Combustible"><option value="Almuerzos"><option value="Ascensor"><option value="Triciclo"><option value="Otro"></datalist>
@@ -885,23 +869,16 @@ body { padding: 1rem 0.75rem 3rem; }
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalProductoTituloId">
     <div class="modal-handle"></div>
     <div class="modal-title" id="modalProductoTituloId">📦 Gestionar Productos</div>
-    <div class="modal-subtitle">Genera el código del catálogo. Cópialo y pégalo en <strong>index.html</strong> (o envíamelo para actualizarlo).</div>
+    <div class="modal-subtitle">Se agrega al catálogo en Firestore al instante — todos los asesores lo ven de inmediato, sin recargar.</div>
     <div class="field" style="margin-bottom:1rem">
       <label for="np-nombre">Nombre del producto nuevo</label>
       <input type="text" id="np-nombre" placeholder="Ej. BOTELLON 10LT" autocomplete="off" maxlength="60">
     </div>
-    <button class="btn" onclick="generarCodigoProducto()">
+    <button class="btn" id="np-btn-crear" onclick="crearProductoReal()">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-      Generar código
+      Crear producto
     </button>
-    <div id="np-resultado" style="display:none;margin-top:14px">
-      <label style="font-size:12px;font-weight:700;letter-spacing:0.05em;color:var(--navy);text-transform:uppercase">Código generado — copia todo y sigue los 2 pasos</label>
-      <textarea id="np-codigo" readonly style="width:100%;min-height:180px;font-family:monospace;font-size:11px;line-height:1.5;margin-top:8px;padding:12px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text)"></textarea>
-      <button class="btn" style="margin-top:10px;background:var(--navy)" onclick="copiarCodigoProducto()">
-        <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="4" y="4" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M2.5 11V2.5A1.5 1.5 0 0 1 4 1h6.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-        Copiar código
-      </button>
-    </div>
+    <div id="np-resultado" style="display:none;margin-top:14px;padding:12px 14px;border-radius:12px;background:var(--success-bg);border:1px solid var(--success-border);color:var(--success-text);font-size:13px;font-weight:600;line-height:1.5"></div>
 
     <hr class="divider" style="margin:1.5rem 0">
     <div class="section-title red">Eliminar producto existente</div>
@@ -911,18 +888,10 @@ body { padding: 1rem 0.75rem 3rem; }
         <option value="">-- Selecciona --</option>
       </select>
     </div>
-    <button class="btn red" onclick="generarInstruccionesEliminarProducto()">
+    <button class="btn red" onclick="eliminarProductoSeleccionado()">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M6 4V2.5A1.5 1.5 0 0 1 7.5 1h1A1.5 1.5 0 0 1 10 2.5V4M12.5 4l-.6 9a1.5 1.5 0 0 1-1.5 1.4H5.6a1.5 1.5 0 0 1-1.5-1.4L3.5 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      Generar instrucciones de eliminación
+      Eliminar producto
     </button>
-    <div id="np-elim-resultado" style="display:none;margin-top:14px">
-      <label style="font-size:12px;font-weight:700;letter-spacing:0.05em;color:var(--navy);text-transform:uppercase">Instrucciones — copia todo y sigue los pasos</label>
-      <textarea id="np-elim-codigo" readonly style="width:100%;min-height:160px;font-family:monospace;font-size:11px;line-height:1.5;margin-top:8px;padding:12px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text)"></textarea>
-      <button class="btn" style="margin-top:10px;background:var(--navy)" onclick="copiarInstruccionesEliminarProducto()">
-        <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="4" y="4" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M2.5 11V2.5A1.5 1.5 0 0 1 4 1h6.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-        Copiar instrucciones
-      </button>
-    </div>
 
     <button class="btn btn-outline" style="margin-top:10px" onclick="cerrarModalProducto()">Cerrar</button>
   </div>
@@ -985,8 +954,8 @@ function escHTML(str) {
 }
 
 const LISTAS_BLANCAS = {
-  empleado: ['RUTA 1: Jefferson','RUTA 2: Luis','RUTA 3: Vicente','RUTA 4: Wilson','RUTA 5: Lister','RUTA 6: Asesora'],
-  empleadoGasto: ['RUTA 1: Jefferson','RUTA 2: Luis','RUTA 3: Vicente','RUTA 4: Wilson','RUTA 5: Lister','RUTA 6: Asesora','Administración'],
+  empleado: [], // [NEW] se llena en vivo desde Firestore (usuarios) — ver _iniciarListenerAsesoresRutas()
+  empleadoGasto: [], // [NEW] ídem + 'Administración'
   formapago: ['Contado','Crédito','Transferencia','Cheque'],
   pagoForma: ['Efectivo','Transferencia','Cheque'],
   productos: ['BOTELLON 20LT','BOTELLON CON LLAVE','PACA 625ML AZUL','PACA 600ML VERDE','PACA 1000ML','PACA 400ML','GALONES 4LT','POMA 5LTS','ENVASE CON LLAVE','ENVASE AZUL ADICIONAL']
@@ -1053,9 +1022,9 @@ function cerrarSesion(){
 function mostrarErrorLogin(msg){ const el=document.getElementById('loginError'); el.textContent=msg; el.classList.add('show'); }
 
 function restaurarSelectsCompletos(){
-  document.getElementById('wrap-empleado').innerHTML=`<select id="empleado" required><option value="">-- Selecciona --</option><option value="RUTA 1: Jefferson">RUTA 1: Jefferson</option><option value="RUTA 2: Luis">RUTA 2: Luis</option><option value="RUTA 3: Vicente">RUTA 3: Vicente</option><option value="RUTA 4: Wilson">RUTA 4: Wilson</option><option value="RUTA 5: Lister">RUTA 5: Lister</option><option value="RUTA 6: Asesora">RUTA 6: Asesora</option></select>`;
-  document.getElementById('wrap-pago-empleado').innerHTML=`<select id="pago-empleado" class="focus-blue"><option value="">-- Selecciona --</option><option value="RUTA 1: Jefferson">RUTA 1: Jefferson</option><option value="RUTA 2: Luis">RUTA 2: Luis</option><option value="RUTA 3: Vicente">RUTA 3: Vicente</option><option value="RUTA 4: Wilson">RUTA 4: Wilson</option><option value="RUTA 5: Lister">RUTA 5: Lister</option><option value="RUTA 6: Asesora">RUTA 6: Asesora</option></select>`;
-  document.getElementById('wrap-gasto-empleado').innerHTML=`<select id="gasto-empleado" class="focus-red"><option value="">-- Selecciona --</option><option value="RUTA 1: Jefferson">RUTA 1: Jefferson</option><option value="RUTA 2: Luis">RUTA 2: Luis</option><option value="RUTA 3: Vicente">RUTA 3: Vicente</option><option value="RUTA 4: Wilson">RUTA 4: Wilson</option><option value="RUTA 5: Lister">RUTA 5: Lister</option><option value="RUTA 6: Asesora">RUTA 6: Asesora</option><option value="Administración">Administración</option></select>`;
+  document.getElementById('wrap-empleado').innerHTML=`<select id="empleado" required><option value="">Cargando...</option></select>`;
+  document.getElementById('wrap-pago-empleado').innerHTML=`<select id="pago-empleado" class="focus-blue"><option value="">Cargando...</option></select>`;
+  document.getElementById('wrap-gasto-empleado').innerHTML=`<select id="gasto-empleado" class="focus-red"><option value="">Cargando...</option></select>`;
 }
 
 /* [NEW] Firebase Auth avisa automáticamente cuando cambia la sesión —
@@ -1074,6 +1043,8 @@ auth.onAuthStateChanged(async (user)=>{
     }catch(e){ console.error(e); }
   } else {
     _iniciarListenersDelDia(null); // [NEW] cancela los listeners al cerrar sesión
+    if(_unsubProductos){_unsubProductos();_unsubProductos=null;} // [NEW]
+    if(_unsubAsesoresRutas){_unsubAsesoresRutas();_unsubAsesoresRutas=null;} // [NEW]
     usuarioActual=null; ultimoRegistro=null; productos=[]; listaPagos=[]; listaGastos=[];
     sessionStorage.removeItem('aqualuan-historial');
     document.getElementById('loginUser').value='';
@@ -1091,6 +1062,26 @@ auth.onAuthStateChanged(async (user)=>{
    Apenas se guarda algo (en este celular o en cualquier otro con el mismo usuario),
    Historial/Pagos/Gastos se actualizan solos, sin recargar. */
 let _unsubPedidosHoy=null, _unsubPagosHoy=null, _unsubGastosHoy=null;
+/* [NEW] Catálogo de productos en tiempo real — reemplaza la lista fija de LISTAS_BLANCAS.productos */
+let _unsubProductos=null, _productosDocIds={};
+function _iniciarListenerProductos(){
+  if(_unsubProductos){_unsubProductos();_unsubProductos=null;}
+  _unsubProductos=db.collection('productos').orderBy('nombre').onSnapshot(snap=>{
+    _productosDocIds={};
+    const nombres=[];
+    snap.forEach(d=>{ const data=d.data(); if(data.activo!==false){ nombres.push(data.nombre); _productosDocIds[data.nombre]=d.id; } });
+    LISTAS_BLANCAS.productos=nombres;
+    renderOpcionesProductoSelect();
+  },err=>console.error('listener productos:',err));
+}
+/* [NEW] Repuebla el <select> de Ventas con el catálogo en vivo, conservando la selección si sigue existiendo */
+function renderOpcionesProductoSelect(){
+  const sel=document.getElementById('sel-producto');
+  if(!sel)return;
+  const valorActual=sel.value;
+  sel.innerHTML='<option value="">-- Selecciona --</option>'+LISTAS_BLANCAS.productos.map(n=>`<option value="${escHTML(n)}">${escHTML(n)}</option>`).join('');
+  if(LISTAS_BLANCAS.productos.includes(valorActual))sel.value=valorActual;
+}
 function _horaDeTimestamp(ts){
   try{ const ms=ts?.toMillis?ts.toMillis():Date.now(); return new Date(ms).toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'}); }
   catch{ return ''; }
@@ -1120,6 +1111,31 @@ function _iniciarListenersDelDia(u){
     renderGastos(); actualizarResumenGastos();
   },err=>console.error('listener gastos:',err));
 }
+/* [NEW] Catálogo de rutas/asesores en tiempo real — reemplaza la lista fija de
+   LISTAS_BLANCAS.empleado. Solo el admin necesita elegir manualmente la ruta al
+   llenar un formulario (un asesor normal ya ve su propia ruta bloqueada). */
+let _unsubAsesoresRutas=null;
+function _iniciarListenerAsesoresRutas(){
+  if(_unsubAsesoresRutas){_unsubAsesoresRutas();_unsubAsesoresRutas=null;}
+  if(!usuarioActual||!usuarioActual.esAdmin)return;
+  _unsubAsesoresRutas=db.collection('usuarios').where('esAdmin','==',false).onSnapshot(snap=>{
+    const rutas=snap.docs.map(d=>d.data().ruta).filter(Boolean).sort();
+    LISTAS_BLANCAS.empleado=rutas;
+    LISTAS_BLANCAS.empleadoGasto=[...rutas,'Administración'];
+    renderSelectsRutasAdmin();
+  },err=>console.error('listener rutas:',err));
+}
+/* [NEW] Repuebla los 3 <select> de Ruta/Asesor con las rutas reales, solo si el admin
+   los tiene visibles (si es un asesor con la ruta bloqueada, no hay <select> que tocar) */
+function renderSelectsRutasAdmin(){
+  [['empleado',LISTAS_BLANCAS.empleado],['pago-empleado',LISTAS_BLANCAS.empleado],['gasto-empleado',LISTAS_BLANCAS.empleadoGasto]].forEach(([id,lista])=>{
+    const sel=document.getElementById(id);
+    if(!sel||sel.tagName!=='SELECT')return;
+    const valorActual=sel.value;
+    sel.innerHTML='<option value="">-- Selecciona --</option>'+lista.map(r=>`<option value="${escHTML(r)}">${escHTML(r)}</option>`).join('');
+    if(lista.includes(valorActual))sel.value=valorActual;
+  });
+}
 function aplicarUsuario(){
   const u=usuarioActual; if(!u)return;
   document.getElementById('logoSub').textContent=u.esAdmin?'Administrador':`Bienvenido, ${u.nombre}`;
@@ -1127,6 +1143,8 @@ function aplicarUsuario(){
   document.getElementById('btnGestionAsesores').style.display=u.esAdmin?'flex':'none';
   document.getElementById('btnGestionProductos').style.display=u.esAdmin?'flex':'none';
   _iniciarListenersDelDia(u);
+  _iniciarListenerProductos(); // [NEW] catálogo de productos en tiempo real
+  _iniciarListenerAsesoresRutas(); // [NEW] rutas/asesores reales para los selects del admin
   if(u.esAdmin)return;
   const ico=`<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="3" y="7" width="10" height="7" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M5 7V5a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>`;
   const rs=escHTML(u.ruta);
@@ -1787,9 +1805,6 @@ function enviarResumenWhatsapp(){
 function abrirModalProducto(){
   document.getElementById('np-nombre').value='';
   document.getElementById('np-resultado').style.display='none';
-  document.getElementById('np-codigo').value='';
-  document.getElementById('np-elim-resultado').style.display='none';
-  document.getElementById('np-elim-codigo').value='';
   poblarSelectEliminarProducto();
   document.getElementById('modalProductoOverlay').classList.add('open');
   document.body.style.overflow='hidden';
@@ -1798,6 +1813,7 @@ function cerrarModalProducto(){
   document.getElementById('modalProductoOverlay').classList.remove('open');
   document.body.style.overflow='';
 }
+/* [NEW] Ya lee del catálogo en vivo (LISTAS_BLANCAS.productos se actualiza solo vía listener) */
 function poblarSelectEliminarProducto(){
   const sel = document.getElementById('np-eliminar-select');
   sel.innerHTML = '<option value="">-- Selecciona --</option>';
@@ -1808,69 +1824,41 @@ function poblarSelectEliminarProducto(){
     sel.appendChild(opt);
   });
 }
-function generarCodigoProducto(){
+/* [NEW] Crea el producto real en Firestore — aparece al instante para todos los asesores */
+async function crearProductoReal(){
   const nombreRaw = document.getElementById('np-nombre').value;
   const nombre = sanitizarTexto(nombreRaw,60).toUpperCase();
   if(!nombre){ alert('Ingresa el nombre del producto.'); return; }
-  if(LISTAS_BLANCAS.productos.includes(nombre)){ alert('Ese producto ya existe en la lista.'); return; }
-
-  const codigo =
-`/* ══ NUEVO PRODUCTO: ${escHTML(nombre)} ══ */
-
-/* PASO 1 — Dentro de LISTAS_BLANCAS.productos, agrega este valor (antes del ] de cierre): */
-  '${nombre}',
-
-/* PASO 2 — Agrega esta opción dentro del <select id="sel-producto"> en el HTML: */
-  <option value="${nombre}">${nombre}</option>
-
-/* Luego sube el archivo actualizado a GitHub (commit a main). */`;
-
-  document.getElementById('np-codigo').value = codigo;
-  document.getElementById('np-resultado').style.display='block';
-}
-function copiarCodigoProducto(){
-  const ta = document.getElementById('np-codigo');
-  if(!ta.value){ alert('Primero genera el código.'); return; }
-  ta.select();
-  ta.setSelectionRange(0, ta.value.length);
-  const hecho = () => alert('✓ Código copiado. Pégalo en index.html siguiendo los 2 pasos, o envíamelo.');
-  if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(ta.value).then(hecho).catch(()=>{ try{document.execCommand('copy');hecho();}catch{} });
-  } else {
-    try{ document.execCommand('copy'); hecho(); }catch{}
+  if(LISTAS_BLANCAS.productos.includes(nombre)){ alert('Ese producto ya existe en el catálogo.'); return; }
+  const btn = document.getElementById('np-btn-crear');
+  if(btn){ btn.disabled=true; btn.textContent='Creando...'; }
+  try{
+    await db.collection('productos').add({
+      nombre, activo:true,
+      creadoPor: usuarioActual?.uid||null, creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    document.getElementById('np-resultado').innerHTML = `✓ Producto <b>${escHTML(nombre)}</b> agregado al catálogo — ya está disponible para todos los asesores, al instante.`;
+    document.getElementById('np-resultado').style.display='block';
+    document.getElementById('np-nombre').value='';
+  }catch(err){
+    console.error(err);
+    alert('No se pudo crear el producto. Revisa tu conexión.');
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent='Crear producto'; }
   }
 }
-function generarInstruccionesEliminarProducto(){
+/* [NEW] Elimina el producto real de Firestore (usa el mapa nombre→ID que arma el listener) */
+async function eliminarProductoSeleccionado(){
   const nombre = document.getElementById('np-eliminar-select').value;
   if(!nombre){ alert('Selecciona un producto de la lista.'); return; }
-  const texto =
-`/* ══ ELIMINAR PRODUCTO: ${escHTML(nombre)} ══ */
-
-/* PASO 1 — Dentro de LISTAS_BLANCAS.productos, elimina este valor: */
-  '${nombre}',
-
-/* PASO 2 — Elimina <option value="${nombre}">${nombre}</option> del <select id="sel-producto"> en el HTML */
-
-/* Luego sube el archivo actualizado a GitHub (commit a main). */
-
-NOTA: esto solo quita el producto del formulario de nuevos pedidos. Los pedidos
-ya registrados con este producto siguen intactos en tu Google Sheets — no se
-borra ningún dato histórico.`;
-
-  document.getElementById('np-elim-codigo').value = texto;
-  document.getElementById('np-elim-resultado').style.display='block';
-}
-function copiarInstruccionesEliminarProducto(){
-  const ta = document.getElementById('np-elim-codigo');
-  if(!ta.value){ alert('Primero genera las instrucciones.'); return; }
-  ta.select();
-  ta.setSelectionRange(0, ta.value.length);
-  const hecho = () => alert('✓ Instrucciones copiadas. Envíamelas o edita tú mismo index.html siguiendo los pasos.');
-  if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(ta.value).then(hecho).catch(()=>{ try{document.execCommand('copy');hecho();}catch{} });
-  } else {
-    try{ document.execCommand('copy'); hecho(); }catch{}
-  }
+  const docId = _productosDocIds[nombre];
+  if(!docId){ alert('No se pudo encontrar ese producto en el catálogo.'); return; }
+  if(!confirm(`¿Quitar "${nombre}" del catálogo? Los pedidos ya registrados con este producto NO se ven afectados.`)) return;
+  try{
+    await db.collection('productos').doc(docId).delete();
+    alert('✓ Producto quitado del catálogo.');
+    poblarSelectEliminarProducto();
+  }catch(err){ console.error(err); alert('No se pudo eliminar. Revisa la consola del navegador.'); }
 }
 document.getElementById('modalProductoOverlay').addEventListener('click',function(e){ if(e.target===this)cerrarModalProducto(); });
 </script>
