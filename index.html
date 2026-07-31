@@ -953,6 +953,10 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db   = firebase.firestore();
+// [NEW] Persistencia offline nativa de Firestore — reemplaza el IndexedDB/cola manual
+// que se usaba con Google Sheets. Firestore guarda los cambios localmente cuando no hay
+// internet y los sincroniza solo apenas vuelve la conexión, sin código adicional.
+db.enablePersistence({synchronizeTabs:true}).catch(err=>{ console.warn('Persistencia offline no disponible:',err.code); });
 const DOMINIO_LOGIN = '@luanaqua.app'; // el "usuario" corto se convierte a este correo interno para Firebase Auth
 
 function _emailDeUsuario(usuario){
@@ -999,14 +1003,6 @@ function filtrarInputMonto(el){
   if(partes.length>2){ v=partes[0]+(v.includes(',')? ',':'.')+partes.slice(1).join(''); }
   el.value=v;
 }
-
-const DB_NAME='aqualuan-db', STORE='pedidos-pendientes', LS_KEY='aqualuan-pendientes-ls';
-let dbInstance=null;
-function abrirDB(){ if(dbInstance)return Promise.resolve(dbInstance); return new Promise((res,rej)=>{ const req=indexedDB.open(DB_NAME,1); req.onupgradeneeded=e=>{ const db=e.target.result; if(!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE,{keyPath:'id',autoIncrement:true}); }; req.onsuccess=e=>{dbInstance=e.target.result;res(dbInstance);}; req.onerror=e=>rej(e.target.error); }); }
-async function guardarLocal(p){ const db=await abrirDB(); return new Promise((res,rej)=>{ const tx=db.transaction(STORE,'readwrite'); const req=tx.objectStore(STORE).add({payload:p,fecha:new Date().toISOString()}); req.onsuccess=()=>res(req.result); req.onerror=e=>rej(e.target.error); }); }
-async function obtenerPendientes(){ const db=await abrirDB(); return new Promise((res,rej)=>{ const tx=db.transaction(STORE,'readonly'); const req=tx.objectStore(STORE).getAll(); req.onsuccess=()=>res(req.result); req.onerror=e=>rej(e.target.error); }); }
-async function eliminarLocal(id){ const db=await abrirDB(); return new Promise((res,rej)=>{ const tx=db.transaction(STORE,'readwrite'); const req=tx.objectStore(STORE).delete(id); req.onsuccess=()=>res(); req.onerror=e=>rej(e.target.error); }); }
-function guardarEnLocalStorageSync(p){ try{ const e=JSON.parse(localStorage.getItem(LS_KEY)||'[]'); e.push({id:Date.now(),payload:p,fecha:new Date().toISOString()}); localStorage.setItem(LS_KEY,JSON.stringify(e)); }catch(e){} }
 
 let productos=[], dataPendiente=null, ultimoRegistro=null, listaPagos=[], listaGastos=[];
 
@@ -1069,6 +1065,7 @@ auth.onAuthStateChanged(async (user)=>{
       aplicarUsuario();
     }catch(e){ console.error(e); }
   } else {
+    _iniciarListenersDelDia(null); // [NEW] cancela los listeners al cerrar sesión
     usuarioActual=null; ultimoRegistro=null; productos=[]; listaPagos=[]; listaGastos=[];
     sessionStorage.removeItem('aqualuan-historial');
     document.getElementById('loginUser').value='';
@@ -1082,27 +1079,38 @@ auth.onAuthStateChanged(async (user)=>{
   }
 });
 
-function _restaurarHistDia(u){
-  try{
-    const hoy=new Date().toISOString().slice(0,10);
-    let hR=[];
-    if(u.esAdmin){
-      ['RUTA 1: Jefferson','RUTA 2: Luis','RUTA 3: Vicente','RUTA 4: Wilson','RUTA 5: Lister','RUTA 6: Asesora','admin'].forEach(r=>{
-        hR=hR.concat(JSON.parse(localStorage.getItem(_claveHistDia(r,hoy))||'[]'));
-      });
-      hR.sort((a,b)=>(b.id||0)-(a.id||0));
-      if(hR.length>200)hR=hR.slice(0,200);
-    } else {
-      hR=JSON.parse(localStorage.getItem(_claveHistDia(u.ruta,hoy))||'[]');
-    }
-    if(hR.length>0){
-      const hS=JSON.parse(sessionStorage.getItem('aqualuan-historial')||'[]');
-      const ids=new Set(hS.map(r=>r.id));
-      const nuevos=hR.filter(r=>!ids.has(r.id));
-      const combinado=[...hS,...nuevos].sort((a,b)=>(b.id||0)-(a.id||0));
-      sessionStorage.setItem('aqualuan-historial',JSON.stringify(combinado.slice(0,200)));
-    }
-  }catch(e){}
+/* [NEW] Listeners en tiempo real — reemplazan toda la lógica de localStorage por día.
+   Apenas se guarda algo (en este celular o en cualquier otro con el mismo usuario),
+   Historial/Pagos/Gastos se actualizan solos, sin recargar. */
+let _unsubPedidosHoy=null, _unsubPagosHoy=null, _unsubGastosHoy=null;
+function _horaDeTimestamp(ts){
+  try{ const ms=ts?.toMillis?ts.toMillis():Date.now(); return new Date(ms).toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'}); }
+  catch{ return ''; }
+}
+function _iniciarListenersDelDia(u){
+  if(_unsubPedidosHoy){_unsubPedidosHoy();_unsubPedidosHoy=null;}
+  if(_unsubPagosHoy){_unsubPagosHoy();_unsubPagosHoy=null;}
+  if(_unsubGastosHoy){_unsubGastosHoy();_unsubGastosHoy=null;}
+  if(!u)return;
+  const hoy=new Date().toISOString().slice(0,10);
+  let qPedidos=db.collection('pedidos').where('fecha','==',hoy);
+  let qPagos=db.collection('pagos').where('fecha','==',hoy);
+  let qGastos=db.collection('gastos').where('fecha','==',hoy);
+  if(!u.esAdmin){ qPedidos=qPedidos.where('empleado','==',u.ruta); qPagos=qPagos.where('empleado','==',u.ruta); qGastos=qGastos.where('empleado','==',u.ruta); }
+  _unsubPedidosHoy=qPedidos.onSnapshot(snap=>{
+    const hist=snap.docs.map(d=>{ const r=d.data(); return {id:d.id,nombre:r.cliente,total:r.total,fecha:r.fecha,empleado:r.empleado,formapago:r.formapago,telefono:r.telefono,direccion:r.direccion,notas:r.notas,productos:r.productos||[],gps:r.gps||null,_ts:r.creadoEn?.toMillis?.()||0}; }).sort((a,b)=>b._ts-a._ts);
+    sessionStorage.setItem('aqualuan-historial',JSON.stringify(hist));
+    const contHist=document.getElementById('content-historial');
+    if(contHist&&contHist.classList.contains('active'))cargarHistorial();
+  },err=>console.error('listener pedidos:',err));
+  _unsubPagosHoy=qPagos.onSnapshot(snap=>{
+    listaPagos=snap.docs.map(d=>{ const r=d.data(); return {id:d.id,...r,hora:_horaDeTimestamp(r.creadoEn),_ts:r.creadoEn?.toMillis?.()||0}; }).sort((a,b)=>b._ts-a._ts);
+    renderPagos(); actualizarResumenPagos();
+  },err=>console.error('listener pagos:',err));
+  _unsubGastosHoy=qGastos.onSnapshot(snap=>{
+    listaGastos=snap.docs.map(d=>{ const r=d.data(); return {id:d.id,...r,hora:_horaDeTimestamp(r.creadoEn),_ts:r.creadoEn?.toMillis?.()||0}; }).sort((a,b)=>b._ts-a._ts);
+    renderGastos(); actualizarResumenGastos();
+  },err=>console.error('listener gastos:',err));
 }
 function aplicarUsuario(){
   const u=usuarioActual; if(!u)return;
@@ -1110,8 +1118,7 @@ function aplicarUsuario(){
   document.getElementById('btnLogout').style.display='flex';
   document.getElementById('btnGestionAsesores').style.display=u.esAdmin?'flex':'none';
   document.getElementById('btnGestionProductos').style.display=u.esAdmin?'flex':'none';
-  _restaurarHistDia(u);
-  _restaurarPagosGastosDia(u);
+  _iniciarListenersDelDia(u);
   if(u.esAdmin)return;
   const ico=`<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="3" y="7" width="10" height="7" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M5 7V5a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>`;
   const rs=escHTML(u.ruta);
@@ -1130,33 +1137,9 @@ function cambiarTab(tab){
 
 function actualizarBanners(){
   document.getElementById('offlineBanner').classList.toggle('show',!navigator.onLine);
-  let c=0; try{c=JSON.parse(localStorage.getItem(LS_KEY)||'[]').length;}catch{}
-  obtenerPendientes().then(items=>{ const n=Math.max(items.length,c); document.getElementById('pendingBanner')?.classList.toggle('show',n>0); }).catch(()=>{});
 }
-window.addEventListener('online',()=>{actualizarBanners();sincronizarAuto();if(ultimoRegistro)document.getElementById('btnWhatsapp').classList.add('visible');});
+window.addEventListener('online',()=>{actualizarBanners();if(ultimoRegistro)document.getElementById('btnWhatsapp').classList.add('visible');});
 window.addEventListener('offline',()=>{actualizarBanners();document.getElementById('btnWhatsapp').classList.remove('visible');});
-
-async function sincronizarAuto(){
-  if('serviceWorker'in navigator&&'SyncManager'in window){ const reg=await navigator.serviceWorker.ready; try{await reg.sync.register('sync-pedidos');return;}catch{} }
-  await sincronizarManual(true);
-}
-async function sincronizarManual(silencioso=false){
-  if(!navigator.onLine){if(!silencioso)setStatus('error','Sin conexión.');return;}
-  let itemsLS=[]; try{itemsLS=JSON.parse(localStorage.getItem(LS_KEY)||'[]');}catch{}
-  const itemsIDB=await obtenerPendientes().catch(()=>[]);
-  const todos=itemsIDB.length>0?itemsIDB:itemsLS;
-  if(!todos.length){try{localStorage.removeItem(LS_KEY);}catch{}return;}
-  let synced=0,failed=0;
-  for(const item of todos){
-    try{
-      await fetch(SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({...item.payload,csrfToken:SESSION_TOKEN,token:usuarioActual?.token||''})});
-      if(item.id&&itemsIDB.length>0)await eliminarLocal(item.id).catch(()=>{});
-      synced++;
-    }catch{failed++;}
-  }
-  if(failed===0){try{localStorage.removeItem(LS_KEY);}catch{}}
-  actualizarBanners();
-}
 
 if('serviceWorker'in navigator){ window.addEventListener('load',()=>{ navigator.serviceWorker.register('./sw.js').catch(()=>{}); }); }
 
@@ -1185,8 +1168,7 @@ function _verificarCambioDeDia(){
   ['fecha','pago-fecha','gasto-fecha'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=hoyStr; });
   sessionStorage.removeItem('aqualuan-historial');
   if(usuarioActual){
-    _restaurarHistDia(usuarioActual);
-    _restaurarPagosGastosDia(usuarioActual);
+    _iniciarListenersDelDia(usuarioActual); // [FIX] re-suscribe con la fecha del nuevo día
   } else {
     listaPagos=[]; listaGastos=[]; renderPagos(); actualizarResumenPagos(); renderGastos(); actualizarResumenGastos();
   }
@@ -1337,37 +1319,30 @@ async function confirmarEnvio(){
   if(!dataPendiente)return;
   const btn=document.getElementById('btnConfirmar');
   btn.disabled=true; btn.innerHTML='<div class="spinner2"></div> Guardando...';
-  const fechaObj=dataPendiente.fecha?new Date(dataPendiente.fecha+'T00:00:00'):new Date();
-  const dia=fechaObj.getDate(),mes=fechaObj.getMonth()+1;
-  const partesProductos=[];
-  dataPendiente.productos.forEach(p=>{
-    partesProductos.push(`${escHTML(p.nombre)} (${p.cantidad} x $${p.precio.toFixed(2)} = $${p.subtotal.toFixed(2)})`);
-    if(p.regalias&&p.regalias.length){
-      p.regalias.forEach(r=>{
-        partesProductos.push(`🎁 REGALO: ${escHTML(r.nombre)} (${r.cantidad} x $0.00 = $0.00)`);
-      });
-    }
-  });
-  const productosTexto=partesProductos.join(' | ');
-  const payload={accion:'registrar_pedido',dia,mes,empleado:dataPendiente.empleado,formapago:dataPendiente.formapago,nombre:dataPendiente.nombre,telefono:dataPendiente.telefono,fecha:dataPendiente.fecha,direccion:dataPendiente.direccion,notas:dataPendiente.notas,productos:productosTexto,total:dataPendiente.total,latitud:dataPendiente.gps?dataPendiente.gps.lat.toFixed(6):'',longitud:dataPendiente.gps?dataPendiente.gps.lng.toFixed(6):'',gps_link:dataPendiente.gps?dataPendiente.gps.url:'',gps_prec:dataPendiente.gps?`±${dataPendiente.gps.acc}m`:'',csrfToken:SESSION_TOKEN};
-  const estaOnline=navigator.onLine;
-  const onExito=(modoOffline=false)=>{
+  const doc={
+    empleado:dataPendiente.empleado, cliente:dataPendiente.nombre, telefono:dataPendiente.telefono||'',
+    direccion:dataPendiente.direccion||'', fecha:dataPendiente.fecha, notas:dataPendiente.notas||'',
+    formapago:dataPendiente.formapago, total:dataPendiente.total,
+    productos:dataPendiente.productos.map(p=>({nombre:p.nombre,cantidad:p.cantidad,precio:p.precio,subtotal:p.subtotal,regalias:(p.regalias||[]).map(r=>({nombre:r.nombre,cantidad:r.cantidad}))})),
+    gps:dataPendiente.gps?{lat:dataPendiente.gps.lat,lng:dataPendiente.gps.lng,acc:dataPendiente.gps.acc,url:dataPendiente.gps.url}:null,
+    creadoPor:usuarioActual?.uid||null, creadoEn:firebase.firestore.FieldValue.serverTimestamp()
+  };
+  const modoOffline=!navigator.onLine;
+  try{
+    // [NEW] Firestore encola el guardado solo si no hay internet (persistencia offline
+    // ya activada) — no hace falta manejar la cola nosotros, como con Sheets.
+    await db.collection('pedidos').add(doc);
     ultimoRegistro={...dataPendiente};
-    guardarEnHistorial(ultimoRegistro);
+    // [FIX] Ya no hace falta guardarEnHistorial() manual — el listener en tiempo real
+    // de Firestore actualiza el Historial solo, apenas se confirma este pedido.
     cerrarModal();
-    if(modoOffline)setStatus('warning','📥 Sin internet. Pedido guardado localmente.');
-    else setStatus('success','✓ Pedido guardado correctamente en Google Sheets.');
+    setStatus(modoOffline?'warning':'success', modoOffline?'📥 Sin internet. Pedido guardado — se sincroniza solo al volver la señal.':'✓ Pedido guardado correctamente.');
     document.getElementById('btnWhatsapp').classList.add('visible');
     document.getElementById('btnPdf').style.display='flex';
     limpiarSoloFormulario();
-    if(!modoOffline)subirPDFaDrive(ultimoRegistro);
-  };
-  if(estaOnline){
-    try{ await fetch(SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); onExito(false); }
-    catch{ guardarEnLocalStorageSync(payload); onExito(true); actualizarBanners(); guardarLocal(payload).catch(()=>{}); }
-  } else {
-    guardarEnLocalStorageSync(payload); onExito(true); actualizarBanners(); guardarLocal(payload).catch(()=>{});
-    if('serviceWorker'in navigator&&'SyncManager'in window) navigator.serviceWorker.ready.then(reg=>reg.sync.register('sync-pedidos')).catch(()=>{});
+  }catch(err){
+    console.error(err);
+    setStatus('error','No se pudo guardar el pedido. Revisa tu conexión e inténtalo de nuevo.');
   }
   btn.disabled=false; btn.innerHTML='<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 8l3.5 3.5L13 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Confirmar y guardar';
   dataPendiente=null;
@@ -1393,7 +1368,7 @@ function limpiarFormulario(){
 }
 function nuevoPedido(){ limpiarFormulario(); }
 
-function registrarPago(){
+async function registrarPago(){
   const empleado=document.getElementById('pago-empleado').value;
   const fecha=document.getElementById('pago-fecha').value;
   const cliente=sanitizarTexto(document.getElementById('pago-cliente').value,100);
@@ -1404,34 +1379,31 @@ function registrarPago(){
   if(!cliente){setStatusPagos('error','Ingresa el nombre del cliente.');return;}
   if(!validarMonto(monto)){setStatusPagos('error','Ingresa un monto válido mayor a $0.');return;}
   if(!esValorSeguro(forma,LISTAS_BLANCAS.pagoForma)){setStatusPagos('error','Selecciona la forma de pago.');return;}
-  const pago={id:Date.now(),empleado,fecha,cliente,monto,forma,notas,hora:new Date().toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'})};
-  listaPagos.unshift(pago); renderPagos(); actualizarResumenPagos();
   try{
-    const clave=_clavePagosDia(empleado,fecha);
-    const guardados=JSON.parse(localStorage.getItem(clave)||'[]');
-    guardados.unshift(pago);
-    localStorage.setItem(clave,JSON.stringify(guardados));
-  }catch{}
-  const payloadPago={accion:'registrar_pago',empleado,fecha,cliente,monto:monto.toFixed(2),forma,notas,csrfToken:SESSION_TOKEN};
-  if(navigator.onLine){
-    fetch(SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(payloadPago)}).catch(()=>{
-      guardarEnLocalStorageSync(payloadPago); actualizarBanners(); guardarLocal(payloadPago).catch(()=>{});
-      if('serviceWorker'in navigator&&'SyncManager'in window) navigator.serviceWorker.ready.then(reg=>reg.sync.register('sync-pedidos')).catch(()=>{});
+    // [NEW] Escribe directo a Firestore — el listener en tiempo real actualiza la lista sola,
+    // en este celular y en cualquier otro donde el mismo asesor tenga sesión abierta.
+    await db.collection('pagos').add({
+      empleado, fecha, cliente, monto, forma, notas,
+      creadoPor:usuarioActual?.uid||null, creadoEn:firebase.firestore.FieldValue.serverTimestamp()
     });
-  } else {
-    guardarEnLocalStorageSync(payloadPago); actualizarBanners(); guardarLocal(payloadPago).catch(()=>{});
-    if('serviceWorker'in navigator&&'SyncManager'in window) navigator.serviceWorker.ready.then(reg=>reg.sync.register('sync-pedidos')).catch(()=>{});
+    ['pago-empleado','pago-forma'].forEach(id=>document.getElementById(id).value='');
+    ['pago-cliente','pago-monto','pago-notas'].forEach(id=>document.getElementById(id).value='');
+    setStatusPagos('success',`✓ Pago de $${monto.toFixed(2)} registrado para ${escHTML(cliente)}.`);
+  }catch(err){
+    console.error(err);
+    setStatusPagos('error', navigator.onLine ? 'No se pudo registrar el pago.' : '📥 Sin internet — se guardó localmente y se sincroniza solo al volver la señal.');
   }
-  ['pago-empleado','pago-forma'].forEach(id=>document.getElementById(id).value='');
-  ['pago-cliente','pago-monto','pago-notas'].forEach(id=>document.getElementById(id).value='');
-  setStatusPagos('success',`✓ Pago de $${monto.toFixed(2)} registrado para ${escHTML(cliente)}.`);
 }
-function eliminarPago(id){ listaPagos=listaPagos.filter(p=>p.id!==id); renderPagos(); actualizarResumenPagos(); }
+async function eliminarPago(id){
+  if(!confirm('¿Eliminar este pago?')) return;
+  try{ await db.collection('pagos').doc(id).delete(); }
+  catch(err){ console.error(err); alert('No se pudo eliminar el pago.'); }
+}
 function badgeForma(f){ const m={'Efectivo':'efectivo','Transferencia':'transfer','Datáfono':'datafono','Cheque':'cheque','Depósito':'deposito','Contado':'contado','Crédito':'credito'}; return`<span class="badge badge-${m[f]||'contado'}">${escHTML(f)}</span>`; }
 function renderPagos(){
   const lista=document.getElementById('pagosLista'),empty=document.getElementById('pagosEmptyMsg'),items=document.getElementById('pagosItems');
   if(listaPagos.length===0){lista.classList.add('empty');empty.style.display='block';}else{lista.classList.remove('empty');empty.style.display='none';}
-  items.innerHTML=listaPagos.map(p=>`<div class="pago-item"><div><div style="font-size:13px;font-weight:600;color:var(--navy)">${escHTML(p.cliente)}</div><div style="font-size:11px;color:var(--muted)">${escHTML(p.empleado.replace('RUTA ','R.'))} · ${escHTML(p.hora)}</div></div><div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHTML(p.notas||'-')}</div><div style="text-align:center">${badgeForma(p.forma)}</div><span class="pago-monto">$${escHTML(p.monto.toFixed(2))}</span><button class="btn-remove" onclick="eliminarPago(${parseInt(p.id)})">&times;</button></div>`).join('');
+  items.innerHTML=listaPagos.map(p=>`<div class="pago-item"><div><div style="font-size:13px;font-weight:600;color:var(--navy)">${escHTML(p.cliente)}</div><div style="font-size:11px;color:var(--muted)">${escHTML((p.empleado||'').replace('RUTA ','R.'))} · ${escHTML(p.hora||'')}</div></div><div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHTML(p.notas||'-')}</div><div style="text-align:center">${badgeForma(p.forma)}</div><span class="pago-monto">$${escHTML(p.monto.toFixed(2))}</span><button class="btn-remove" onclick="eliminarPago('${escHTML(p.id)}')">&times;</button></div>`).join('');
 }
 function actualizarResumenPagos(){
   const t=listaPagos.reduce((s,p)=>s+p.monto,0);
@@ -1441,7 +1413,7 @@ function actualizarResumenPagos(){
   else{document.getElementById('pago-ultimo').textContent='—';document.getElementById('pago-ultimo-cliente').textContent='Sin registros';}
 }
 
-function registrarGasto(){
+async function registrarGasto(){
   const empleado=document.getElementById('gasto-empleado').value;
   const fecha=document.getElementById('gasto-fecha').value;
   const categoria=sanitizarTexto(document.getElementById('gasto-categoria').value,100);
@@ -1452,34 +1424,29 @@ function registrarGasto(){
   if(!categoria){setStatusGastos('error','Selecciona la categoría del gasto.');return;}
   if(!validarMonto(monto)){setStatusGastos('error','Ingresa un monto válido mayor a $0.');return;}
   if(!desc){setStatusGastos('error','Describe el gasto.');return;}
-  const gasto={id:Date.now(),empleado,fecha,categoria,monto,desc,ref,hora:new Date().toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'})};
-  listaGastos.unshift(gasto); renderGastos(); actualizarResumenGastos();
   try{
-    const clave=_claveGastosDia(empleado,fecha);
-    const guardados=JSON.parse(localStorage.getItem(clave)||'[]');
-    guardados.unshift(gasto);
-    localStorage.setItem(clave,JSON.stringify(guardados));
-  }catch{}
-  const payloadGasto={accion:'registrar_gasto',empleado,fecha,categoria,monto:monto.toFixed(2),desc,ref,csrfToken:SESSION_TOKEN};
-  if(navigator.onLine){
-    fetch(SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(payloadGasto)}).catch(()=>{
-      guardarEnLocalStorageSync(payloadGasto); actualizarBanners(); guardarLocal(payloadGasto).catch(()=>{});
-      if('serviceWorker'in navigator&&'SyncManager'in window) navigator.serviceWorker.ready.then(reg=>reg.sync.register('sync-pedidos')).catch(()=>{});
+    await db.collection('gastos').add({
+      empleado, fecha, categoria, monto, desc, ref,
+      creadoPor:usuarioActual?.uid||null, creadoEn:firebase.firestore.FieldValue.serverTimestamp()
     });
-  } else {
-    guardarEnLocalStorageSync(payloadGasto); actualizarBanners(); guardarLocal(payloadGasto).catch(()=>{});
-    if('serviceWorker'in navigator&&'SyncManager'in window) navigator.serviceWorker.ready.then(reg=>reg.sync.register('sync-pedidos')).catch(()=>{});
+    ['gasto-empleado','gasto-categoria'].forEach(id=>document.getElementById(id).value='');
+    ['gasto-monto','gasto-desc','gasto-ref'].forEach(id=>document.getElementById(id).value='');
+    setStatusGastos('success',`✓ Gasto de $${monto.toFixed(2)} registrado — ${escHTML(desc)}.`);
+  }catch(err){
+    console.error(err);
+    setStatusGastos('error', navigator.onLine ? 'No se pudo registrar el gasto.' : '📥 Sin internet — se guardó localmente y se sincroniza solo al volver la señal.');
   }
-  ['gasto-empleado','gasto-categoria'].forEach(id=>document.getElementById(id).value='');
-  ['gasto-monto','gasto-desc','gasto-ref'].forEach(id=>document.getElementById(id).value='');
-  setStatusGastos('success',`✓ Gasto de $${monto.toFixed(2)} registrado — ${escHTML(desc)}.`);
 }
-function eliminarGasto(id){ listaGastos=listaGastos.filter(g=>g.id!==id); renderGastos(); actualizarResumenGastos(); }
+async function eliminarGasto(id){
+  if(!confirm('¿Eliminar este gasto?')) return;
+  try{ await db.collection('gastos').doc(id).delete(); }
+  catch(err){ console.error(err); alert('No se pudo eliminar el gasto.'); }
+}
 function categoriaBadge(cat){ const c=escHTML(String(cat).slice(0,20)); return`<span class="badge badge-contado" style="font-size:9px">${c.length>12?c.substring(0,12)+'…':c}</span>`; }
 function renderGastos(){
   const lista=document.getElementById('gastosLista'),empty=document.getElementById('gastosEmptyMsg'),items=document.getElementById('gastosItems');
   if(listaGastos.length===0){lista.classList.add('empty');empty.style.display='block';}else{lista.classList.remove('empty');empty.style.display='none';}
-  items.innerHTML=listaGastos.map(g=>`<div class="gasto-item"><div><div style="font-size:13px;font-weight:600;color:var(--navy)">${escHTML(g.desc)}</div><div style="font-size:11px;color:var(--muted)">${escHTML(g.empleado.replace('RUTA ','R.'))} · ${escHTML(g.hora)}${g.ref?' · '+escHTML(g.ref):''}</div></div><div style="text-align:center">${categoriaBadge(g.categoria)}</div><div style="font-size:11px;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHTML(g.empleado.split(':')[1]?.trim()||g.empleado)}</div><span class="gasto-monto">$${escHTML(g.monto.toFixed(2))}</span><button class="btn-remove" onclick="eliminarGasto(${parseInt(g.id)})">&times;</button></div>`).join('');
+  items.innerHTML=listaGastos.map(g=>`<div class="gasto-item"><div><div style="font-size:13px;font-weight:600;color:var(--navy)">${escHTML(g.desc)}</div><div style="font-size:11px;color:var(--muted)">${escHTML((g.empleado||'').replace('RUTA ','R.'))} · ${escHTML(g.hora||'')}${g.ref?' · '+escHTML(g.ref):''}</div></div><div style="text-align:center">${categoriaBadge(g.categoria)}</div><div style="font-size:11px;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHTML(g.empleado?.split(':')[1]?.trim()||g.empleado||'')}</div><span class="gasto-monto">$${escHTML(g.monto.toFixed(2))}</span><button class="btn-remove" onclick="eliminarGasto('${escHTML(g.id)}')">&times;</button></div>`).join('');
 }
 function actualizarResumenGastos(){
   const t=listaGastos.reduce((s,g)=>s+g.monto,0);
@@ -1558,30 +1525,6 @@ function descargarPDF(){
   doc.save(`Pedido_${ns}_${fs}.pdf`);
 }
 
-async function subirPDFaDrive(snap){
-  if(!snap||!navigator.onLine)return;
-  const d=snap;
-  const pw=document.getElementById('driveProgress'),pf=document.getElementById('progressFill'),pt=document.getElementById('progressText'),pp=document.getElementById('progressPct'),pl=document.getElementById('progressLink');
-  pw.classList.add('show');pl.classList.remove('show');pf.style.width='0%';pt.textContent='Generando PDF...';pp.textContent='0%';
-  let pct=0;
-  const t1=setInterval(()=>{pct=Math.min(pct+8,40);pf.style.width=pct+'%';pp.textContent=pct+'%';},120);
-  let pdfBase64; try{pdfBase64=generarPDFBase64();}catch{clearInterval(t1);pw.classList.remove('show');return;}
-  clearInterval(t1);pf.style.width='45%';pp.textContent='45%';pt.textContent='Subiendo a Google Drive...';
-  const t2=setInterval(()=>{pct=Math.min(pct+5,85);pf.style.width=pct+'%';pp.textContent=pct+'%';},200);
-  try{
-    const ns=d.nombre.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-_]/g,'').replace(/\s+/g,'_').slice(0,60);
-    const fs=(d.fecha||'sin-fecha').replace(/[^0-9\-]/g,'');
-    const resp=await fetch(SCRIPT_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accion:'subir_pdf',pdfBase64,nombreArchivo:`Pedido_${ns}_${fs}.pdf`,empleado:d.empleado,nombre:d.nombre,fecha:d.fecha,csrfToken:SESSION_TOKEN})});
-    clearInterval(t2);
-    let json={}; try{json=await resp.json();}catch{json={result:'ok'};}
-    if(json.result==='ok'||resp.ok){
-      pf.style.width='100%';pp.textContent='100%';pt.textContent='✓ PDF subido a Google Drive';
-      if(json.fileUrl){ pl.innerHTML=''; const a=document.createElement('a'); if(/^https:\/\/drive\.google\.com\//.test(json.fileUrl)){a.href=json.fileUrl;a.target='_blank';a.rel='noopener noreferrer';a.textContent='📄 Ver PDF en Google Drive';pl.appendChild(a);} pl.classList.add('show'); }
-      setStatus('success','✓ Pedido guardado y PDF subido a Google Drive.');
-    } else throw new Error(json.error||'Error');
-  }catch{clearInterval(t2);pw.classList.remove('show');}
-}
-
 function _construirMsgWA(d){
   const lineas=d.productos.map(p=>{
     let l=` - ${encodeURIComponent(p.nombre)}: ${p.cantidad} x $${p.precio.toFixed(2)} = $${p.subtotal.toFixed(2)}`;
@@ -1592,53 +1535,6 @@ function _construirMsgWA(d){
   return`Estimada Secretria, se envia pedido de cliente:%0A%0A`+`👤 *Cliente:* ${encodeURIComponent(d.nombre)}%0A`+`📞 *Telefono:* ${encodeURIComponent(d.telefono||'-')}%0A`+`📍 *Direccion:* ${encodeURIComponent(d.direccion||'-')}%0A`+`📅 *Fecha:* ${encodeURIComponent(d.fecha)}%0A`+`👷 *Asesor:* ${encodeURIComponent(d.empleado)}%0A`+`💳 *Pago:* ${encodeURIComponent(d.formapago||'-')}%0A%0A`+`📦 *Productos:*%0A${lineas}%0A%0A`+`💰 *TOTAL: $${d.total}*%0A`+`📝 *Notas:* ${encodeURIComponent(d.notas||'-')}`+gpsLinea;
 }
 function enviarWhatsapp(){ if(!ultimoRegistro)return; window.open(`https://wa.me/${WHATSAPP_secretaria}?text=${_construirMsgWA(ultimoRegistro)}`,'_blank','noopener,noreferrer'); }
-
-function _claveHistDia(empleado,fecha){
-  const e=(empleado||'sin-usuario').replace(/[^a-zA-Z0-9]/g,'_').slice(0,30);
-  const f=(fecha||new Date().toISOString().slice(0,10)).replace(/[^0-9\-]/g,'');
-  return 'al_hist_'+e+'_'+f;
-}
-function _clavePagosDia(empleado,fecha){
-  const e=(empleado||'sin-usuario').replace(/[^a-zA-Z0-9]/g,'_').slice(0,30);
-  const f=(fecha||new Date().toISOString().slice(0,10)).replace(/[^0-9\-]/g,'');
-  return 'al_pagos_'+e+'_'+f;
-}
-function _claveGastosDia(empleado,fecha){
-  const e=(empleado||'sin-usuario').replace(/[^a-zA-Z0-9]/g,'_').slice(0,30);
-  const f=(fecha||new Date().toISOString().slice(0,10)).replace(/[^0-9\-]/g,'');
-  return 'al_gastos_'+e+'_'+f;
-}
-function _restaurarPagosGastosDia(u){
-  try{
-    const hoy=new Date().toISOString().slice(0,10);
-    let pagosR=[], gastosR=[];
-    if(u.esAdmin){
-      ['RUTA 1: Jefferson','RUTA 2: Luis','RUTA 3: Vicente','RUTA 4: Wilson','RUTA 5: Lister','RUTA 6: Asesora','admin'].forEach(r=>{
-        pagosR=pagosR.concat(JSON.parse(localStorage.getItem(_clavePagosDia(r,hoy))||'[]'));
-        gastosR=gastosR.concat(JSON.parse(localStorage.getItem(_claveGastosDia(r,hoy))||'[]'));
-      });
-    } else {
-      pagosR=JSON.parse(localStorage.getItem(_clavePagosDia(u.ruta,hoy))||'[]');
-      gastosR=JSON.parse(localStorage.getItem(_claveGastosDia(u.ruta,hoy))||'[]');
-    }
-    pagosR.sort((a,b)=>(b.id||0)-(a.id||0));
-    gastosR.sort((a,b)=>(b.id||0)-(a.id||0));
-    listaPagos=pagosR; listaGastos=gastosR;
-    renderPagos(); actualizarResumenPagos();
-    renderGastos(); actualizarResumenGastos();
-  }catch(e){}
-}
-function guardarEnHistorial(reg){
-  try{
-    const r={id:Date.now(),nombre:sanitizarTexto(reg.nombre,100),total:reg.total,fecha:reg.fecha,empleado:reg.empleado,formapago:reg.formapago,telefono:sanitizarTexto(reg.telefono,20),direccion:sanitizarTexto(reg.direccion,200),notas:sanitizarTexto(reg.notas,500),productos:reg.productos,gps:null};
-    const hS=JSON.parse(sessionStorage.getItem('aqualuan-historial')||'[]');
-    hS.unshift(r); if(hS.length>200)hS.pop();
-    sessionStorage.setItem('aqualuan-historial',JSON.stringify(hS));
-    const clave=_claveHistDia(reg.empleado,reg.fecha);
-    const hL=JSON.parse(localStorage.getItem(clave)||'[]');
-    if(!hL.find(x=>x.id===r.id)){hL.unshift(r);if(hL.length>200)hL.pop();localStorage.setItem(clave,JSON.stringify(hL));}
-  }catch{}
-}
 
 function cargarHistorial(){
   let hist=[]; try{hist=JSON.parse(sessionStorage.getItem('aqualuan-historial')||'[]');}catch{}
@@ -1699,19 +1595,11 @@ function toggleHistorialDetalle(idx){
 function descargarPDFDesde(idx){ let hist=[]; try{hist=JSON.parse(sessionStorage.getItem('aqualuan-historial')||'[]');}catch{} if(idx<0||idx>=hist.length)return; const r=hist[idx]; const{jsPDF}=window.jspdf; const doc=new jsPDF({unit:'mm',format:'a4'}); _buildPDF(doc,r); const ns=r.nombre.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-_]/g,'').replace(/\s+/g,'_').slice(0,60); const fs=(r.fecha||'sin-fecha').replace(/[^0-9\-]/g,''); doc.save(`Pedido_${ns}_${fs}.pdf`); }
 function enviarWhatsappDesde(idx){ let hist=[]; try{hist=JSON.parse(sessionStorage.getItem('aqualuan-historial')||'[]');}catch{} if(idx<0||idx>=hist.length)return; window.open(`https://wa.me/${WHATSAPP_secretaria}?text=${_construirMsgWA(hist[idx])}`,'_blank','noopener,noreferrer'); }
 function limpiarHistorial(){
-  if(!confirm('¿Limpiar el historial de pedidos de hoy?'))return;
-  try{
-    sessionStorage.removeItem('aqualuan-historial');
-    if(usuarioActual){
-      const hoy=new Date().toISOString().slice(0,10);
-      if(usuarioActual.esAdmin){
-        ['RUTA 1: Jefferson','RUTA 2: Luis','RUTA 3: Vicente','RUTA 4: Wilson','RUTA 5: Lister','RUTA 6: Asesora','admin'].forEach(r=>localStorage.removeItem(_claveHistDia(r,hoy)));
-      } else {
-        localStorage.removeItem(_claveHistDia(usuarioActual.ruta,hoy));
-      }
-    }
-  }catch{}
-  cargarHistorial();
+  // [FIX] Los pedidos ya no viven en localStorage — viven en Firestore, de verdad y
+  // permanentes. Este botón ya no puede "ocultarlos": el listener en tiempo real los
+  // vuelve a traer al instante. Si de verdad hay que borrar un pedido, se hace desde
+  // el Dashboard del administrador (borrado real del registro).
+  alert('El historial ya no se guarda en este celular — vive de forma permanente en la nube, por eso se ve igual en cualquier dispositivo. Para eliminar un pedido específico, hazlo desde el Dashboard del administrador.');
 }
 
 document.getElementById('modalOverlay').addEventListener('click',function(e){ if(e.target===this)cerrarModal(); });
