@@ -1072,6 +1072,7 @@ function _iniciarListenerProductos(){
     snap.forEach(d=>{ const data=d.data(); if(data.activo!==false){ nombres.push(data.nombre); _productosDocIds[data.nombre]=d.id; } });
     LISTAS_BLANCAS.productos=nombres;
     renderOpcionesProductoSelect();
+    if(document.getElementById('np-eliminar-select'))poblarSelectEliminarProducto(); // [FIX] antes no se refrescaba
   },err=>console.error('listener productos:',err));
 }
 /* [NEW] Repuebla el <select> de Ventas con el catálogo en vivo, conservando la selección si sigue existiendo */
