@@ -962,6 +962,14 @@ const DOMINIO_LOGIN = '@luanaqua.app'; // el "usuario" corto se convierte a este
 function _emailDeUsuario(usuario){
   return usuario.trim().toLowerCase().replace(/[^a-z0-9._-]/g,'') + DOMINIO_LOGIN;
 }
+/* [FIX] Fecha LOCAL (no UTC) — con .toISOString() en Ecuador (UTC-5), después de
+   cierta hora de la tarde ya es "mañana" en UTC, aunque localmente siga siendo hoy.
+   Esto hacía que el pedido se guardara con la fecha local correcta, pero el listener
+   buscara con la fecha UTC (un día adelantada) y nunca lo encontrara. */
+function _fechaLocalHoy(){
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
 
 function generarTokenSesion() {
   const arr = new Uint8Array(32);
@@ -1092,7 +1100,7 @@ function _iniciarListenersDelDia(u){
   if(_unsubPagosHoy){_unsubPagosHoy();_unsubPagosHoy=null;}
   if(_unsubGastosHoy){_unsubGastosHoy();_unsubGastosHoy=null;}
   if(!u)return;
-  const hoy=new Date().toISOString().slice(0,10);
+  const hoy=_fechaLocalHoy();
   let qPedidos=db.collection('pedidos').where('fecha','==',hoy);
   let qPagos=db.collection('pagos').where('fecha','==',hoy);
   let qGastos=db.collection('gastos').where('fecha','==',hoy);
@@ -1148,8 +1156,7 @@ let _fechaActualApp = null;
 (function init(){
   const hoy=new Date();
   document.getElementById('fechaHoy').textContent=hoy.toLocaleDateString('es-EC',{weekday:'long',day:'numeric',month:'long'});
-  const yyyy=hoy.getFullYear(),mm=String(hoy.getMonth()+1).padStart(2,'0'),dd=String(hoy.getDate()).padStart(2,'0');
-  const hoyStr=`${yyyy}-${mm}-${dd}`;
+  const hoyStr=_fechaLocalHoy();
   _fechaActualApp=hoyStr;
   document.getElementById('fecha').value=hoyStr;
   document.getElementById('pago-fecha').value=hoyStr;
@@ -1162,7 +1169,7 @@ let _fechaActualApp = null;
 })();
 
 function _verificarCambioDeDia(){
-  const hoyStr=new Date().toISOString().slice(0,10);
+  const hoyStr=_fechaLocalHoy();
   if(hoyStr===_fechaActualApp) return;
   _fechaActualApp=hoyStr;
   ['fecha','pago-fecha','gasto-fecha'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=hoyStr; });
