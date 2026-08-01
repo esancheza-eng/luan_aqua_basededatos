@@ -1210,6 +1210,7 @@ async function doLogin() {
   if (!user || !pass) { document.getElementById('loginError').classList.add('show'); return; }
   try{
     const email = _emailDeUsuario(user);
+    _loginManualEnCurso = true; // [NEW] marca que este login viene de escribir usuario/contraseña ahora mismo, no de una sesión restaurada
     const cred = await auth.signInWithEmailAndPassword(email, pass);
     const perfilDoc = await db.collection('usuarios').doc(cred.user.uid).get();
     document.getElementById('loginPass').value = '';
@@ -1228,6 +1229,7 @@ async function doLogin() {
     document.getElementById('loginError').classList.remove('show');
     iniciar();
   }catch(err){
+    _loginManualEnCurso = false; // [NEW]
     console.error(err);
     document.getElementById('loginError').classList.add('show');
     document.getElementById('loginPass').focus();
@@ -1245,13 +1247,22 @@ function cerrarSesion() {
   auth.signOut(); // la limpieza del overlay ocurre en onAuthStateChanged, más abajo
 }
 
-/* [NEW] Firebase Auth mantiene la sesión sola — si el admin ya había entrado antes
-   (en este navegador o en cualquier otro donde inicie sesión), no le vuelve a pedir clave. */
+/* [NEW] Firebase Auth mantiene la sesión sola — pero por seguridad, si el usuario es
+   ADMIN y la sesión se restauró sola (no fue un login manual recién escrito), se cierra
+   automáticamente y se exige volver a escribir usuario y contraseña. Secretaria sí
+   conserva la sesión guardada, igual que antes. */
+let _loginManualEnCurso = false; // [NEW]
 auth.onAuthStateChanged(async (user)=>{
   if(user){
     try{
       const perfilDoc = await db.collection('usuarios').doc(user.uid).get();
       const perfil = perfilDoc.exists ? perfilDoc.data() : null;
+      if(perfil && perfil.esAdmin === true && !_loginManualEnCurso){
+        // [NEW] Sesión de Admin restaurada automáticamente al abrir la página — se cierra
+        // por seguridad; en una computadora compartida no debe entrar solo.
+        await auth.signOut();
+        return;
+      }
       if(perfil && (perfil.esAdmin===true || perfil.esSecretaria===true)){
         ROL_ACTUAL = perfil.esAdmin===true ? 'admin' : 'secretaria'; // [NEW]
         ADMIN_ACTUAL = { uid: user.uid, nombre: perfil.nombre || (ROL_ACTUAL==='admin'?'Admin':'Secretaria') }; // para el historial de cambios
@@ -1262,6 +1273,7 @@ auth.onAuthStateChanged(async (user)=>{
       }
     }catch(e){ console.error(e); }
   } else {
+    _loginManualEnCurso = false; // [NEW] listo para el siguiente intento de login
     clearInterval(autoRefreshInterval);
     detenerListenersDashboard(); // [NEW]
     detenerListenerAsesoresDash(); // [NEW]
