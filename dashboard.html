@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard — Luan Aqua</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" integrity="sha384-bs/nf9FbdNouRbMiFcrcZfLXYPKiPaGVGplVbv7dLGECccEXDW+S3zjqSKR5ZEaD" crossorigin="anonymous"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -753,10 +753,6 @@ display: inline-block;
   </div>
   <div class="header-right">
     <div class="update-badge"><div class="pulse-dot"></div><span>Tiempo real (Firestore)</span></div>
-    <button class="btn-refresh" onclick="cargarDatos(true)">
-      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" id="refreshIcon"><path d="M14 8A6 6 0 1 1 8 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M14 2v4h-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      Actualizar
-    </button>
     <button class="btn-cierre-dia" onclick="abrirCierreDia()">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="1" y="3" width="14" height="11" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M5 3V2M11 3V2M1 7h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
       Cierre del Día
@@ -788,10 +784,12 @@ display: inline-block;
             <button class="dash-nav-item" data-section="pedidos" onclick="switchSeccionDash('pedidos')">📋 Detalle de Pedidos</button>
             <button class="dash-nav-item" data-section="cliente" onclick="switchSeccionDash('cliente')">🔍 Consultar por Cliente</button>
             <button class="dash-nav-item" data-section="caja" onclick="switchSeccionDash('caja')">💳 Cuadre de Caja</button>
-            <button class="dash-nav-item" data-section="eliminados" onclick="switchSeccionDash('eliminados')">🗑 Pedidos Eliminados</button>
-            <button class="dash-nav-item" data-section="inventario" onclick="switchSeccionDash('inventario')">📦 Inventario</button>
-            <button class="dash-nav-item" data-section="roles" onclick="switchSeccionDash('roles')">💵 Roles de Pago</button>
-            <button class="dash-nav-item" data-section="importar" onclick="switchSeccionDash('importar')">📤 Importar Datos</button>
+            <button class="dash-nav-item" data-section="reporteAsesor" onclick="switchSeccionDash('reporteAsesor')">👤 Reporte por Asesor</button>
+            <button class="dash-nav-item" data-section="eliminados" id="navEliminados" onclick="switchSeccionDash('eliminados')">🗑 Pedidos Eliminados</button>
+            <button class="dash-nav-item" data-section="inventario" id="navInventario" onclick="switchSeccionDash('inventario')">📦 Inventario</button>
+            <button class="dash-nav-item" data-section="roles" id="navRoles" onclick="switchSeccionDash('roles')">💵 Roles de Pago</button>
+            <button class="dash-nav-item" data-section="importar" id="navImportar" onclick="switchSeccionDash('importar')">📤 Importar Datos</button>
+            <button class="dash-nav-item" data-section="usuarios" id="navUsuarios" onclick="switchSeccionDash('usuarios'); poblarSelectEliminarSecretaria();">👩‍💼 Crear Usuarios</button>
           </nav>
           <div class="dash-content">
         <div class="dash-section active" id="seccion-resumen">
@@ -933,6 +931,14 @@ display: inline-block;
           </div>
         </div>
         </div>
+        <div class="dash-section" id="seccion-reporteAsesor">
+        <!-- [NEW] Reporte por Asesor — clic en una tarjeta para ver todo el detalle -->
+        <div class="table-card">
+          <div class="table-header"><div class="table-title">👤 Selecciona un asesor</div></div>
+          <div class="asesor-cards-grid" id="reporteAsesorCardsGrid" style="padding:1.25rem"></div>
+        </div>
+        <div id="reporteAsesorDetalleWrap" style="display:none"></div>
+        </div>
         <div class="dash-section" id="seccion-inventario">
         <!-- [NEW] Inventario — entradas y salidas con historial -->
         <div class="table-card" id="inventarioCard">
@@ -992,6 +998,29 @@ display: inline-block;
             <input type="file" id="importarArchivo" accept=".xlsx,.xls,.csv">
             <button class="btn-filter" style="background:var(--teal);margin-left:10px" onclick="procesarArchivoImportado()">📂 Leer archivo</button>
             <div id="importarPreview" style="margin-top:16px"></div>
+          </div>
+        </div>
+        </div>
+        <div class="dash-section" id="seccion-usuarios">
+        <!-- [NEW] Crear Usuarios — cuentas de Secretaria (solo lectura del Dashboard) -->
+        <div class="table-card">
+          <div class="table-header"><div class="table-title">👩‍💼 Crear Usuarios — Secretaria</div></div>
+          <div style="padding:1.25rem;max-width:520px">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:14px">Acceso de solo lectura al Dashboard: ve Resumen, Detalle de Pedidos, Consultar por Cliente, Cuadre de Caja y Reporte por Asesor — sin Editar/Eliminar pedidos ni las pestañas administrativas.</div>
+            <div class="editar-grid full">
+              <div class="editar-field"><label>Nombre completo</label><input type="text" id="sec-nombre" placeholder="Ej. María Fernanda Pérez" maxlength="60"></div>
+              <div class="editar-field"><label>Usuario (login)</label><input type="text" id="sec-usuario" placeholder="secretaria" maxlength="30"></div>
+              <div class="editar-field"><label>Contraseña</label><input type="password" id="sec-pass" placeholder="Mínimo 6 caracteres" maxlength="128"></div>
+            </div>
+            <button class="btn-guardar-edicion" id="sec-btn-crear" style="margin-top:6px" onclick="crearSecretariaReal()">✅ Crear Secretaria</button>
+            <div id="sec-resultado" style="display:none;margin-top:12px;padding:12px 14px;border-radius:10px;background:var(--teal-light);border:1px solid var(--success-border,#4ec9a0);color:var(--teal-dark);font-size:13px;font-weight:600;line-height:1.5"></div>
+          </div>
+        </div>
+        <div class="table-card">
+          <div class="table-header"><div class="table-title">🗑 Eliminar acceso de Secretaria</div></div>
+          <div style="padding:1.25rem;max-width:520px">
+            <div class="editar-field"><label>Selecciona la cuenta a eliminar</label><select id="sec-eliminar-select"><option value="">-- Selecciona --</option></select></div>
+            <button class="btn-eliminar-fila" style="padding:9px 16px" onclick="eliminarSecretariaSeleccionada()">🗑 Eliminar acceso</button>
           </div>
         </div>
         </div>
@@ -1065,10 +1094,10 @@ display: inline-block;
   </div>
 </div>
 
-<script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore-compat.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-app-compat.js" integrity="sha384-tgDxKHbfk8o2rrXLSytbpDGsGk0bdZehHXoeD7LhuGriE89B5ovitrlBu7FX4kj/" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-auth-compat.js" integrity="sha384-UaGuhpArNP+gULAiiQrJNwk1AWTIZsfFEygQkDQYIGsTjoBmbSXgWfQeFJJXuFub" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore-compat.js" integrity="sha384-O2tgK2bVAUCyEX//gu7nH2z8A92RsaKhRAQABpJ7kLaF/4KQYEltHstFCV7nxWpr" crossorigin="anonymous"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT" crossorigin="anonymous"></script>
 <script>
 /* ════════════════════════════════════════
    CONFIG
@@ -1090,6 +1119,20 @@ const auth = firebase.auth();
 const db   = firebase.firestore();
 const DOMINIO_LOGIN = '@luanaqua.app';
 function _emailDeUsuario(usuario){ return usuario.trim().toLowerCase().replace(/[^a-z0-9._-]/g,'') + DOMINIO_LOGIN; }
+/* [SECURITY FIX] Escapa cualquier dato que venga de un usuario (cliente, notas, dirección,
+   producto, etc.) antes de insertarlo en innerHTML. Sin esto, un nombre de cliente como
+   <img src=x onerror=...> se ejecuta como código en la sesión del admin que lo ve — se debe
+   usar SIEMPRE que se interpole un campo de Firestore dentro de una plantilla HTML. */
+function escHTML(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
+}
+/* [NEW] Instancia secundaria de Firebase — permite crear la cuenta de Secretaria sin
+   cerrar la sesión del admin (crear un usuario normalmente inicia sesión con él). */
+const _secondaryAppDash = firebase.initializeApp(firebaseConfig, 'secondaryDash');
+const _secondaryAuthDash = _secondaryAppDash.auth();
 
 const RUTA_COLORS = {
   'RUTA 1: Jefferson': '#1565c0',
@@ -1119,6 +1162,7 @@ let pedidosDetalleActuales = [];
 
 /* [NEW] Editar Pedido — identidad del admin actual (para el historial de cambios) */
 let ADMIN_ACTUAL = { uid: null, nombre: 'Admin' };
+let ROL_ACTUAL = null; // [NEW] 'admin' | 'secretaria' — controla qué secciones y botones se muestran
 /* [NEW] Editar Pedido — catálogo de productos en caché para que el modal abra al instante */
 let _productosCache = [];
 let _unsubProductosDash = null;
@@ -1161,13 +1205,17 @@ async function doLogin() {
     const cred = await auth.signInWithEmailAndPassword(email, pass);
     const perfilDoc = await db.collection('usuarios').doc(cred.user.uid).get();
     document.getElementById('loginPass').value = '';
-    if(!perfilDoc.exists || perfilDoc.data().esAdmin !== true){
+    const perfil = perfilDoc.exists ? perfilDoc.data() : null;
+    /* [NEW] Ahora entran dos roles: Admin (acceso total) y Secretaria (solo lectura,
+       sin Editar/Eliminar Pedido, sin Inventario/Roles de Pago/Importar Datos/Eliminados) */
+    if(!perfil || !(perfil.esAdmin === true || perfil.esSecretaria === true)){
       await auth.signOut();
       document.getElementById('loginError').classList.add('show');
       document.getElementById('loginPass').focus();
       return;
     }
-    ADMIN_ACTUAL = { uid: cred.user.uid, nombre: perfilDoc.data().nombre || user }; // [NEW] para el historial de cambios
+    ROL_ACTUAL = perfil.esAdmin === true ? 'admin' : 'secretaria'; // [NEW]
+    ADMIN_ACTUAL = { uid: cred.user.uid, nombre: perfil.nombre || user }; // para el historial de cambios
     document.getElementById('loginOverlay').classList.add('hidden');
     document.getElementById('loginError').classList.remove('show');
     iniciar();
@@ -1195,8 +1243,10 @@ auth.onAuthStateChanged(async (user)=>{
   if(user){
     try{
       const perfilDoc = await db.collection('usuarios').doc(user.uid).get();
-      if(perfilDoc.exists && perfilDoc.data().esAdmin===true){
-        ADMIN_ACTUAL = { uid: user.uid, nombre: perfilDoc.data().nombre || 'Admin' }; // [NEW] para el historial de cambios
+      const perfil = perfilDoc.exists ? perfilDoc.data() : null;
+      if(perfil && (perfil.esAdmin===true || perfil.esSecretaria===true)){
+        ROL_ACTUAL = perfil.esAdmin===true ? 'admin' : 'secretaria'; // [NEW]
+        ADMIN_ACTUAL = { uid: user.uid, nombre: perfil.nombre || (ROL_ACTUAL==='admin'?'Admin':'Secretaria') }; // para el historial de cambios
         document.getElementById('loginOverlay').classList.add('hidden');
         iniciar();
       } else {
@@ -1226,6 +1276,7 @@ function _iniciarListenerAsesoresDash(){
   _unsubAsesoresDash = db.collection('usuarios').where('esAdmin','==',false).onSnapshot(snap => {
     const rutas = snap.docs.map(d => d.data().ruta).filter(Boolean).sort();
     _asesoresCache = rutas; // [NEW] disponible para el <select> de Asesor dentro del modal Editar Pedido
+    if (typeof renderReporteAsesores === 'function') renderReporteAsesores(); /* [FIX] antes solo se refrescaba cuando cambiaban los pedidos, no cuando llegaba la lista de asesores — se quedaba en "No hay asesores registrados" si este listener tardaba más en cargar */
     const sel = document.getElementById('filtroAsesor');
     if (!sel) return;
     const valorActual = sel.value;
@@ -1244,6 +1295,7 @@ function _iniciarListenerProductosDash(){
   if(_unsubProductosDash){_unsubProductosDash();_unsubProductosDash=null;}
   _unsubProductosDash = db.collection('productos').where('activo','==',true).onSnapshot(snap => {
     _productosCache = snap.docs.map(d => ({ id: d.id, nombre: d.data().nombre || '' })).sort((a,b) => a.nombre.localeCompare(b.nombre));
+    if(typeof renderInventario==='function') renderInventario(); /* [FIX] antes el <select> de Inventario solo se llenaba cuando cambiaba un movimiento, no cuando llegaba el catálogo de productos — se quedaba vacío si el catálogo cargaba después */
   }, err => console.error('listener productos dash:', err));
 }
 function detenerListenerProductosDash(){ if(_unsubProductosDash){_unsubProductosDash();_unsubProductosDash=null;} }
@@ -1298,12 +1350,32 @@ function iniciar() {
   iniciarListenersDashboard(); // [NEW] tiempo real — reemplaza el polling cada 60s
   _iniciarListenerAsesoresDash(); // [NEW] filtro de asesor real, en vivo
   _iniciarListenerProductosDash(); // [NEW] catálogo de productos para el modal Editar Pedido
-  _iniciarListenerEliminados(); // [NEW] respaldo de pedidos eliminados
-  _iniciarListenerInventario(); // [NEW] entradas y salidas
-  _iniciarListenerRolesHistorial(); // [NEW] historial de roles de pago
+  if (ROL_ACTUAL === 'admin') { // [NEW] Secretaria no tiene permiso de lectura en estas colecciones — ni falta que le hace, sus pestañas están ocultas
+    _iniciarListenerEliminados(); // [NEW] respaldo de pedidos eliminados
+    _iniciarListenerInventario(); // [NEW] entradas y salidas
+    _iniciarListenerRolesHistorial(); // [NEW] historial de roles de pago
+    poblarSelectEliminarSecretaria(); // [NEW]
+  }
   document.getElementById('invFecha').value = hoy; // [NEW]
   document.getElementById('rolesDesde').value = hoy; // [NEW]
   document.getElementById('rolesHasta').value = hoy; // [NEW]
+  aplicarRestriccionesRol(); // [NEW]
+}
+/* [NEW] Oculta las secciones y botones que son solo para Admin cuando entra Secretaria */
+function aplicarRestriccionesRol(){
+  const esSecretaria = ROL_ACTUAL === 'secretaria';
+  ['navEliminados','navInventario','navRoles','navImportar','navUsuarios'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = esSecretaria ? 'none' : '';
+  });
+  if (esSecretaria) {
+    // Si por alguna razón queda una de esas secciones activa, regresa a Resumen General
+    const seccionActivaOculta = ['eliminados','inventario','roles','importar','usuarios'].some(s => {
+      const sec = document.getElementById('seccion-'+s);
+      return sec && sec.classList.contains('active');
+    });
+    if (seccionActivaOculta) switchSeccionDash('resumen');
+  }
 }
 function fechaHoy() {
   const d = new Date();
@@ -1429,6 +1501,15 @@ function getDatosFiltrados() {
   if (asesorSel) datos = datos.filter(r => (r['ASESOR / RUTA']||'') === asesorSel);
   return datos;
 }
+/* [NEW] Igual que getDatosFiltrados() pero SIN el filtro de asesor — para que "Reporte
+   por Asesor" siempre pueda mostrar todas las tarjetas, sin importar qué asesor esté
+   seleccionado arriba en el filtro general del dashboard. */
+function getDatosSoloFecha() {
+  const filtro = document.getElementById('filtroFecha').value;
+  let datos = todosLosDatos;
+  if (filtro) datos = datos.filter(r => { const fecha = r['FECHA'] || r['fecha'] || ''; return String(fecha).includes(filtro); });
+  return datos;
+}
 
 /* ════════════════════════════════════════
    RENDER DASHBOARD
@@ -1466,6 +1547,7 @@ function renderDashboard() {
   document.getElementById('tableCard').style.display = 'block';
   document.getElementById('clienteCard').style.display = 'block';
   document.getElementById('pagosGastosCard').style.display = 'block'; // [NEW]
+  renderReporteAsesores(); // [NEW]
 }
 
 /* ════════════════════════════════════════
@@ -1515,7 +1597,7 @@ function renderPagosGastosDetalle(pagos, gastos) {
     const filas = pagos.map(r => {
       const monto = parseFloat(r['TOTAL PEDIDO ($)'])||0;
       return `<tr>
-        <td style="font-weight:600">${r['CLIENTE']||'-'}</td>
+        <td style="font-weight:600">${escHTML(r['CLIENTE']||'-')}</td>
         <td style="font-size:12px">${(r['ASESOR / RUTA']||'').split(':')[1]?.trim()||r['ASESOR / RUTA']||'-'}</td>
         <td><span class="badge badge-blue">${r['FORMA DE PAGO']||'-'}</span></td>
         <td style="font-size:11px;color:var(--muted);white-space:nowrap">${limpiarFecha(r['FECHA'])}</td>
@@ -1533,7 +1615,7 @@ function renderPagosGastosDetalle(pagos, gastos) {
       const monto = Math.abs(parseFloat(r['TOTAL PEDIDO ($)'])||0);
       const desc = r['NOTAS'] || r['CLIENTE'] || r['DIRECCIÓN'] || '-'; // [NOTA] ver aviso más abajo sobre esta columna
       return `<tr>
-        <td style="font-weight:600">${desc}</td>
+        <td style="font-weight:600">${escHTML(desc)}</td>
         <td style="font-size:12px">${(r['ASESOR / RUTA']||'').split(':')[1]?.trim()||r['ASESOR / RUTA']||'-'}</td>
         <td style="font-size:11px;color:var(--muted);white-space:nowrap">${limpiarFecha(r['FECHA'])}</td>
         <td style="text-align:right;font-weight:700;color:var(--red)">$${monto.toFixed(2)}</td>
@@ -1586,7 +1668,7 @@ function renderGPS(pedidos) {
     <a class="map-point" href="${r['LINK GPS']}" target="_blank">
       <div class="map-dot"></div>
       <div>
-        <div style="font-size:12px;font-weight:700;color:var(--navy)">${r['CLIENTE']||'-'}</div>
+        <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHTML(r['CLIENTE']||'-')}</div>
         <div style="font-size:10px;color:var(--muted)">${(r['ASESOR / RUTA']||'').split(':')[1]?.trim()||''} · ${r['FECHA']||''}</div>
       </div>
       <svg width="10" height="10" viewBox="0 0 16 16" fill="none" style="margin-left:auto;flex-shrink:0"><path d="M4 12L12 4M12 4H7M12 4v5" stroke="var(--teal)" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -1603,13 +1685,13 @@ function renderTabla(pedidos) {
     const pago  = r['FORMA DE PAGO'] ? `<span class="badge badge-teal">${r['FORMA DE PAGO']}</span>` : '';
     /* [NEW] Botón Editar — solo funciona si la fila trae el id real del pedido en Firestore
        (las filas de pagos/gastos no lo traen, pero renderTabla solo recibe pedidos con producto) */
-    const accion = r['_pedidoId'] ? `<button class="btn-editar-fila" onclick="abrirEditarPedido('${r['_pedidoId']}')" title="Editar este pedido">✏ Editar</button><button class="btn-eliminar-fila" onclick="eliminarPedidoCompleto('${r['_pedidoId']}')" title="Eliminar este pedido permanentemente">🗑 Eliminar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>';
+    const accion = (r['_pedidoId'] && ROL_ACTUAL === 'admin') ? `<button class="btn-editar-fila" onclick="abrirEditarPedido('${r['_pedidoId']}')" title="Editar este pedido">✏ Editar</button><button class="btn-eliminar-fila" onclick="eliminarPedidoCompleto('${r['_pedidoId']}')" title="Eliminar este pedido permanentemente">🗑 Eliminar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>'; /* [NEW] Secretaria no ve Editar/Eliminar */
     return `<tr>
       <td style="white-space:nowrap;font-size:12px">${limpiarFecha(r['FECHA'])}</td>
-      <td style="font-size:12px">${(r['ASESOR / RUTA']||'').split(':')[1]?.trim()||r['ASESOR / RUTA']||'-'}</td>
-      <td style="font-weight:600">${r['CLIENTE']||'-'}</td>
-      <td style="font-size:12px;color:var(--muted)">${r['TELÉFONO']||'-'}</td>
-      <td style="font-size:12px">${r['PRODUCTO']||'-'}</td>
+      <td style="font-size:12px">${escHTML((r['ASESOR / RUTA']||'').split(':')[1]?.trim()||r['ASESOR / RUTA']||'-')}</td>
+      <td style="font-weight:600">${escHTML(r['CLIENTE']||'-')}</td>
+      <td style="font-size:12px;color:var(--muted)">${escHTML(r['TELÉFONO']||'-')}</td>
+      <td style="font-size:12px">${escHTML(r['PRODUCTO']||'-')}</td>
       <td style="text-align:center;font-size:12px">${r['CANTIDAD']||'-'}</td>
       <td style="text-align:right;font-size:12px;color:var(--muted)">$${parseFloat(r['SUBTOTAL']||0).toFixed(2)}</td>
       <td style="text-align:right">${total}</td>
@@ -1643,7 +1725,7 @@ function renderResumenPorCliente(pedidos) {
     const tagsPagoCliente = Object.entries(porForma).sort(([,a],[,b]) => b-a).map(([f,v]) => `<span class="badge badge-teal" style="margin-right:4px">${f}: $${v.toFixed(2)}</span>`).join('');
     const filas = c.items.map(r => `
       <tr>
-        <td>${r['PRODUCTO']||'-'}</td>
+        <td>${escHTML(r['PRODUCTO']||'-')}</td>
         <td style="text-align:center">${r['CANTIDAD']||'-'}</td>
         <td style="text-align:right">$${parseFloat(r['SUBTOTAL']||0).toFixed(2)}</td>
         <td style="text-align:right">${r['TOTAL PEDIDO ($)']?'$'+parseFloat(r['TOTAL PEDIDO ($)']).toFixed(2):'—'}</td>
@@ -1652,7 +1734,7 @@ function renderResumenPorCliente(pedidos) {
     return `
       <div class="cierre-cliente-block" style="margin:0 0 12px">
         <div class="cierre-cliente-header">
-          <span class="cierre-cliente-nombre">👤 ${cliente}</span>
+          <span class="cierre-cliente-nombre">👤 ${escHTML(cliente)}</span>
           <span class="cierre-cliente-meta">💳 ${c.formaPago||'Sin especificar'}</span>
           <span class="cierre-cliente-total">$${totalCliente.toFixed(2)}</span>
         </div>
@@ -1698,8 +1780,8 @@ function aplicarNotasFiltros() {
     const total = r['TOTAL PEDIDO ($)'] ? `<strong style="color:var(--teal)">$${parseFloat(r['TOTAL PEDIDO ($)']).toFixed(2)}</strong>` : '';
     return `<tr>
       <td style="font-size:12px;white-space:nowrap">${(r['ASESOR / RUTA']||'').split(':')[1]?.trim()||r['ASESOR / RUTA']||'-'}</td>
-      <td style="font-weight:600">${r['CLIENTE']||'-'}</td>
-      <td style="font-size:12px">${r['PRODUCTO']||'-'}</td>
+      <td style="font-weight:600">${escHTML(r['CLIENTE']||'-')}</td>
+      <td style="font-size:12px">${escHTML(r['PRODUCTO']||'-')}</td>
       <td style="text-align:right;font-size:12px">$${parseFloat(r['PRECIO UNIT.']||0).toFixed(2)}</td>
       <td style="text-align:center;font-weight:700">${r['CANTIDAD']||'-'}</td>
       <td style="text-align:right;font-size:12px;color:var(--muted)">$${parseFloat(r['SUBTOTAL']||0).toFixed(2)}</td>
@@ -1741,13 +1823,13 @@ function actualizarTablaCentral(datos) {
     const gps   = r['LINK GPS'] ? `<a href="${r['LINK GPS']}" target="_blank" style="color:var(--teal);font-weight:700;font-size:11px">📍 Ver</a>` : '<span style="color:var(--muted);font-size:11px">—</span>';
     const total = r['TOTAL PEDIDO ($)'] ? `<strong style="color:var(--teal)">$${parseFloat(r['TOTAL PEDIDO ($)']).toFixed(2)}</strong>` : '';
     const pago  = r['FORMA DE PAGO'] ? `<span class="badge badge-teal">${r['FORMA DE PAGO']}</span>` : '';
-    const accion = r['_pedidoId'] ? `<button class="btn-editar-fila" onclick="abrirEditarPedido('${r['_pedidoId']}')" title="Editar este pedido">✏ Editar</button><button class="btn-eliminar-fila" onclick="eliminarPedidoCompleto('${r['_pedidoId']}')" title="Eliminar este pedido permanentemente">🗑 Eliminar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>';
+    const accion = (r['_pedidoId'] && ROL_ACTUAL === 'admin') ? `<button class="btn-editar-fila" onclick="abrirEditarPedido('${r['_pedidoId']}')" title="Editar este pedido">✏ Editar</button><button class="btn-eliminar-fila" onclick="eliminarPedidoCompleto('${r['_pedidoId']}')" title="Eliminar este pedido permanentemente">🗑 Eliminar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>'; /* [NEW] Secretaria no ve Editar/Eliminar */
     return `<tr>
       <td style="white-space:nowrap;font-size:12px">${limpiarFecha(r['FECHA'])}</td>
-      <td style="font-size:12px">${(r['ASESOR / RUTA']||'').split(':')[1]?.trim()||r['ASESOR / RUTA']||'-'}</td>
-      <td style="font-weight:600">${r['CLIENTE']||'-'}</td>
-      <td style="font-size:12px;color:var(--muted)">${r['TELÉFONO']||'-'}</td>
-      <td style="font-size:12px">${r['PRODUCTO']||'-'}</td>
+      <td style="font-size:12px">${escHTML((r['ASESOR / RUTA']||'').split(':')[1]?.trim()||r['ASESOR / RUTA']||'-')}</td>
+      <td style="font-weight:600">${escHTML(r['CLIENTE']||'-')}</td>
+      <td style="font-size:12px;color:var(--muted)">${escHTML(r['TELÉFONO']||'-')}</td>
+      <td style="font-size:12px">${escHTML(r['PRODUCTO']||'-')}</td>
       <td style="text-align:center;font-size:12px">${r['CANTIDAD']||'-'}</td>
       <td style="text-align:right;font-size:12px;color:var(--muted)">$${parseFloat(r['SUBTOTAL']||0).toFixed(2)}</td>
       <td style="text-align:right">${total}</td>
@@ -1764,7 +1846,7 @@ function actualizarTablaCentral(datos) {
 function cargarLeaflet(callback) {
   if (leafletLoaded) { callback(); return; }
   const css = document.createElement('link'); css.rel='stylesheet'; css.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; document.head.appendChild(css);
-  const js = document.createElement('script'); js.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'; js.onload=()=>{ leafletLoaded=true; callback(); }; document.head.appendChild(js);
+  const js = document.createElement('script'); js.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'; js.integrity='sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH'; js.crossOrigin='anonymous'; js.onload=()=>{ leafletLoaded=true; callback(); }; document.head.appendChild(js);
 }
 
 function shadeColor(color, percent) {
@@ -1878,13 +1960,13 @@ function renderRutasDia(fecha, asesorFiltro) {
       const iconHtml=`<div style="position:relative;width:42px;height:52px;filter:drop-shadow(0 3px 6px rgba(0,0,0,0.4))"><svg xmlns="http://www.w3.org/2000/svg" width="42" height="52" viewBox="0 0 42 52" style="position:absolute;top:0;left:0"><path d="M21 1C10.5 1 2 9.5 2 20c0 14 19 31 19 31s19-17 19-31C40 9.5 31.5 1 21 1z" fill="${color}" stroke="${borderClr}" stroke-width="2"/><circle cx="21" cy="19" r="13" fill="rgba(255,255,255,0.18)"/></svg><div style="position:absolute;top:5px;left:50%;transform:translateX(-50%);width:18px;height:18px">${personaSVG}</div><div style="position:absolute;top:-4px;right:-4px;background:#fff;color:${color};border:2px solid ${color};border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;line-height:1;font-family:'DM Sans',sans-serif;box-shadow:0 1px 4px rgba(0,0,0,0.3)">${num}</div></div>`;
       const icon=L.divIcon({className:'',html:iconHtml,iconSize:[42,52],iconAnchor:[21,52],popupAnchor:[0,-54]});
       const marker=L.marker([lat,lng],{icon}).addTo(leafletMap);
-      const nombreAsesor=asesorKey.split(':')[1]?.trim()||asesorKey;
-      const prod=r['PRODUCTO']?`<b>${r['PRODUCTO']}</b> × ${r['CANTIDAD']||0}`:'—';
+      const nombreAsesor=escHTML(asesorKey.split(':')[1]?.trim()||asesorKey);
+      const prod=r['PRODUCTO']?`<b>${escHTML(r['PRODUCTO'])}</b> × ${escHTML(String(r['CANTIDAD']||0))}`:'—';
       const total=r['TOTAL PEDIDO ($)']?`<span style="color:#0a7c6e;font-weight:700">$${parseFloat(r['TOTAL PEDIDO ($)']).toFixed(2)}</span>`:'—';
-      const notas=r['NOTAS']?`<div style="margin-top:6px;font-style:italic;color:#555;font-size:11px">📝 ${r['NOTAS']}</div>`:'';
+      const notas=r['NOTAS']?`<div style="margin-top:6px;font-style:italic;color:#555;font-size:11px">📝 ${escHTML(r['NOTAS'])}</div>`:'';
       const linkgps=r['LINK GPS']?`<a href="${r['LINK GPS']}" target="_blank" style="display:inline-block;margin-top:8px;background:#0a7c6e;color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;text-decoration:none">📍 Abrir GPS</a>`:'';
       const precStr=precision>0?`<div style="font-size:10px;color:#999;margin-top:2px">Precisión: ${precision}m${precision>50?' ⚠️':''}</div>`:'';
-      marker.bindPopup(`<div style="font-family:'DM Sans',sans-serif;min-width:200px;max-width:240px"><div style="background:${color};color:#fff;padding:8px 12px;margin:-13px -20px 10px;border-radius:4px 4px 0 0;font-size:12px;font-weight:700">${nombreAsesor} — Parada #${idx+1}</div><div style="font-size:13px;font-weight:700;color:#1a3a5c">${r['CLIENTE']||'-'}</div><div style="font-size:11px;color:#666;margin-top:2px">🕐 ${r['HORA REGISTRO']||'-'}</div>${precStr}<div style="margin-top:8px;font-size:12px">${prod}</div><div style="margin-top:2px;font-size:12px">Total: ${total}</div><div style="margin-top:4px;font-size:11px;color:#888">💳 ${r['FORMA DE PAGO']||'—'}</div>${notas}${linkgps}</div>`,{maxWidth:260});
+      marker.bindPopup(`<div style="font-family:'DM Sans',sans-serif;min-width:200px;max-width:240px"><div style="background:${color};color:#fff;padding:8px 12px;margin:-13px -20px 10px;border-radius:4px 4px 0 0;font-size:12px;font-weight:700">${nombreAsesor} — Parada #${idx+1}</div><div style="font-size:13px;font-weight:700;color:#1a3a5c">${escHTML(r['CLIENTE']||'-')}</div><div style="font-size:11px;color:#666;margin-top:2px">🕐 ${r['HORA REGISTRO']||'-'}</div>${precStr}<div style="margin-top:8px;font-size:12px">${prod}</div><div style="margin-top:2px;font-size:12px">Total: ${total}</div><div style="margin-top:4px;font-size:11px;color:#888">💳 ${r['FORMA DE PAGO']||'—'}</div>${notas}${linkgps}</div>`,{maxWidth:260});
       if(precision>50){ const circle=L.circle([lat,lng],{radius:precision,color,fillColor:color,fillOpacity:0.08,weight:1,dashArray:'4,4'}).addTo(leafletMap); mapMarkers.push(circle); }
       mapMarkers.push(marker); coords.push([lat,lng]); allBounds.push([lat,lng]);
       const key=`${r['CLIENTE']}-${r['HORA REGISTRO']}-${asesorKey}`;
@@ -1964,7 +2046,7 @@ function renderRutaTabla(datos,markerRefs) {
     const asesorKey=r['ASESOR / RUTA']||'', color=RUTA_COLORS[asesorKey]||'#ccc', nombre=asesorKey.split(':')[1]?.trim()||asesorKey||'-';
     const total=r['TOTAL PEDIDO ($)']?`<strong style="color:var(--teal)">$${parseFloat(r['TOTAL PEDIDO ($)']).toFixed(2)}</strong>`:'<span style="color:var(--muted)">—</span>';
     const pago=r['FORMA DE PAGO']?`<span class="badge badge-teal">${r['FORMA DE PAGO']}</span>`:'';
-    const notas=r['NOTAS']?`<span style="font-size:11px;color:var(--muted);font-style:italic" title="${r['NOTAS']}">${r['NOTAS'].substring(0,30)}${r['NOTAS'].length>30?'…':''}</span>`:'<span style="color:var(--muted);font-size:11px">—</span>';
+    const notas=r['NOTAS']?`<span style="font-size:11px;color:var(--muted);font-style:italic" title="${escapeAttr(r['NOTAS'])}">${escHTML(r['NOTAS'].substring(0,30))}${r['NOTAS'].length>30?'…':''}</span>`:'<span style="color:var(--muted);font-size:11px">—</span>';
     const gps=r['LINK GPS']?`<a class="btn-gps-small" href="${r['LINK GPS']}" target="_blank" onclick="event.stopPropagation()">📍 Ver</a>`:'<span style="color:var(--muted);font-size:11px">—</span>';
     const hasGPS=!isNaN(parseFloat(r['LATITUD']))&&!isNaN(parseFloat(r['LONGITUD']));
     const rowClick=hasGPS?`onclick="flyToMarker('${(r['CLIENTE']+'-'+r['HORA REGISTRO']+'-'+asesorKey).replace(/'/g,"\\'")}',${parseFloat(r['LATITUD'])},${parseFloat(r['LONGITUD'])})"`:'';
@@ -1973,9 +2055,9 @@ function renderRutaTabla(datos,markerRefs) {
       <td style="text-align:center;font-size:11px;color:var(--muted);font-weight:700">${idx+1}</td>
       <td><span style="display:inline-flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;display:inline-block"></span><span style="font-size:11px;font-weight:700;color:${color}">${nombre}</span></span></td>
       <td style="font-size:12px;font-weight:700;white-space:nowrap">${r['HORA REGISTRO']||'-'}</td>
-      <td style="font-weight:600">${r['CLIENTE']||'-'}</td>
-      <td style="font-size:11px;color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r['DIRECCIÓN']||''}">${r['DIRECCIÓN']||'-'}</td>
-      <td style="font-size:12px">${r['PRODUCTO']||'-'}</td>
+      <td style="font-weight:600">${escHTML(r['CLIENTE']||'-')}</td>
+      <td style="font-size:11px;color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeAttr(r['DIRECCIÓN']||'')}">${escHTML(r['DIRECCIÓN']||'-')}</td>
+      <td style="font-size:12px">${escHTML(r['PRODUCTO']||'-')}</td>
       <td style="text-align:center;font-size:12px;font-weight:700">${r['CANTIDAD']||'-'}</td>
       <td style="text-align:right">${total}</td>
       <td>${pago}</td>
@@ -2015,7 +2097,7 @@ function exportarClientePDF() {
       totalCliente += valorTotal;
       const totalPedido = r['TOTAL PEDIDO ($)'] ? `$${parseFloat(r['TOTAL PEDIDO ($)']).toFixed(2)}` : '—';
       return `<tr>
-        <td>${r['PRODUCTO']||'-'}</td>
+        <td>${escHTML(r['PRODUCTO']||'-')}</td>
         <td style="text-align:center">${r['CANTIDAD']||'-'}</td>
         <td style="text-align:right">$${valorTotal.toFixed(2)}</td>
         <td style="text-align:right;font-weight:700">${totalPedido}</td>
@@ -2025,7 +2107,7 @@ function exportarClientePDF() {
     totalGeneralTodos += totalCliente;
     return `
       <div class="cliente-bloque">
-        <div class="cliente-bloque-titulo">👤 ${cliente} <span>$${totalCliente.toFixed(2)}</span></div>
+        <div class="cliente-bloque-titulo">👤 ${escHTML(cliente)} <span>$${totalCliente.toFixed(2)}</span></div>
         <table>
           <thead><tr><th>Producto</th><th>Cant.</th><th>Subtotal</th><th>Total</th><th>Pago</th></tr></thead>
           <tbody>
@@ -2299,7 +2381,7 @@ function mostrarDetalleCliente() {
     const tagsPagoCliente = Object.entries(porForma).sort(([,a],[,b]) => b-a).map(([f,v]) => `<span class="badge badge-teal" style="margin-right:4px">${f}: $${v.toFixed(2)}</span>`).join('');
     const filas = c.items.map(r => `
       <tr>
-        <td>${r['PRODUCTO']||'-'}</td>
+        <td>${escHTML(r['PRODUCTO']||'-')}</td>
         <td style="text-align:center">${r['CANTIDAD']||'-'}</td>
         <td style="text-align:right">$${parseFloat(r['SUBTOTAL']||0).toFixed(2)}</td>
         <td style="text-align:right">${r['TOTAL PEDIDO ($)']?'$'+parseFloat(r['TOTAL PEDIDO ($)']).toFixed(2):'—'}</td>
@@ -2308,7 +2390,7 @@ function mostrarDetalleCliente() {
     return `
       <div class="cierre-cliente-block" style="margin:0 0 12px">
         <div class="cierre-cliente-header">
-          <span class="cierre-cliente-nombre" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px" onclick="toggleDetalleClienteBloque(${idx})" title="Clic para ver/ocultar el detalle">👤 ${cliente} <span id="detalleClienteArrow-${idx}" style="font-size:10px;color:var(--teal)">▼</span></span>
+          <span class="cierre-cliente-nombre" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px" onclick="toggleDetalleClienteBloque(${idx})" title="Clic para ver/ocultar el detalle">👤 ${escHTML(cliente)} <span id="detalleClienteArrow-${idx}" style="font-size:10px;color:var(--teal)">▼</span></span>
           <span class="cierre-cliente-meta">💳 ${c.formaPago||'Sin especificar'}</span>
           <span class="cierre-cliente-total">$${totalCliente.toFixed(2)}</span>
         </div>
@@ -2342,6 +2424,124 @@ function toggleDetalleClienteBloque(idx){
   if(arrow) arrow.textContent = abrir ? '▲' : '▼';
 }
 
+/* ════════════════════════════════════════════════════════════
+   [NEW] REPORTE POR ASESOR — clic en una tarjeta para ver el
+   detalle completo: ventas, productos, regalías, cobrado, gastos
+   y desglose por forma de pago, respetando el filtro de fecha
+   general del dashboard (pero ignorando el filtro de asesor, para
+   poder ver siempre todas las tarjetas).
+════════════════════════════════════════════════════════════ */
+let _asesorReporteSeleccionado = null;
+
+function renderReporteAsesores(){
+  const grid = document.getElementById('reporteAsesorCardsGrid');
+  if (!grid) return;
+  const datos = getDatosSoloFecha();
+  const pedidosConTotal = datos.filter(r => r['PRODUCTO'] && r['PRODUCTO'] !== '' && r['TOTAL PEDIDO ($)'] && parseFloat(r['TOTAL PEDIDO ($)']) > 0);
+  const ventasPorRuta = {};
+  pedidosConTotal.forEach(r => { const a = r['ASESOR / RUTA']||''; ventasPorRuta[a] = (ventasPorRuta[a]||0) + (parseFloat(r['TOTAL PEDIDO ($)'])||0); });
+
+  if (!_asesoresCache.length) { grid.innerHTML = '<div class="empty-state"><div class="icon">👤</div>No hay asesores registrados</div>'; return; }
+
+  grid.innerHTML = _asesoresCache.map(ruta => {
+    const color = RUTA_COLORS[ruta] || '#555';
+    const nombre = ruta.split(':')[1]?.trim() || ruta;
+    const total = ventasPorRuta[ruta] || 0;
+    const activo = ruta === _asesorReporteSeleccionado;
+    return `<div class="asesor-card" style="border-left-color:${color};cursor:pointer;${activo?'box-shadow:0 0 0 2px '+color+', var(--shadow)':''}" onclick="seleccionarAsesorReporte('${ruta.replace(/'/g,"\\'")}')">
+      <div class="asesor-card-header"><div class="asesor-dot" style="background:${color}"></div><div class="asesor-nombre" style="color:${color}">${nombre}</div></div>
+      <div class="asesor-stats"><div class="asesor-stat"><div class="asesor-stat-label">Ventas del período</div><div class="asesor-stat-value" style="color:${color}">$${total.toFixed(2)}</div></div></div>
+    </div>`;
+  }).join('');
+
+  if (_asesorReporteSeleccionado) renderReporteAsesorDetalle();
+}
+
+function seleccionarAsesorReporte(ruta){
+  _asesorReporteSeleccionado = ruta;
+  renderReporteAsesores();
+  renderReporteAsesorDetalle();
+  const wrap = document.getElementById('reporteAsesorDetalleWrap');
+  if (wrap) wrap.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function renderReporteAsesorDetalle(){
+  const wrap = document.getElementById('reporteAsesorDetalleWrap');
+  if (!wrap || !_asesorReporteSeleccionado) return;
+  wrap.style.display = 'block';
+  const ruta = _asesorReporteSeleccionado;
+  const nombre = ruta.split(':')[1]?.trim() || ruta;
+  const datos = getDatosSoloFecha().filter(r => (r['ASESOR / RUTA']||'') === ruta);
+  const pedidos = datos.filter(r => r['PRODUCTO'] && r['PRODUCTO'] !== '');
+  const pagos   = datos.filter(r => !r['PRODUCTO'] && r['TOTAL PEDIDO ($)'] > 0 && String(r['TOTAL PEDIDO ($)']).indexOf('-') === -1);
+  const gastos  = datos.filter(r => String(r['TOTAL PEDIDO ($)']).indexOf('-') !== -1);
+  const pedidosConTotal = pedidos.filter(r => r['TOTAL PEDIDO ($)'] && parseFloat(r['TOTAL PEDIDO ($)']) > 0);
+
+  const totalVentas  = pedidosConTotal.reduce((s,r) => s + (parseFloat(r['TOTAL PEDIDO ($)'])||0), 0);
+  const totalCobrado = pagos.reduce((s,r) => s + (parseFloat(r['TOTAL PEDIDO ($)'])||0), 0);
+  const totalGastos  = gastos.reduce((s,r) => s + Math.abs(parseFloat(r['TOTAL PEDIDO ($)'])||0), 0);
+  const clientesUnicos = new Set(pedidos.map(r => r['CLIENTE'])).size;
+  const pedidosUnicos  = new Set(pedidos.map(r => `${r['CLIENTE']}-${r['FECHA']}`)).size;
+
+  const porFormaVentas = {};
+  pedidosConTotal.forEach(r => { const f = r['FORMA DE PAGO']||'Sin especificar'; porFormaVentas[f] = (porFormaVentas[f]||0) + (parseFloat(r['TOTAL PEDIDO ($)'])||0); });
+  const tagsFormaVentas = Object.entries(porFormaVentas).sort(([,a],[,b]) => b-a).map(([f,v]) => `<span class="badge badge-teal" style="margin-right:4px">${f}: $${v.toFixed(2)}</span>`).join('') || '<span style="color:var(--muted);font-size:12px">Sin ventas en este período</span>';
+
+  const porProducto = {}; const porRegalia = {};
+  pedidos.forEach(r => {
+    const nombreProd = r['PRODUCTO']||'';
+    if (nombreProd.startsWith('🎁 REGALO:')) {
+      const limpio = nombreProd.replace('🎁 REGALO: ','');
+      porRegalia[limpio] = (porRegalia[limpio]||0) + (parseFloat(r['CANTIDAD'])||0);
+    } else if (nombreProd) {
+      if (!porProducto[nombreProd]) porProducto[nombreProd] = { cantidad:0, subtotal:0 };
+      porProducto[nombreProd].cantidad += parseFloat(r['CANTIDAD'])||0;
+      porProducto[nombreProd].subtotal += parseFloat(r['SUBTOTAL'])||0;
+    }
+  });
+  const filasProducto = Object.entries(porProducto).sort(([,a],[,b]) => b.subtotal-a.subtotal)
+    .map(([n,d]) => `<tr><td style="font-weight:600">${escHTML(n)}</td><td style="text-align:right">${d.cantidad%1===0?parseInt(d.cantidad):d.cantidad.toFixed(1)}</td><td style="text-align:right;font-weight:700;color:var(--teal)">$${d.subtotal.toFixed(2)}</td></tr>`).join('')
+    || '<tr><td colspan="3" style="text-align:center;color:var(--muted)">Sin productos vendidos</td></tr>';
+  const filasRegalia = Object.entries(porRegalia).sort(([,a],[,b]) => b-a)
+    .map(([n,c]) => `<tr><td style="font-weight:600">🎁 ${escHTML(n)}</td><td style="text-align:right">${c%1===0?parseInt(c):c.toFixed(1)}</td></tr>`).join('')
+    || '<tr><td colspan="2" style="text-align:center;color:var(--muted)">Sin regalías entregadas</td></tr>';
+
+  const filasPedidos = pedidos.slice(0,150).map(r => {
+    const total = r['TOTAL PEDIDO ($)'] ? `<strong style="color:var(--teal)">$${parseFloat(r['TOTAL PEDIDO ($)']).toFixed(2)}</strong>` : '';
+    const pago = r['FORMA DE PAGO'] ? `<span class="badge badge-teal">${r['FORMA DE PAGO']}</span>` : '';
+    return `<tr><td style="font-size:12px">${limpiarFecha(r['FECHA'])}</td><td style="font-weight:600">${escHTML(r['CLIENTE']||'-')}</td><td style="font-size:12px">${escHTML(r['PRODUCTO']||'-')}</td><td style="text-align:center">${r['CANTIDAD']||'-'}</td><td style="text-align:right">${total}</td><td>${pago}</td></tr>`;
+  }).join('') || '<tr><td colspan="6"><div class="empty-state"><div class="icon">📋</div>Sin pedidos en este período</div></td></tr>';
+
+  const filasPagos = pagos.map(r => `<tr><td style="font-weight:600">${escHTML(r['CLIENTE']||'-')}</td><td style="text-align:right;font-weight:700;color:var(--blue)">$${(parseFloat(r['TOTAL PEDIDO ($)'])||0).toFixed(2)}</td><td>${r['FORMA DE PAGO']?`<span class="badge badge-blue">${r['FORMA DE PAGO']}</span>`:'-'}</td><td style="font-size:12px;color:var(--muted)">${limpiarFecha(r['FECHA'])}</td></tr>`).join('')
+    || '<tr><td colspan="4" style="text-align:center;color:var(--muted)">Sin pagos registrados</td></tr>';
+  const filasGastos = gastos.map(r => `<tr><td style="font-weight:600">${escHTML(r['NOTAS']||'-')}</td><td style="text-align:right;font-weight:700;color:var(--red)">$${Math.abs(parseFloat(r['TOTAL PEDIDO ($)'])||0).toFixed(2)}</td><td style="font-size:12px;color:var(--muted)">${limpiarFecha(r['FECHA'])}</td></tr>`).join('')
+    || '<tr><td colspan="3" style="text-align:center;color:var(--muted)">Sin gastos registrados</td></tr>';
+
+  wrap.innerHTML = `
+    <div class="table-card">
+      <div class="table-header"><div class="table-title">👤 ${nombre} — Reporte Detallado</div></div>
+      <div class="kpi-grid" style="padding:1rem 1.25rem 0">
+        <div class="kpi-card teal"><div class="kpi-icon">💰</div><div class="kpi-label">Total ventas</div><div class="kpi-value">$${totalVentas.toFixed(2)}</div><div class="kpi-sub">${pedidosUnicos} pedido(s)</div></div>
+        <div class="kpi-card blue"><div class="kpi-icon">💳</div><div class="kpi-label">Total cobrado</div><div class="kpi-value">$${totalCobrado.toFixed(2)}</div><div class="kpi-sub">${pagos.length} pago(s)</div></div>
+        <div class="kpi-card red"><div class="kpi-icon">📉</div><div class="kpi-label">Total gastos</div><div class="kpi-value">$${totalGastos.toFixed(2)}</div><div class="kpi-sub">${gastos.length} gasto(s)</div></div>
+        <div class="kpi-card orange"><div class="kpi-icon">👥</div><div class="kpi-label">Clientes atendidos</div><div class="kpi-value">${clientesUnicos}</div></div>
+        <div class="kpi-card navy"><div class="kpi-icon">🧮</div><div class="kpi-label">Total en caja</div><div class="kpi-value" style="color:${(totalCobrado-totalGastos)>=0?'#0a7c6e':'#c0392b'}">$${(totalCobrado-totalGastos).toFixed(2)}</div></div>
+      </div>
+      <div class="table-header"><div class="table-title">💳 Formas de pago (ventas)</div></div>
+      <div style="padding:0 1.25rem 14px">${tagsFormaVentas}</div>
+      <div class="table-header"><div class="table-title">📦 Productos vendidos</div></div>
+      <div class="table-wrap"><table><thead><tr><th>Producto</th><th style="text-align:right">Cant.</th><th style="text-align:right">Subtotal</th></tr></thead><tbody>${filasProducto}</tbody></table></div>
+      <div class="table-header"><div class="table-title">🎁 Regalías entregadas</div></div>
+      <div class="table-wrap"><table><thead><tr><th>Regalía</th><th style="text-align:right">Cant.</th></tr></thead><tbody>${filasRegalia}</tbody></table></div>
+      <div class="table-header"><div class="table-title">📋 Detalle de pedidos</div></div>
+      <div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Producto</th><th style="text-align:center">Cant.</th><th style="text-align:right">Total</th><th>Pago</th></tr></thead><tbody>${filasPedidos}</tbody></table></div>
+      <div class="table-header"><div class="table-title">💰 Pagos cobrados</div></div>
+      <div class="table-wrap"><table><thead><tr><th>Cliente</th><th style="text-align:right">Monto</th><th>Forma</th><th>Fecha</th></tr></thead><tbody>${filasPagos}</tbody></table></div>
+      <div class="table-header"><div class="table-title">📉 Gastos registrados</div></div>
+      <div class="table-wrap"><table><thead><tr><th>Descripción</th><th style="text-align:right">Monto</th><th>Fecha</th></tr></thead><tbody>${filasGastos}</tbody></table></div>
+    </div>`;
+}
+
 function limpiarFecha(fecha) {
   if(!fecha) return '-';
   const f=String(fecha);
@@ -2361,7 +2561,7 @@ function abrirCierreDia() {
     const f = String(r['FECHA']||'');
     return f.startsWith(fecha) || f.includes(fecha);
   });
-  const pedidos = datos.filter(r => r['PRODUCTO'] && r['PRODUCTO'] !== '' && parseFloat(r['TOTAL PEDIDO ($)']||0) > 0);
+  const pedidos = datos.filter(r => r['PRODUCTO'] && r['PRODUCTO'] !== ''); /* [FIX] antes exigía TOTAL PEDIDO($)>0, lo que excluía todas las líneas de producto extra y TODAS las regalías de un pedido — el total en $ sigue calculándose igual (vía _pedidosVisto), pero ahora las unidades sí suman completas */
 
   document.getElementById('cierreFechaBadge').textContent = fecha || 'Todos los registros';
 
@@ -2424,7 +2624,7 @@ function abrirCierreDia() {
 
     const filasProductos = prodsOrdenados.map(([nom,p]) => `
       <tr>
-        <td><span style="font-weight:600;color:var(--navy)">${nom}</span></td>
+        <td><span style="font-weight:600;color:var(--navy)">${escHTML(nom)}</span></td>
         <td style="font-weight:700;color:var(--blue)">${p.cantidad % 1 === 0 ? parseInt(p.cantidad) : p.cantidad.toFixed(1)}</td>
         <td style="font-weight:700;color:var(--teal)">$${p.dolares.toFixed(2)}</td>
       </tr>`).join('');
@@ -2449,13 +2649,13 @@ function abrirCierreDia() {
 
     const clientesOrdenados = Object.entries(porCliente).sort(([,a],[,b]) => (a.hora||'').localeCompare(b.hora||''));
 
-    const clientesHtml = clientesOrdenados.map(([cliente, c]) => {
+    const clientesHtml = clientesOrdenados.map(([clienteRaw, c]) => { const cliente = escHTML(clienteRaw);
       const totalesPedido = c.items.map(r => parseFloat(r['TOTAL PEDIDO ($)']||0)).filter(v => v > 0);
       const totalCliente = totalesPedido.length ? totalesPedido[0] : c.items.reduce((s,r) => s + (parseFloat(r['SUBTOTAL']||0)), 0);
 
       const filasProdCliente = c.items.map(r => `
         <tr>
-          <td>${r['PRODUCTO']||'-'}</td>
+          <td>${escHTML(r['PRODUCTO']||'-')}</td>
           <td>$${parseFloat(r['PRECIO UNIT.']||0).toFixed(2)}</td>
           <td>${r['CANTIDAD']||'-'}</td>
           <td>$${parseFloat(r['SUBTOTAL']||0).toFixed(2)}</td>
@@ -2636,7 +2836,7 @@ function exportarPagosPDF() {
   datos.forEach(r => { const f = r['FORMA DE PAGO'] || 'Sin especificar'; porForma[f] = (porForma[f]||0) + (parseFloat(r['TOTAL PEDIDO ($)'])||0); });
   const resumenForma = Object.entries(porForma).sort(([,a],[,b]) => b-a).map(([f,v]) => `<span style="display:inline-block;background:#e8f0fd;border-radius:100px;padding:5px 14px;font-size:11px;font-weight:700;color:#0d47a1;margin:2px">${f}: $${v.toFixed(2)}</span>`).join('');
   const filas = datos.map(r => `<tr>
-    <td>${r['CLIENTE']||'-'}</td>
+    <td>${escHTML(r['CLIENTE']||'-')}</td>
     <td>${(r['ASESOR / RUTA']||'').split(':')[1]?.trim()||r['ASESOR / RUTA']||'-'}</td>
     <td>${r['FORMA DE PAGO']||'-'}</td>
     <td>${limpiarFecha(r['FECHA'])}</td>
@@ -2688,7 +2888,7 @@ function exportarGastosPDF() {
   const filas = datos.map(r => {
     const desc = r['NOTAS'] || r['CLIENTE'] || r['DIRECCIÓN'] || '-';
     return `<tr>
-      <td>${desc}</td>
+      <td>${escHTML(desc)}</td>
       <td>${(r['ASESOR / RUTA']||'').split(':')[1]?.trim()||r['ASESOR / RUTA']||'-'}</td>
       <td>${limpiarFecha(r['FECHA'])}</td>
       <td style="text-align:right">$${Math.abs(parseFloat(r['TOTAL PEDIDO ($)'])||0).toFixed(2)}</td>
@@ -2743,9 +2943,9 @@ function exportarDetallePDF() {
     return `<tr>
       <td>${limpiarFecha(r['FECHA'])}</td>
       <td>${(r['ASESOR / RUTA']||'').split(':')[1]?.trim()||r['ASESOR / RUTA']||'-'}</td>
-      <td>${r['CLIENTE']||'-'}</td>
-      <td>${r['TELÉFONO']||'-'}</td>
-      <td>${r['PRODUCTO']||'-'}</td>
+      <td>${escHTML(r['CLIENTE']||'-')}</td>
+      <td>${escHTML(r['TELÉFONO']||'-')}</td>
+      <td>${escHTML(r['PRODUCTO']||'-')}</td>
       <td style="text-align:center">${r['CANTIDAD']||'-'}</td>
       <td style="text-align:right">$${parseFloat(r['SUBTOTAL']||0).toFixed(2)}</td>
       <td style="text-align:right;font-weight:700">${total}</td>
@@ -2853,7 +3053,7 @@ function renderModalEditarPedido(){
       <div class="editar-field"><label>Dirección</label><input type="text" id="editDireccion" value="${escapeAttr(p.direccion||'')}"></div>
     </div>
     <div class="editar-grid full" style="margin-top:10px">
-      <div class="editar-field"><label>Notas</label><textarea id="editNotas">${p.notas||''}</textarea></div>
+      <div class="editar-field"><label>Notas</label><textarea id="editNotas">${escHTML(p.notas||'')}</textarea></div>
     </div>
 
     <div class="editar-seccion-label">📦 Productos del pedido</div>
@@ -2881,7 +3081,7 @@ function renderModalEditarPedido(){
 function renderProductosEditor(){
   const wrap = document.getElementById('editProductosWrap');
   if(!wrap || !editandoPedidoActual) return;
-  const opcionesProductos = _productosCache.map(prod => `<option value="${escapeAttr(prod.nombre)}">${prod.nombre}</option>`).join('');
+  const opcionesProductos = _productosCache.map(prod => `<option value="${escapeAttr(prod.nombre)}">${escHTML(prod.nombre)}</option>`).join('');
 
   wrap.innerHTML = editandoPedidoActual.productos.map((prod, i) => {
     const subtotal = (parseFloat(prod.cantidad)||0) * (parseFloat(prod.precio)||0);
@@ -3090,29 +3290,29 @@ function renderTablaEliminados(){
   }
   tbody.innerHTML = _eliminadosRaw.map((p, idx) => {
     const total = p.total != null ? `<strong style="color:var(--red)">$${parseFloat(p.total).toFixed(2)}</strong>` : '—';
-    const pago = p.formapago ? `<span class="badge badge-red">${p.formapago}</span>` : '';
-    const asesorNombre = (p.empleado||'').split(':')[1]?.trim() || p.empleado || '-';
+    const pago = p.formapago ? `<span class="badge badge-red">${escHTML(p.formapago)}</span>` : '';
+    const asesorNombre = escHTML((p.empleado||'').split(':')[1]?.trim() || p.empleado || '-');
 
     // Detalle desplegable: productos, regalías, teléfono, dirección, notas, GPS
     const filasProductos = (p.productos||[]).map(prod => {
       let fila = `<tr>
-        <td>${prod.nombre||'-'}</td>
-        <td style="text-align:center">${prod.cantidad!=null?prod.cantidad:'-'}</td>
+        <td>${escHTML(prod.nombre||'-')}</td>
+        <td style="text-align:center">${prod.cantidad!=null?escHTML(String(prod.cantidad)):'-'}</td>
         <td style="text-align:right">$${parseFloat(prod.precio||0).toFixed(2)}</td>
         <td style="text-align:right">$${parseFloat(prod.subtotal||0).toFixed(2)}</td>
       </tr>`;
       if(prod.regalias && prod.regalias.length){
-        fila += prod.regalias.map(reg => `<tr><td colspan="2" style="font-size:11px;color:var(--teal-dark);font-style:italic">🎁 Regalo: ${reg.nombre||'-'} x${reg.cantidad||1}</td><td colspan="2" style="font-size:11px;color:var(--teal-dark);font-style:italic">Regalo</td></tr>`).join('');
+        fila += prod.regalias.map(reg => `<tr><td colspan="2" style="font-size:11px;color:var(--teal-dark);font-style:italic">🎁 Regalo: ${escHTML(reg.nombre||'-')} x${escHTML(String(reg.cantidad||1))}</td><td colspan="2" style="font-size:11px;color:var(--teal-dark);font-style:italic">Regalo</td></tr>`).join('');
       }
       return fila;
     }).join('');
-    const gpsInfo = (p.gps && p.gps.url) ? `<a href="${p.gps.url}" target="_blank" style="color:var(--teal);font-weight:700">📍 Ver ubicación del pedido</a>` : 'Sin GPS registrado';
+    const gpsInfo = (p.gps && p.gps.url) ? `<a href="${escapeAttr(p.gps.url)}" target="_blank" style="color:var(--teal);font-weight:700">📍 Ver ubicación del pedido</a>` : 'Sin GPS registrado';
 
     return `<tr>
       <td style="font-size:12px;white-space:nowrap">${limpiarFecha(p.fechaEliminacion)}</td>
-      <td style="font-size:12px;white-space:nowrap">${p.horaEliminacion||'-'}</td>
-      <td style="font-size:12px;font-weight:700;color:var(--navy)">${p.eliminadoPor||'-'}</td>
-      <td style="font-weight:600">${p.cliente||'-'}</td>
+      <td style="font-size:12px;white-space:nowrap">${escHTML(p.horaEliminacion||'-')}</td>
+      <td style="font-size:12px;font-weight:700;color:var(--navy)">${escHTML(p.eliminadoPor||'-')}</td>
+      <td style="font-weight:600">${escHTML(p.cliente||'-')}</td>
       <td style="font-size:12px">${asesorNombre}</td>
       <td style="font-size:12px;color:var(--muted);white-space:nowrap">${limpiarFecha(p.fecha)}</td>
       <td style="text-align:right">${total}</td>
@@ -3122,9 +3322,9 @@ function renderTablaEliminados(){
     <tr id="filaEliminadoDetalle-${idx}" style="display:none">
       <td colspan="9" style="background:var(--surface2);padding:14px 18px">
         <div style="font-size:12px;color:var(--muted);line-height:1.9;margin-bottom:10px">
-          📞 Teléfono: <b style="color:var(--text)">${p.telefono||'-'}</b> &nbsp;·&nbsp;
-          📍 Dirección: <b style="color:var(--text)">${p.direccion||'-'}</b><br>
-          📝 Notas: <b style="color:var(--text)">${p.notas||'-'}</b> &nbsp;·&nbsp; ${gpsInfo}
+          📞 Teléfono: <b style="color:var(--text)">${escHTML(p.telefono||'-')}</b> &nbsp;·&nbsp;
+          📍 Dirección: <b style="color:var(--text)">${escHTML(p.direccion||'-')}</b><br>
+          📝 Notas: <b style="color:var(--text)">${escHTML(p.notas||'-')}</b> &nbsp;·&nbsp; ${gpsInfo}
         </div>
         <table class="cierre-cliente-table" style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
           <thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Subtotal</th></tr></thead>
@@ -3148,8 +3348,10 @@ function toggleEliminadoDetalle(idx){
 ════════════════════════════════════════════════════════════ */
 function renderInventario(){
   const sel = document.getElementById('invProducto');
-  if (sel && sel.options.length <= 1 && _productosCache.length) {
+  if (sel) {
+    const valorActual = sel.value;
     sel.innerHTML = '<option value="">-- Selecciona --</option>' + _productosCache.map(p => `<option value="${escapeAttrDash(p.nombre)}">${p.nombre}</option>`).join('');
+    if (_productosCache.some(p => p.nombre === valorActual)) sel.value = valorActual; /* [FIX] ahora se actualiza siempre, no solo la primera vez, y conserva la selección si sigue existiendo */
   }
   const stock = {};
   _movimientosInvRaw.forEach(m => {
@@ -3162,14 +3364,14 @@ function renderInventario(){
   if (tbodyStock) {
     tbodyStock.innerHTML = entries.length ? entries.map(([nombre,d]) => {
       const actual = d.entradas - d.salidas;
-      return `<tr><td style="font-weight:600">${nombre}</td><td style="text-align:right;color:var(--teal)">${d.entradas}</td><td style="text-align:right;color:var(--red)">${d.salidas}</td><td style="text-align:right;font-weight:800;color:${actual<0?'var(--red)':'var(--navy)'}">${actual}</td></tr>`;
+      return `<tr><td style="font-weight:600">${escHTML(nombre)}</td><td style="text-align:right;color:var(--teal)">${d.entradas}</td><td style="text-align:right;color:var(--red)">${d.salidas}</td><td style="text-align:right;font-weight:800;color:${actual<0?'var(--red)':'var(--navy)'}">${actual}</td></tr>`;
     }).join('') : '<tr><td colspan="4"><div class="empty-state"><div class="icon">📦</div>Sin movimientos registrados</div></td></tr>';
   }
   const tbodyMov = document.getElementById('tablaMovimientosInv');
   if (tbodyMov) {
     tbodyMov.innerHTML = _movimientosInvRaw.length ? _movimientosInvRaw.slice(0,150).map(m => {
       const tipoBadge = m.tipo === 'entrada' ? '<span class="badge badge-teal">🟢 Entrada</span>' : '<span class="badge badge-red">🔴 Salida</span>';
-      return `<tr><td style="font-size:12px">${limpiarFecha(m.fecha)}</td><td style="font-weight:600">${m.producto}</td><td>${tipoBadge}</td><td style="text-align:right;font-weight:700">${m.cantidad}</td><td style="font-size:12px;color:var(--muted)">${m.motivo||'-'}</td><td style="font-size:12px">${m.usuario||'-'}</td></tr>`;
+      return `<tr><td style="font-size:12px">${limpiarFecha(m.fecha)}</td><td style="font-weight:600">${escHTML(m.producto)}</td><td>${tipoBadge}</td><td style="text-align:right;font-weight:700">${escHTML(String(m.cantidad))}</td><td style="font-size:12px;color:var(--muted)">${escHTML(m.motivo||'-')}</td><td style="font-size:12px">${escHTML(m.usuario||'-')}</td></tr>`;
     }).join('') : '<tr><td colspan="6"><div class="empty-state"><div class="icon">📋</div>Sin historial</div></td></tr>';
   }
 }
@@ -3299,7 +3501,7 @@ function agruparYPrevisualizarImportacion(filas){
 function renderPreviewImportacion(){
   const cont = document.getElementById('importarPreview');
   if (!_pedidosParaImportar.length) { cont.innerHTML = '<div class="empty-state"><div class="icon">📭</div>No se detectaron pedidos válidos en el archivo. Revisa que las columnas coincidan con el formato indicado arriba.</div>'; return; }
-  const filas = _pedidosParaImportar.map(p => `<tr><td style="font-size:12px">${p.fecha}</td><td style="font-size:12px">${p.empleado||'-'}</td><td style="font-weight:600">${p.cliente}</td><td style="text-align:center">${p.productos.length}</td><td style="text-align:right;font-weight:700;color:var(--teal)">$${p.total.toFixed(2)}</td></tr>`).join('');
+  const filas = _pedidosParaImportar.map(p => `<tr><td style="font-size:12px">${escHTML(p.fecha)}</td><td style="font-size:12px">${escHTML(p.empleado||'-')}</td><td style="font-weight:600">${escHTML(p.cliente)}</td><td style="text-align:center">${p.productos.length}</td><td style="text-align:right;font-weight:700;color:var(--teal)">$${p.total.toFixed(2)}</td></tr>`).join('');
   cont.innerHTML = `
     <div style="margin-bottom:10px;font-size:13px;font-weight:700;color:var(--navy)">Se detectaron ${_pedidosParaImportar.length} pedido(s) — revisa antes de confirmar:</div>
     <div class="table-wrap" style="border:1px solid var(--border);border-radius:8px;overflow:hidden;max-height:320px;overflow-y:auto">
@@ -3343,6 +3545,69 @@ function mostrarToastEdicion(msg){
   t.style.opacity = '1';
   clearTimeout(window._toastEdicionTimer);
   window._toastEdicionTimer = setTimeout(()=>{ t.style.opacity = '0'; }, 2600);
+}
+
+/* ════════════════════════════════════════════════════════════
+   [NEW] CREAR USUARIOS — Secretaria (solo Admin), ahora como pestaña
+   del menú lateral en vez de modal — acceso de solo lectura al Dashboard.
+════════════════════════════════════════════════════════════ */
+async function poblarSelectEliminarSecretaria(){
+  const sel = document.getElementById('sec-eliminar-select');
+  sel.innerHTML = '<option value="">-- Selecciona --</option>';
+  try{
+    const snap = await db.collection('usuarios').where('esSecretaria','==',true).get();
+    snap.forEach(doc => {
+      const d = doc.data();
+      const opt = document.createElement('option');
+      opt.value = doc.id;
+      opt.textContent = `${d.nombre||'Secretaria'} (${d.usuario||'-'})`;
+      sel.appendChild(opt);
+    });
+  }catch(e){ console.error(e); }
+}
+async function crearSecretariaReal(){
+  const nombre = document.getElementById('sec-nombre').value.trim();
+  const usuario = document.getElementById('sec-usuario').value.trim().toLowerCase().replace(/[^a-z0-9]/g,'');
+  const pass = document.getElementById('sec-pass').value;
+  if(!nombre){ alert('Ingresa el nombre completo.'); return; }
+  if(!usuario){ alert('Ingresa un usuario válido (solo letras y números, sin espacios).'); return; }
+  if(!pass || pass.length<6){ alert('Firebase exige contraseñas de al menos 6 caracteres.'); return; }
+  const email = _emailDeUsuario(usuario);
+  const btn = document.getElementById('sec-btn-crear');
+  btn.disabled = true; btn.textContent = 'Creando...';
+  try{
+    const cred = await _secondaryAuthDash.createUserWithEmailAndPassword(email, pass);
+    const uid = cred.user.uid;
+    await _secondaryAuthDash.signOut(); // limpia la instancia secundaria, no toca la sesión del admin
+    await db.collection('usuarios').doc(uid).set({
+      usuario, nombre, esAdmin: false, esSecretaria: true, rol: 'SECRETARIA',
+      creadoPor: ADMIN_ACTUAL.uid || null, creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    document.getElementById('sec-resultado').innerHTML = `✓ Cuenta creada — usuario: <b>${usuario}</b>. Ya puede iniciar sesión en este mismo Dashboard con acceso de solo lectura.`;
+    document.getElementById('sec-resultado').style.display = 'block';
+    document.getElementById('sec-nombre').value = '';
+    document.getElementById('sec-usuario').value = '';
+    document.getElementById('sec-pass').value = '';
+    poblarSelectEliminarSecretaria();
+  }catch(err){
+    console.error(err);
+    let msg = 'No se pudo crear la cuenta.';
+    if(err.code === 'auth/email-already-in-use') msg = 'Ese usuario ya existe.';
+    else if(err.code === 'auth/weak-password') msg = 'La contraseña es muy débil (mínimo 6 caracteres).';
+    alert(msg);
+  }finally{
+    btn.disabled = false; btn.textContent = '✅ Crear Secretaria';
+  }
+}
+async function eliminarSecretariaSeleccionada(){
+  const uid = document.getElementById('sec-eliminar-select').value;
+  if(!uid){ alert('Selecciona una cuenta de la lista.'); return; }
+  if(!confirm('¿Quitar el acceso de esta Secretaria? Ya no podrá iniciar sesión.')) return;
+  try{
+    await db.collection('usuarios').doc(uid).delete();
+    mostrarToastEdicion('✓ Acceso de Secretaria revocado.');
+    poblarSelectEliminarSecretaria();
+  }catch(err){ console.error(err); alert('No se pudo eliminar. Revisa la consola del navegador.'); }
 }
 </script>
 
