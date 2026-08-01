@@ -2379,8 +2379,20 @@ function mostrarDetalleCliente() {
     });
   });
 
+  /* [NEW] Orden por llegada (hora, minutos, segundos) — gruposPedido ya viene del más
+     reciente al más antiguo (Firestore ordena los pedidos por creadoEn desc), así que el
+     primer cliente que aparece en ese recorrido es quien tiene el pedido más reciente. */
+  const clientesOrdenPorLlegada = [];
+  const _vistosLlegada = new Set();
+  gruposPedido.forEach(g => {
+    if (!_vistosLlegada.has(g.cliente) && clientesSeleccionados.includes(g.cliente)) {
+      _vistosLlegada.add(g.cliente);
+      clientesOrdenPorLlegada.push(g.cliente);
+    }
+  });
+
   let totalGeneral = 0;
-  const bloques = clientesSeleccionados.filter(c => porCliente[c]).map((cliente, idx) => {
+  const bloques = clientesOrdenPorLlegada.map((cliente, idx) => {
     const c = porCliente[cliente];
     const totalesPedido = c.items.map(r => parseFloat(r['TOTAL PEDIDO ($)']||0)).filter(v => v > 0);
     const totalCliente = totalesPedido.length ? totalesPedido.reduce((s,v) => s+v, 0) : c.items.reduce((s,r) => s+(parseFloat(r['SUBTOTAL']||0)), 0);
