@@ -812,7 +812,7 @@ display: inline-block;
           </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Fecha</th><th>Asesor</th><th>Cliente</th><th>Teléfono</th><th>Producto</th><th>Cant.</th><th>Subtotal</th><th>Total</th><th>Pago</th><th>GPS</th><th>Acciones</th></tr></thead>
+              <thead><tr><th>Fecha</th><th>Hora</th><th>Asesor</th><th>Cliente</th><th>Teléfono</th><th>Producto</th><th>Cant.</th><th>Subtotal</th><th>Total</th><th>Pago</th><th>GPS</th><th>Acciones</th></tr></thead>
               <tbody id="tablaPedidos"></tbody>
             </table>
           </div>
@@ -1490,7 +1490,7 @@ function iniciarListenersDashboard() {
   if (_unsubPagosAll) _unsubPagosAll();
   if (_unsubGastosAll) _unsubGastosAll();
   document.getElementById('kpiGrid').innerHTML = '<div class="loading"><div class="spinner"></div><span>Cargando datos...</span></div>';
-  _unsubPedidosAll = db.collection('pedidos').onSnapshot(snap => { _pedidosRaw = snap.docs.map(d => ({ _id: d.id, ...d.data() })); _recalcularTodosLosDatos(); }, err => { console.error('listener pedidos:', err); document.getElementById('kpiGrid').innerHTML = '<div class="loading"><span>⚠️ Error al cargar datos: '+err.message+'</span></div>'; }); /* [FIX] _id agregado — antes no se guardaba el id del documento, y sin él no era posible editar un pedido puntual */
+  _unsubPedidosAll = db.collection('pedidos').orderBy('creadoEn','desc').onSnapshot(snap => { _pedidosRaw = snap.docs.map(d => ({ _id: d.id, ...d.data() })); _recalcularTodosLosDatos(); }, err => { console.error('listener pedidos:', err); document.getElementById('kpiGrid').innerHTML = '<div class="loading"><span>⚠️ Error al cargar datos: '+err.message+'</span></div>'; }); /* [FIX] _id agregado — antes no se guardaba el id del documento, y sin él no era posible editar un pedido puntual */ /* [NEW] orderBy('creadoEn','desc') — los pedidos más recientes aparecen primero en Detalle de Pedidos */
   _unsubPagosAll   = db.collection('pagos').onSnapshot(snap => { _pagosRaw = snap.docs.map(d => d.data()); _recalcularTodosLosDatos(); }, err => console.error('listener pagos:', err));
   _unsubGastosAll  = db.collection('gastos').onSnapshot(snap => { _gastosRaw = snap.docs.map(d => d.data()); _recalcularTodosLosDatos(); }, err => console.error('listener gastos:', err));
 }
@@ -1698,7 +1698,7 @@ function renderGPS(pedidos) {
 
 function renderTabla(pedidos) {
   const tbody = document.getElementById('tablaPedidos');
-  if (!pedidos.length) { tbody.innerHTML = '<tr><td colspan="11"><div class="empty-state"><div class="icon">📋</div>No hay pedidos en este período</div></td></tr>'; return; }
+  if (!pedidos.length) { tbody.innerHTML = '<tr><td colspan="12"><div class="empty-state"><div class="icon">📋</div>No hay pedidos en este período</div></td></tr>'; return; }
   tbody.innerHTML = pedidos.slice(0,100).map(r => {
     const gps   = r['LINK GPS'] ? `<a href="${r['LINK GPS']}" target="_blank" style="color:var(--teal);font-weight:700;font-size:11px">📍 Ver</a>` : '<span style="color:var(--muted);font-size:11px">—</span>';
     const total = r['TOTAL PEDIDO ($)'] ? `<strong style="color:var(--teal)">$${parseFloat(r['TOTAL PEDIDO ($)']).toFixed(2)}</strong>` : '';
@@ -1708,6 +1708,7 @@ function renderTabla(pedidos) {
     const accion = (r['_pedidoId'] && ROL_ACTUAL === 'admin') ? `<button class="btn-editar-fila" onclick="abrirEditarPedido('${r['_pedidoId']}')" title="Editar este pedido">✏ Editar</button><button class="btn-eliminar-fila" onclick="eliminarPedidoCompleto('${r['_pedidoId']}')" title="Eliminar este pedido permanentemente">🗑 Eliminar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>'; /* [NEW] Secretaria no ve Editar/Eliminar */
     return `<tr>
       <td style="white-space:nowrap;font-size:12px">${limpiarFecha(r['FECHA'])}</td>
+      <td style="white-space:nowrap;font-size:12px;color:var(--muted)">${escHTML(r['HORA REGISTRO']||'-')}</td>
       <td style="font-size:12px">${escHTML((r['ASESOR / RUTA']||'').split(':')[1]?.trim()||r['ASESOR / RUTA']||'-')}</td>
       <td style="font-weight:600">${escHTML(r['CLIENTE']||'-')}</td>
       <td style="font-size:12px;color:var(--muted)">${escHTML(r['TELÉFONO']||'-')}</td>
@@ -1838,7 +1839,7 @@ function actualizarTablaCentral(datos) {
   pedidosDetalleActuales = datos;
   poblarClienteSelect(datos);
   document.getElementById('clienteCard').style.display = 'block';
-  if (!datos.length) { tbody.innerHTML='<tr><td colspan="11"><div class="empty-state"><div class="icon">📋</div>No hay pedidos con estos filtros</div></td></tr>'; return; }
+  if (!datos.length) { tbody.innerHTML='<tr><td colspan="12"><div class="empty-state"><div class="icon">📋</div>No hay pedidos con estos filtros</div></td></tr>'; return; }
   tbody.innerHTML = datos.map(r => {
     const gps   = r['LINK GPS'] ? `<a href="${r['LINK GPS']}" target="_blank" style="color:var(--teal);font-weight:700;font-size:11px">📍 Ver</a>` : '<span style="color:var(--muted);font-size:11px">—</span>';
     const total = r['TOTAL PEDIDO ($)'] ? `<strong style="color:var(--teal)">$${parseFloat(r['TOTAL PEDIDO ($)']).toFixed(2)}</strong>` : '';
@@ -1846,6 +1847,7 @@ function actualizarTablaCentral(datos) {
     const accion = (r['_pedidoId'] && ROL_ACTUAL === 'admin') ? `<button class="btn-editar-fila" onclick="abrirEditarPedido('${r['_pedidoId']}')" title="Editar este pedido">✏ Editar</button><button class="btn-eliminar-fila" onclick="eliminarPedidoCompleto('${r['_pedidoId']}')" title="Eliminar este pedido permanentemente">🗑 Eliminar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>'; /* [NEW] Secretaria no ve Editar/Eliminar */
     return `<tr>
       <td style="white-space:nowrap;font-size:12px">${limpiarFecha(r['FECHA'])}</td>
+      <td style="white-space:nowrap;font-size:12px;color:var(--muted)">${escHTML(r['HORA REGISTRO']||'-')}</td>
       <td style="font-size:12px">${escHTML((r['ASESOR / RUTA']||'').split(':')[1]?.trim()||r['ASESOR / RUTA']||'-')}</td>
       <td style="font-weight:600">${escHTML(r['CLIENTE']||'-')}</td>
       <td style="font-size:12px;color:var(--muted)">${escHTML(r['TELÉFONO']||'-')}</td>
@@ -2399,6 +2401,16 @@ function mostrarDetalleCliente() {
     const porForma = {};
     c.items.forEach(r => { const f = r['FORMA DE PAGO'] || 'Sin especificar'; porForma[f] = (porForma[f]||0) + (parseFloat(r['SUBTOTAL'])||0); });
     const tagsPagoCliente = Object.entries(porForma).sort(([,a],[,b]) => b-a).map(([f,v]) => `<span class="badge badge-teal" style="margin-right:4px">${f}: $${v.toFixed(2)}</span>`).join('');
+    /* [NEW] Deuda Vigente — a diferencia del resto de este bloque (que respeta el filtro de
+       fecha activo arriba), esto se calcula sobre TODO el historial del cliente, porque una
+       deuda no se limita al día filtrado. No toca ni cambia el resto de los cálculos. */
+    const _todosPedidosCliente = todosLosDatos.filter(r => r['CLIENTE'] === cliente && r['PRODUCTO'] && parseFloat(r['TOTAL PEDIDO ($)']||0) > 0);
+    const _creditoTotalCliente = _todosPedidosCliente.filter(r => (r['FORMA DE PAGO']||'') === 'Crédito').reduce((s,r) => s + (parseFloat(r['TOTAL PEDIDO ($)'])||0), 0);
+    const _pagosTotalCliente = todosLosDatos.filter(r => r['CLIENTE'] === cliente && !r['PRODUCTO'] && parseFloat(r['TOTAL PEDIDO ($)']||0) > 0 && String(r['TOTAL PEDIDO ($)']).indexOf('-') === -1).reduce((s,r) => s + (parseFloat(r['TOTAL PEDIDO ($)'])||0), 0);
+    const _deudaVigente = _creditoTotalCliente - _pagosTotalCliente;
+    const deudaHtml = _deudaVigente > 0.005
+      ? `<div><div style="font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--red)">💳 Deuda vigente</div><div style="font-weight:800;color:var(--red);font-size:14px">$${_deudaVigente.toFixed(2)}</div></div>`
+      : (_creditoTotalCliente > 0 ? `<div><div style="font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted)">💳 Deuda vigente</div><div style="font-weight:800;color:var(--teal);font-size:14px">✅ Al día</div></div>` : '');
     const filas = c.items.map(r => `
       <tr>
         <td>${escHTML(r['PRODUCTO']||'-')}</td>
@@ -2419,6 +2431,7 @@ function mostrarDetalleCliente() {
           <div><div style="font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted)">Cantidad total</div><div style="font-weight:800;color:var(--navy);font-size:14px">${cantidadTotal%1===0?parseInt(cantidadTotal):cantidadTotal.toFixed(1)} unidad(es)</div></div>
           <div><div style="font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted)">Total</div><div style="font-weight:800;color:var(--teal);font-size:14px">$${totalCliente.toFixed(2)}</div></div>
           <div><div style="font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted)">Formas de pago</div><div style="margin-top:2px">${tagsPagoCliente}</div></div>
+          ${deudaHtml}
         </div>
         <table class="cierre-cliente-table">
           <thead><tr><th>Producto</th><th>Cant.</th><th>Subtotal</th><th>Total</th><th>Pago</th></tr></thead>
