@@ -901,7 +901,6 @@ body { padding: 1rem 0.75rem 3rem; }
 <script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-app-compat.js" integrity="sha384-tgDxKHbfk8o2rrXLSytbpDGsGk0bdZehHXoeD7LhuGriE89B5ovitrlBu7FX4kj/" crossorigin="anonymous"></script>
 <script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-auth-compat.js" integrity="sha384-UaGuhpArNP+gULAiiQrJNwk1AWTIZsfFEygQkDQYIGsTjoBmbSXgWfQeFJJXuFub" crossorigin="anonymous"></script>
 <script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore-compat.js" integrity="sha384-O2tgK2bVAUCyEX//gu7nH2z8A92RsaKhRAQABpJ7kLaF/4KQYEltHstFCV7nxWpr" crossorigin="anonymous"></script>
-<script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-app-check-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
 <script>
 const SCRIPT_URL     = "https://script.google.com/macros/s/AKfycbzKcilhv6mJf61EnC1Plows6sPd1DIgirpNoSE5KG751k8LW89l0b8HkTvSot07i9F4/exec";
@@ -922,14 +921,12 @@ const firebaseConfig = {
   measurementId: "G-L0YP0548Y6"
 };
 firebase.initializeApp(firebaseConfig);
-/* [SECURITY FIX] Firebase App Check — verifica que las llamadas a Auth/Firestore vengan
-   realmente de esta app (no de un script armado a mano con el firebaseConfig público).
-   Mientras esté en modo "Monitor" en Firebase Console, esto NO bloquea nada — solo registra
-   métricas. Cuando confirmemos que todo funciona bien, se cambia a "Aplicar" en la consola. */
-firebase.appCheck().activate(
-  '6Leu0nAtAAAAACV2-G97q5BNW2RZ_lHzEUuIxLfn',
-  true // refresca el token automáticamente
-);
+/* [SECURITY — REVERTIDO en esta app] Se probó Firebase App Check aquí, pero se confirmó
+   que rompe el guardado offline: reCAPTCHA v3 necesita renovar su token contra los
+   servidores de Google cada cierto tiempo, y si el asesor está sin señal en ese momento,
+   la escritura a Firestore se queda esperando ese token y nunca guarda. La capacidad
+   offline es el núcleo del negocio en ruta, así que App Check se deja SOLO en el
+   Dashboard (dashboard.html) — el admin siempre trabaja con internet en oficina. */
 const auth = firebase.auth();
 const db   = firebase.firestore();
 // [NEW] Persistencia offline nativa de Firestore — reemplaza el IndexedDB/cola manual
