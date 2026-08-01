@@ -1417,11 +1417,18 @@ async function confirmarEnvio(){
     creadoPor:usuarioActual?.uid||null, creadoEn:firebase.firestore.FieldValue.serverTimestamp()
   };
   const modoOffline=!navigator.onLine;
-  try{
-    // [NEW] Firestore encola el guardado solo si no hay internet (persistencia offline
-    // ya activada) — no hace falta manejar la cola nosotros, como con Sheets.
-    const refPedido = await db.collection('pedidos').add(doc);
-    _descontarInventarioAutomatico(doc, refPedido.id); // [NEW] descuenta stock automáticamente por esta venta — no bloquea el guardado si falla
+  /* [NEW] Extraído de la versión anterior (Google Sheets): esa versión nunca esperaba
+     una respuesta de red indefinidamente — si ya sabía que no había internet, guardaba
+     localmente al instante (`guardarEnLocalStorageSync` + `onExito(true)`, sin await).
+     Aquí se aplica el mismo principio, pero usando Firestore por debajo: la escritura se
+     dispara ya (Firestore la encola localmente al instante gracias a la persistencia
+     offline), y el resto de este bloque decide cuánto esperar antes de confirmar en
+     pantalla — nunca de forma indefinida, igual que antes. */
+  const escrituraPedido = db.collection('pedidos').add(doc)
+    .then(refPedido => { _descontarInventarioAutomatico(doc, refPedido.id); return refPedido; })
+    .catch(err => { console.warn('Pedido en cola, pendiente de sincronizar:', err); return null; });
+
+  const mostrarExito = () => {
     ultimoRegistro={...dataPendiente};
     // [FIX] Ya no hace falta guardarEnHistorial() manual — el listener en tiempo real
     // de Firestore actualiza el Historial solo, apenas se confirma este pedido.
@@ -1430,6 +1437,21 @@ async function confirmarEnvio(){
     document.getElementById('btnWhatsapp').classList.add('visible');
     document.getElementById('btnPdf').style.display='flex';
     limpiarSoloFormulario();
+  };
+
+  try{
+    if(modoOffline){
+      // [NEW] Igual que la versión anterior: si YA sabemos que no hay internet, no se
+      // espera nada de red — se confirma al instante.
+      mostrarExito();
+    } else {
+      // [NEW] El navegador dice que hay señal, pero por si acaso está desactualizado
+      // (típico justo al perder la conexión), se pone un tope de 4s en vez de esperar
+      // indefinidamente — pasado ese tiempo, se confirma igual (Firestore ya la encoló
+      // localmente) en vez de dejar al asesor viendo "Guardando..." sin fin.
+      await Promise.race([ escrituraPedido, new Promise(res=>setTimeout(res,4000)) ]);
+      mostrarExito();
+    }
   }catch(err){
     console.error(err);
     setStatus('error','No se pudo guardar el pedido. Revisa tu conexión e inténtalo de nuevo.');
