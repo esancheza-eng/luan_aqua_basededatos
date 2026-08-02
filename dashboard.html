@@ -3401,6 +3401,9 @@ async function registrarMovimientoInventario(){
   } catch(err) { console.error(err); alert('❌ No se pudo registrar el movimiento: ' + err.message); }
 }
 function escapeAttrDash(s){ return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+/* [FIX] escapeAttr se había borrado por accidente al reescribir Consultar por Cliente —
+   esto rompía TODO lo que la usaba (Consultar por Cliente, Pedidos Eliminados, Editar Pedido, etc.) */
+function escapeAttr(s){ return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
 /* ════════════════════════════════════════════════════════════
    [NEW] ROLES DE PAGO — sueldo base + comisión por ventas
