@@ -633,6 +633,16 @@ display: inline-block;
 .editar-seccion-label:first-child { margin-top: 0; padding-top: 0; border-top: none; }
 .editar-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .editar-grid.full { grid-template-columns: 1fr; }
+/* [NEW] Modal 360° de Consultar por Cliente */
+.detail-item-dash {
+  background: var(--surface2); border-radius: 10px; padding: 10px 14px;
+}
+.detail-item-dash label {
+  display: block; font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 4px;
+}
+.detail-item-dash strong { font-size: 14px; font-weight: 800; color: var(--navy); }
+tr.clickable:hover td { background: rgba(10,124,110,0.05); }
 .editar-field label {
   display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
   color: var(--muted); margin-bottom: 5px;
@@ -791,6 +801,7 @@ display: inline-block;
             <button class="dash-nav-item" data-section="roles" id="navRoles" onclick="switchSeccionDash('roles')">💵 Roles de Pago</button>
             <button class="dash-nav-item" data-section="importar" id="navImportar" onclick="switchSeccionDash('importar')">📤 Importar Datos</button>
             <button class="dash-nav-item" data-section="usuarios" id="navUsuarios" onclick="switchSeccionDash('usuarios'); poblarSelectEliminarSecretaria();">👩‍💼 Crear Usuarios</button>
+            <button class="dash-nav-item" data-section="pedidosweb" id="navPedidosWeb" onclick="switchSeccionDash('pedidosweb')">🌐 Pedidos Web</button>
           </nav>
           <div class="dash-content">
         <div class="dash-section active" id="seccion-resumen">
@@ -828,56 +839,27 @@ display: inline-block;
         <div class="table-card" id="clienteCard" style="display:none">
           <div class="table-header">
             <div class="table-title">🔍 Consultar por Cliente</div>
-            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-              <button class="btn-filter" style="background:#c0392b;display:flex;align-items:center;gap:6px" onclick="exportarClientePDF()">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM7.5 12h2c.83 0 1.5.67 1.5 1.5S10.33 15 9.5 15H8v2H7v-5zm1 2h1c.28 0 .5-.22.5-.5s-.22-.5-.5-.5h-1v1zM12 12h2c.55 0 1 .45 1 1v3c0 .55-.45 1-1 1h-2v-5zm1 4h1v-3h-1v3zM16 12h2v1h-1v1h1v1h-1v2h-1v-5z"/></svg>
-                Exportar a PDF
-              </button>
-              <div id="clienteMontoWrap" style="position:relative;min-width:170px">
-                <button type="button" class="btn-filter" style="background:var(--surface2);color:var(--navy);border:1.5px solid var(--border);width:100%;justify-content:space-between;display:flex;align-items:center;gap:8px" onclick="toggleMontoDropdown()">
-                  <span id="clienteMontoLabel">Total $$</span>
-                  <svg width="11" height="11" viewBox="0 0 12 12" fill="none" style="flex-shrink:0"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </button>
-                <div id="clienteMontoDropdownPanel" style="display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:60;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-lg);width:220px;max-height:320px;flex-direction:column">
-                  <div style="padding:10px 10px 6px;border-bottom:1px solid var(--border)">
-                    <label style="display:flex;align-items:center;gap:9px;padding:7px 4px;cursor:pointer;font-size:13px;font-weight:700;color:var(--teal)">
-                      <input type="checkbox" id="clienteMontoSeleccionarTodos" onchange="toggleSeleccionarTodosMontos(this.checked)" style="width:16px;height:16px;accent-color:var(--teal);flex-shrink:0">
-                      Seleccionar todos
-                    </label>
-                  </div>
-                  <div id="clienteMontoCheckList" style="overflow-y:auto;max-height:210px;padding:2px 10px 8px"></div>
-                  <div style="padding:8px 10px;border-top:1px solid var(--border);display:flex;gap:8px">
-                    <button type="button" class="btn-filter" style="flex:1;background:var(--muted)" onclick="limpiarSeleccionMontos()">Limpiar</button>
-                    <button type="button" class="btn-filter" style="flex:1" onclick="cerrarMontoDropdown()">Listo</button>
-                  </div>
-                </div>
-              </div>
-              <div id="clienteMultiWrap" style="position:relative;min-width:240px">
-                <button type="button" class="btn-filter" style="background:var(--surface2);color:var(--navy);border:1.5px solid var(--border);width:100%;justify-content:space-between;display:flex;align-items:center;gap:8px" onclick="toggleClienteDropdown()">
-                  <span id="clienteMultiLabel">-- Selecciona clientes --</span>
-                  <svg width="11" height="11" viewBox="0 0 12 12" fill="none" style="flex-shrink:0"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </button>
-                <div id="clienteDropdownPanel" style="display:none;position:absolute;top:calc(100% + 4px);right:0;z-index:60;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-lg);width:280px;max-height:340px;flex-direction:column">
-                  <div style="padding:10px 10px 6px">
-                    <input type="text" id="clienteBuscarInput" placeholder="🔍 Buscar cliente..." oninput="filtrarListaClientes()" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none">
-                  </div>
-                  <div style="padding:0 10px 6px;border-bottom:1px solid var(--border)">
-                    <label style="display:flex;align-items:center;gap:9px;padding:7px 4px;cursor:pointer;font-size:13px;font-weight:700;color:var(--teal)">
-                      <input type="checkbox" id="clienteSeleccionarTodos" onchange="toggleSeleccionarTodosClientes(this.checked)" style="width:16px;height:16px;accent-color:var(--teal);flex-shrink:0">
-                      Seleccionar todos
-                    </label>
-                  </div>
-                  <div id="clienteCheckList" style="overflow-y:auto;max-height:210px;padding:2px 10px 8px"></div>
-                  <div style="padding:8px 10px;border-top:1px solid var(--border);display:flex;gap:8px">
-                    <button type="button" class="btn-filter" style="flex:1;background:var(--muted)" onclick="limpiarSeleccionClientes()">Limpiar</button>
-                    <button type="button" class="btn-filter" style="flex:1" onclick="cerrarClienteDropdown()">Listo</button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <span style="font-size:12px;color:var(--muted)" id="clienteContadorTabla">0 clientes</span>
           </div>
-          <div id="clienteDetalleContenido" style="padding:1rem 1.25rem">
-            <div class="empty-state"><div class="icon">👤</div>Selecciona uno o más clientes para ver el detalle</div>
+          <div style="padding:14px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--border)">
+            <input type="text" id="clienteBusquedaTabla" placeholder="🔍 Buscar por nombre, teléfono o dirección..." oninput="mostrarDetalleCliente()" style="flex:1;min-width:240px;background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;padding:9px 12px;outline:none">
+            <select id="clienteFiltroEstado" onchange="mostrarDetalleCliente()" style="background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;padding:9px 12px;outline:none;cursor:pointer">
+              <option value="">Todos los estados</option>
+              <option value="VIP">VIP</option>
+              <option value="Activo">Activo</option>
+              <option value="Riesgo">Riesgo</option>
+              <option value="Inactivo">Inactivo</option>
+            </select>
+            <select id="clienteFiltroAsesorTabla" onchange="mostrarDetalleCliente()" style="background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;padding:9px 12px;outline:none;cursor:pointer">
+              <option value="">Todos los asesores</option>
+            </select>
+            <button class="btn-filter" id="btnExportarClientesSeleccionados" style="background:#c0392b;display:none;align-items:center;gap:6px" onclick="exportarClientesSeleccionadosPDF()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM7.5 12h2c.83 0 1.5.67 1.5 1.5S10.33 15 9.5 15H8v2H7v-5zm1 2h1c.28 0 .5-.22.5-.5s-.22-.5-.5-.5h-1v1zM12 12h2c.55 0 1 .45 1 1v3c0 .55-.45 1-1 1h-2v-5zm1 4h1v-3h-1v3zM16 12h2v1h-1v1h1v1h-1v2h-1v-5z"/></svg>
+              <span id="btnExportarClientesTexto">Exportar seleccionados a PDF</span>
+            </button>
+          </div>
+          <div id="clienteDetalleContenido" style="padding:0">
+            <div class="empty-state" style="padding:2rem"><div class="icon">👤</div>No hay clientes en este período</div>
           </div>
         </div>
         </div>
@@ -1023,6 +1005,17 @@ display: inline-block;
             <div class="editar-field"><label>Selecciona la cuenta a eliminar</label><select id="sec-eliminar-select"><option value="">-- Selecciona --</option></select></div>
             <button class="btn-eliminar-fila" style="padding:9px 16px" onclick="eliminarSecretariaSeleccionada()">🗑 Eliminar acceso</button>
           </div>
+        </div>
+        </div>
+        <div class="dash-section" id="seccion-pedidosweb">
+        <!-- [NEW] Pedidos Web — cola de pedidos que llegan de la página pública, pendientes de aprobación -->
+        <div class="table-card">
+          <div class="table-header">
+            <div class="table-title">🌐 Pedidos Web — Pendientes de Aprobación</div>
+            <span class="last-update" id="pedidosWebCount" style="margin-left:0">Cargando...</span>
+          </div>
+          <div style="font-size:11px;color:var(--muted);padding:0 1.25rem 12px">Estos pedidos llegaron desde la página web pública y todavía NO forman parte de las ventas reales — revísalos y apruébalos (asignando asesor y forma de pago) para que entren al sistema, o recházalos si son inválidos.</div>
+          <div id="listaPedidosWeb" style="padding:0 1.25rem 1.25rem"></div>
         </div>
         </div>
           </div>
@@ -1242,6 +1235,7 @@ function cerrarSesion() {
   detenerListenerEliminados(); // [NEW]
   detenerListenerInventario(); // [NEW]
   detenerListenerRolesHistorial(); // [NEW]
+  detenerListenerPedidosWeb(); // [NEW]
   auth.signOut(); // la limpieza del overlay ocurre en onAuthStateChanged, más abajo
 }
 
@@ -1269,6 +1263,7 @@ auth.onAuthStateChanged(async (user)=>{
     detenerListenerEliminados(); // [NEW]
     detenerListenerInventario(); // [NEW]
     detenerListenerRolesHistorial(); // [NEW]
+    detenerListenerPedidosWeb(); // [NEW]
     document.getElementById('loginOverlay').classList.remove('hidden');
     document.getElementById('loginUser').value = '';
     document.getElementById('loginPass').value = '';
@@ -1362,6 +1357,7 @@ function iniciar() {
     _iniciarListenerEliminados(); // [NEW] respaldo de pedidos eliminados
     _iniciarListenerInventario(); // [NEW] entradas y salidas
     _iniciarListenerRolesHistorial(); // [NEW] historial de roles de pago
+    _iniciarListenerPedidosWeb(); // [NEW] cola de pedidos de la página web
     poblarSelectEliminarSecretaria(); // [NEW]
   }
   document.getElementById('invFecha').value = hoy; // [NEW]
@@ -1372,13 +1368,13 @@ function iniciar() {
 /* [NEW] Oculta las secciones y botones que son solo para Admin cuando entra Secretaria */
 function aplicarRestriccionesRol(){
   const esSecretaria = ROL_ACTUAL === 'secretaria';
-  ['navEliminados','navInventario','navRoles','navImportar','navUsuarios'].forEach(id => {
+  ['navEliminados','navInventario','navRoles','navImportar','navUsuarios','navPedidosWeb'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = esSecretaria ? 'none' : '';
   });
   if (esSecretaria) {
     // Si por alguna razón queda una de esas secciones activa, regresa a Resumen General
-    const seccionActivaOculta = ['eliminados','inventario','roles','importar','usuarios'].some(s => {
+    const seccionActivaOculta = ['eliminados','inventario','roles','importar','usuarios','pedidosweb'].some(s => {
       const sec = document.getElementById('seccion-'+s);
       return sec && sec.classList.contains('active');
     });
@@ -2183,174 +2179,31 @@ function exportarClientePDF() {
 /* ════════════════════════════════════════
    CONSULTAR POR CLIENTE
 ════════════════════════════════════════ */
-/* [NEW] Buscador multi-selección de clientes (checkboxes) */
-let clientesDisponibles = [];
-let clientesSeleccionados = [];
-let _clienteAutoSeleccionTodos = true; // [NEW] hasta que el usuario toque manualmente la selección, se mantienen todos los clientes marcados por defecto
-/* [NEW] Buscador multi-selección de montos (checkboxes) — reemplaza el select "Total mín." */
-let montosDisponibles = [];
-let montosSeleccionados = [];
-let _montoAutoSeleccionTodos = true; // [NEW] igual que con clientes: por defecto todos los montos quedan marcados
+/* [NEW] Estado de negocio de un cliente, según reglas exactas del negocio:
+   VIP: última compra <=30 días Y total histórico >= $500
+   ACTIVO: última compra <=30 días Y total histórico < $500
+   RIESGO: última compra entre 31 y 60 días
+   INACTIVO: última compra >60 días (o nunca ha comprado en el período analizado) */
+function _calcularEstadoCliente(diasSinPedido, totalHistorico) {
+  if (diasSinPedido <= 30) return totalHistorico >= 500 ? 'VIP' : 'Activo';
+  if (diasSinPedido <= 60) return 'Riesgo';
+  return 'Inactivo';
+}
+function _badgeEstadoCliente(estado) {
+  const map = {
+    'VIP':      '<span class="badge" style="background:#f3e5f5;color:#7b1fa2">VIP</span>',
+    'Activo':   '<span class="badge badge-teal">Activo</span>',
+    'Riesgo':   '<span class="badge" style="background:#fdf0e2;color:#c05800">Riesgo</span>',
+    'Inactivo': '<span class="badge" style="background:#fbe9e7;color:var(--red)">Inactivo</span>'
+  };
+  return map[estado] || estado;
+}
 
-function poblarClienteSelect(datos) {
-  // La lista de clientes seleccionables respeta el filtro de fecha/asesor activo arriba
-  // (ej. "Hoy" + un asesor específico) — solo aparecen los clientes de ese día/asesor.
-  clientesDisponibles = [...new Set(datos.map(r => r['CLIENTE']).filter(Boolean))].sort((a,b) => String(a).localeCompare(String(b)));
-  if (_clienteAutoSeleccionTodos) {
-    clientesSeleccionados = [...clientesDisponibles]; // [NEW] por defecto, todos los clientes seleccionados
-  } else {
-    clientesSeleccionados = clientesSeleccionados.filter(c => clientesDisponibles.includes(c)); // descarta selección que ya no aplica al filtro
-  }
-  renderListaClientesCheck(document.getElementById('clienteBuscarInput') ? document.getElementById('clienteBuscarInput').value : '');
-  actualizarLabelClientes();
-  actualizarCheckTodos(); // [NEW]
-  poblarFiltroTotalCliente(datos); // [NEW]
-  mostrarDetalleCliente();
-}
-/* [NEW] Llena el filtro "Total $$" (checkboxes) con los montos reales que existen en los pedidos actuales */
-function poblarFiltroTotalCliente(datos) {
-  montosDisponibles = [...new Set(
-    datos.map(r => parseFloat(r['TOTAL PEDIDO ($)'])).filter(v => v > 0)
-  )].sort((a,b) => a - b);
-  if (_montoAutoSeleccionTodos) {
-    montosSeleccionados = [...montosDisponibles]; // [NEW] por defecto, todos los montos seleccionados
-  } else {
-    montosSeleccionados = montosSeleccionados.filter(m => montosDisponibles.some(d => Math.abs(d - m) < 0.005));
-  }
-  renderListaMontosCheck();
-  actualizarLabelMontos();
-  actualizarCheckTodosMontos();
-}
-function renderListaMontosCheck() {
-  const cont = document.getElementById('clienteMontoCheckList');
-  if (!cont) return;
-  if (!montosDisponibles.length) { cont.innerHTML = '<div style="padding:12px 4px;text-align:center;color:var(--muted);font-size:12px">Sin montos</div>'; return; }
-  cont.innerHTML = montosDisponibles.map(v => {
-    const marcado = montosSeleccionados.some(m => Math.abs(m - v) < 0.005) ? 'checked' : '';
-    return `<label style="display:flex;align-items:center;gap:9px;padding:7px 4px;cursor:pointer;font-size:13px;color:var(--text);border-radius:6px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"><input type="checkbox" ${marcado} onchange="toggleMontoSeleccionado(${v},this.checked)" style="width:16px;height:16px;accent-color:var(--teal);flex-shrink:0"><span>$${v.toFixed(2)}</span></label>`;
-  }).join('');
-}
-function toggleMontoSeleccionado(valor, marcado) {
-  _montoAutoSeleccionTodos = false; // [NEW] el usuario ya tomó control manual del filtro
-  if (marcado) { if (!montosSeleccionados.some(m => Math.abs(m - valor) < 0.005)) montosSeleccionados.push(valor); }
-  else { montosSeleccionados = montosSeleccionados.filter(m => Math.abs(m - valor) >= 0.005); }
-  actualizarLabelMontos();
-  actualizarCheckTodosMontos();
-  mostrarDetalleCliente();
-}
-function toggleSeleccionarTodosMontos(marcado) {
-  _montoAutoSeleccionTodos = false; // [NEW] acción manual del usuario
-  montosSeleccionados = marcado ? [...montosDisponibles] : [];
-  renderListaMontosCheck();
-  actualizarLabelMontos();
-  mostrarDetalleCliente();
-}
-function actualizarCheckTodosMontos() {
-  const chk = document.getElementById('clienteMontoSeleccionarTodos');
-  if (!chk) return;
-  const todosMarcados = montosDisponibles.length > 0 && montosDisponibles.every(v => montosSeleccionados.some(m => Math.abs(m - v) < 0.005));
-  chk.checked = todosMarcados;
-  chk.indeterminate = !todosMarcados && montosSeleccionados.length > 0;
-}
-function actualizarLabelMontos() {
-  const label = document.getElementById('clienteMontoLabel');
-  if (!label) return;
-  if (!montosDisponibles.length || montosSeleccionados.length === montosDisponibles.length) label.textContent = 'Total $$';
-  else if (!montosSeleccionados.length) label.textContent = 'Ningún monto';
-  else label.textContent = `${montosSeleccionados.length} monto(s)`;
-}
-function limpiarSeleccionMontos() {
-  _montoAutoSeleccionTodos = false; // [NEW] acción manual del usuario
-  montosSeleccionados = [];
-  renderListaMontosCheck();
-  actualizarLabelMontos();
-  actualizarCheckTodosMontos();
-  mostrarDetalleCliente();
-}
-function toggleMontoDropdown() {
-  const p = document.getElementById('clienteMontoDropdownPanel');
-  const abrir = p.style.display !== 'flex';
-  p.style.display = abrir ? 'flex' : 'none';
-  if (abrir) renderListaMontosCheck();
-}
-function cerrarMontoDropdown() {
-  const p = document.getElementById('clienteMontoDropdownPanel');
-  if (p) p.style.display = 'none';
-}
-function renderListaClientesCheck(filtro='') {
-  const cont = document.getElementById('clienteCheckList');
-  if (!cont) return;
-  const f = (filtro||'').trim().toLowerCase();
-  const lista = f ? clientesDisponibles.filter(c => c.toLowerCase().includes(f)) : clientesDisponibles;
-  if (!lista.length) { cont.innerHTML = '<div style="padding:12px 4px;text-align:center;color:var(--muted);font-size:12px">Sin resultados</div>'; return; }
-  cont.innerHTML = lista.map(c => {
-    const marcado = clientesSeleccionados.includes(c) ? 'checked' : '';
-    return `<label style="display:flex;align-items:center;gap:9px;padding:7px 4px;cursor:pointer;font-size:13px;color:var(--text);border-radius:6px" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'"><input type="checkbox" ${marcado} onchange="toggleClienteSeleccionado(this.dataset.cliente,this.checked)" data-cliente="${escapeAttr(c)}" style="width:16px;height:16px;accent-color:var(--teal);flex-shrink:0"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c}</span></label>`;
-  }).join('');
-}
-function escapeAttr(s){ return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
-function filtrarListaClientes() {
-  renderListaClientesCheck(document.getElementById('clienteBuscarInput').value);
-}
-function toggleClienteSeleccionado(nombre, marcado) {
-  _clienteAutoSeleccionTodos = false; // [NEW] el usuario ya tomó control manual de la selección
-  if (marcado) { if (!clientesSeleccionados.includes(nombre)) clientesSeleccionados.push(nombre); }
-  else { clientesSeleccionados = clientesSeleccionados.filter(c => c !== nombre); }
-  actualizarLabelClientes();
-  actualizarCheckTodos(); // [NEW]
-  mostrarDetalleCliente();
-}
-/* [NEW] Marca/desmarca todos los clientes disponibles de una sola vez */
-function toggleSeleccionarTodosClientes(marcado) {
-  _clienteAutoSeleccionTodos = false; // [NEW] acción manual del usuario
-  clientesSeleccionados = marcado ? [...clientesDisponibles] : [];
-  renderListaClientesCheck(document.getElementById('clienteBuscarInput') ? document.getElementById('clienteBuscarInput').value : '');
-  actualizarLabelClientes();
-  mostrarDetalleCliente();
-}
-/* [NEW] Sincroniza el estado (marcado/vacío) del checkbox "Seleccionar todos" según la selección actual */
-function actualizarCheckTodos() {
-  const chk = document.getElementById('clienteSeleccionarTodos');
-  if (!chk) return;
-  const todosMarcados = clientesDisponibles.length > 0 && clientesDisponibles.every(c => clientesSeleccionados.includes(c));
-  chk.checked = todosMarcados;
-  chk.indeterminate = !todosMarcados && clientesSeleccionados.length > 0;
-}
-function actualizarLabelClientes() {
-  const label = document.getElementById('clienteMultiLabel');
-  if (!label) return;
-  if (!clientesSeleccionados.length) label.textContent = '-- Selecciona clientes --';
-  else if (clientesSeleccionados.length === 1) label.textContent = clientesSeleccionados[0];
-  else label.textContent = `${clientesSeleccionados.length} clientes seleccionados`;
-}
-function limpiarSeleccionClientes() {
-  _clienteAutoSeleccionTodos = false; // [NEW] acción manual del usuario
-  clientesSeleccionados = [];
-  renderListaClientesCheck(document.getElementById('clienteBuscarInput') ? document.getElementById('clienteBuscarInput').value : '');
-  actualizarLabelClientes();
-  actualizarCheckTodos(); // [NEW]
-  mostrarDetalleCliente();
-}
-function toggleClienteDropdown() {
-  const p = document.getElementById('clienteDropdownPanel');
-  const abrir = p.style.display !== 'flex';
-  p.style.display = abrir ? 'flex' : 'none';
-  if (abrir) { document.getElementById('clienteBuscarInput').value=''; renderListaClientesCheck(); setTimeout(()=>document.getElementById('clienteBuscarInput').focus(),50); }
-}
-function cerrarClienteDropdown() {
-  const p = document.getElementById('clienteDropdownPanel');
-  if (p) p.style.display = 'none';
-}
-document.addEventListener('click', function(e){
-  const wrap = document.getElementById('clienteMultiWrap');
-  if (wrap && !wrap.contains(e.target)) cerrarClienteDropdown();
-  const wrapMonto = document.getElementById('clienteMontoWrap'); // [NEW]
-  if (wrapMonto && !wrapMonto.contains(e.target)) cerrarMontoDropdown(); // [NEW]
-});
+let _clientesTablaDatos = []; // [NEW] estadísticas calculadas por cliente, para la tabla/modal/PDF
+let _clientesSeleccionadosPdf = new Set(); // [NEW] checkboxes marcados para exportar
 
-/* [NEW] Agrupa filas consecutivas en "pedidos" reales: cada pedido empieza en la fila
-   que trae el TOTAL PEDIDO ($) (la primera línea de producto de ese pedido); las filas
-   siguientes sin total pertenecen al mismo pedido, hasta la próxima fila con total. */
+/* [FIX] Esta función se había perdido al reescribir el bloque — agrupa las líneas de
+   producto de un mismo pedido real (Cliente+Fecha+Asesor) en un solo grupo. */
 function _agruparPedidosReales(datos) {
   const grupos = [];
   let actual = null;
@@ -2369,109 +2222,212 @@ function _agruparPedidosReales(datos) {
   return grupos;
 }
 
+function poblarClienteSelect(datos) {
+  // [NEW] Calcula, para cada cliente que aparece en el período filtrado (fecha/asesor de
+  // arriba), sus estadísticas: pedidos, valor total, último pedido, días sin comprar,
+  // asesor (el de su pedido más reciente), estado (VIP/Activo/Riesgo/Inactivo) y Deuda
+  // Vigente (esta última siempre sobre TODO el historial, sin filtro de fecha — igual que
+  // antes, porque una deuda no se limita a un día en particular).
+  const gruposPedido = _agruparPedidosReales(datos);
+  const porCliente = {};
+  gruposPedido.forEach(g => {
+    const primeraLinea = g.items[0] || {};
+    if (!porCliente[g.cliente]) porCliente[g.cliente] = { pedidos: 0, total: 0, ultimoFecha: '', asesor: '', telefono: '', direccion: '', items: [] };
+    const c = porCliente[g.cliente];
+    c.pedidos++;
+    c.total += g.total || 0;
+    g.items.forEach(r => {
+      c.items.push(r);
+      if (!c.telefono && r['TELÉFONO']) c.telefono = r['TELÉFONO'];
+      if (!c.direccion && r['DIRECCIÓN']) c.direccion = r['DIRECCIÓN'];
+    });
+    // gruposPedido viene del más reciente al más antiguo (Firestore ordena por creadoEn desc,
+    // ordenado del lado del navegador) — el primer grupo visto por cliente es su pedido más
+    // reciente, así que fijamos fecha/asesor solo la primera vez.
+    if (!c.ultimoFecha) { c.ultimoFecha = primeraLinea['FECHA'] || ''; c.asesor = primeraLinea['ASESOR / RUTA'] || ''; }
+  });
+
+  const hoyMs = Date.now();
+  _clientesTablaDatos = Object.entries(porCliente).map(([nombre, c]) => {
+    const ultimoDate = c.ultimoFecha ? new Date(c.ultimoFecha + 'T00:00:00') : null;
+    const diasSinPedido = ultimoDate ? Math.max(0, Math.floor((hoyMs - ultimoDate.getTime()) / 86400000)) : 9999;
+    const estado = _calcularEstadoCliente(diasSinPedido, c.total);
+    // Deuda Vigente — sobre TODO el historial del cliente, sin filtro de fecha (igual que antes)
+    const _todosPedidosCliente = todosLosDatos.filter(r => r['CLIENTE'] === nombre && r['PRODUCTO'] && parseFloat(r['TOTAL PEDIDO ($)']||0) > 0);
+    const _creditoTotalCliente = _todosPedidosCliente.filter(r => (r['FORMA DE PAGO']||'') === 'Crédito').reduce((s,r) => s + (parseFloat(r['TOTAL PEDIDO ($)'])||0), 0);
+    const _pagosTotalCliente = todosLosDatos.filter(r => r['CLIENTE'] === nombre && !r['PRODUCTO'] && parseFloat(r['TOTAL PEDIDO ($)']||0) > 0 && String(r['TOTAL PEDIDO ($)']).indexOf('-') === -1).reduce((s,r) => s + (parseFloat(r['TOTAL PEDIDO ($)'])||0), 0);
+    const deudaVigente = _creditoTotalCliente - _pagosTotalCliente;
+    return {
+      nombre, telefono: c.telefono, direccion: c.direccion, pedidos: c.pedidos, total: c.total,
+      ultimoFecha: c.ultimoFecha, diasSinPedido, asesor: c.asesor, estado, deudaVigente, items: c.items
+    };
+  });
+
+  // Población del filtro "Todos los asesores" con las rutas reales
+  const selAsesor = document.getElementById('clienteFiltroAsesorTabla');
+  if (selAsesor) {
+    const valorActual = selAsesor.value;
+    selAsesor.innerHTML = '<option value="">Todos los asesores</option>' + _asesoresCache.map(r => `<option value="${escapeAttr(r)}">${r.split(':')[1]?.trim()||r}</option>`).join('');
+    if (_asesoresCache.includes(valorActual)) selAsesor.value = valorActual;
+  }
+
+  _clientesSeleccionadosPdf.clear(); // el filtro cambió, se limpia la selección de PDF para evitar exportar algo que ya no se ve
+  mostrarDetalleCliente();
+}
+
+/* [NEW] Pinta la tabla de "Consultar por Cliente" respetando los filtros de búsqueda,
+   estado y asesor — y ordenada por llegada (más reciente primero), como ya funcionaba. */
 function mostrarDetalleCliente() {
   const cont = document.getElementById('clienteDetalleContenido');
+  const contador = document.getElementById('clienteContadorTabla');
   if (!cont) return;
-  if (!clientesSeleccionados.length) { cont.innerHTML = '<div class="empty-state"><div class="icon">👤</div>Selecciona uno o más clientes para ver el detalle</div>'; return; }
 
-  const filtroMontoActivo = montosDisponibles.length > 0 && montosSeleccionados.length < montosDisponibles.length; // [NEW]
-  const gruposPedido = _agruparPedidosReales(pedidosDetalleActuales)
-    .filter(g => clientesSeleccionados.includes(g.cliente))
-    .filter(g => !filtroMontoActivo || montosSeleccionados.some(m => Math.abs(g.total - m) < 0.005)); // [NEW] coincide con alguno de los montos marcados
+  const q = (document.getElementById('clienteBusquedaTabla')?.value || '').toLowerCase().trim();
+  const estadoFiltro = document.getElementById('clienteFiltroEstado')?.value || '';
+  const asesorFiltro = document.getElementById('clienteFiltroAsesorTabla')?.value || '';
 
-  if (!gruposPedido.length) {
-    cont.innerHTML = filtroMontoActivo
-      ? `<div class="empty-state"><div class="icon">💰</div>Ningún pedido de estos clientes coincide con los montos seleccionados</div>`
-      : '<div class="empty-state"><div class="icon">📭</div>Sin pedidos para estos clientes en el filtro actual</div>';
+  let filtrados = _clientesTablaDatos.filter(c => {
+    const matchQ = !q || c.nombre.toLowerCase().includes(q) || (c.telefono||'').includes(q) || (c.direccion||'').toLowerCase().includes(q);
+    const matchEstado = !estadoFiltro || c.estado === estadoFiltro;
+    const matchAsesor = !asesorFiltro || c.asesor === asesorFiltro;
+    return matchQ && matchEstado && matchAsesor;
+  });
+  // Ya vienen en orden de llegada (más reciente primero) desde poblarClienteSelect, gracias
+  // al orden de gruposPedido — el filtro de arriba solo reduce la lista, no cambia el orden.
+
+  if (contador) contador.textContent = filtrados.length + ' cliente' + (filtrados.length!==1?'s':'');
+
+  if (!filtrados.length) {
+    cont.innerHTML = '<div class="empty-state" style="padding:2rem"><div class="icon">👤</div>No hay clientes que coincidan con estos filtros</div>';
     return;
   }
 
-  const porCliente = {};
-  gruposPedido.forEach(g => {
-    if (!porCliente[g.cliente]) porCliente[g.cliente] = { items: [], formaPago: '' };
-    g.items.forEach(r => {
-      porCliente[g.cliente].items.push(r);
-      if (r['FORMA DE PAGO']) porCliente[g.cliente].formaPago = r['FORMA DE PAGO'];
-    });
-  });
-
-  /* [NEW] Orden por llegada (hora, minutos, segundos) — gruposPedido ya viene del más
-     reciente al más antiguo (Firestore ordena los pedidos por creadoEn desc), así que el
-     primer cliente que aparece en ese recorrido es quien tiene el pedido más reciente. */
-  const clientesOrdenPorLlegada = [];
-  const _vistosLlegada = new Set();
-  gruposPedido.forEach(g => {
-    if (!_vistosLlegada.has(g.cliente) && clientesSeleccionados.includes(g.cliente)) {
-      _vistosLlegada.add(g.cliente);
-      clientesOrdenPorLlegada.push(g.cliente);
-    }
-  });
-
-  let totalGeneral = 0;
-  const bloques = clientesOrdenPorLlegada.map((cliente, idx) => {
-    const c = porCliente[cliente];
-    const totalesPedido = c.items.map(r => parseFloat(r['TOTAL PEDIDO ($)']||0)).filter(v => v > 0);
-    const totalCliente = totalesPedido.length ? totalesPedido.reduce((s,v) => s+v, 0) : c.items.reduce((s,r) => s+(parseFloat(r['SUBTOTAL']||0)), 0);
-    totalGeneral += totalCliente;
-    const cantidadTotal = c.items.reduce((s,r) => s+(parseFloat(r['CANTIDAD'])||0), 0);
-    const porForma = {};
-    c.items.forEach(r => { const f = r['FORMA DE PAGO'] || 'Sin especificar'; porForma[f] = (porForma[f]||0) + (parseFloat(r['SUBTOTAL'])||0); });
-    const tagsPagoCliente = Object.entries(porForma).sort(([,a],[,b]) => b-a).map(([f,v]) => `<span class="badge badge-teal" style="margin-right:4px">${f}: $${v.toFixed(2)}</span>`).join('');
-    /* [NEW] Deuda Vigente — a diferencia del resto de este bloque (que respeta el filtro de
-       fecha activo arriba), esto se calcula sobre TODO el historial del cliente, porque una
-       deuda no se limita al día filtrado. No toca ni cambia el resto de los cálculos. */
-    const _todosPedidosCliente = todosLosDatos.filter(r => r['CLIENTE'] === cliente && r['PRODUCTO'] && parseFloat(r['TOTAL PEDIDO ($)']||0) > 0);
-    const _creditoTotalCliente = _todosPedidosCliente.filter(r => (r['FORMA DE PAGO']||'') === 'Crédito').reduce((s,r) => s + (parseFloat(r['TOTAL PEDIDO ($)'])||0), 0);
-    const _pagosTotalCliente = todosLosDatos.filter(r => r['CLIENTE'] === cliente && !r['PRODUCTO'] && parseFloat(r['TOTAL PEDIDO ($)']||0) > 0 && String(r['TOTAL PEDIDO ($)']).indexOf('-') === -1).reduce((s,r) => s + (parseFloat(r['TOTAL PEDIDO ($)'])||0), 0);
-    const _deudaVigente = _creditoTotalCliente - _pagosTotalCliente;
-    const deudaHtml = _deudaVigente > 0.005
-      ? `<div><div style="font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--red)">💳 Deuda vigente</div><div style="font-weight:800;color:var(--red);font-size:14px">$${_deudaVigente.toFixed(2)}</div></div>`
-      : (_creditoTotalCliente > 0 ? `<div><div style="font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted)">💳 Deuda vigente</div><div style="font-weight:800;color:var(--teal);font-size:14px">✅ Al día</div></div>` : '');
-    const filas = c.items.map(r => `
-      <tr>
-        <td>${escHTML(r['PRODUCTO']||'-')}</td>
-        <td style="text-align:center">${r['CANTIDAD']||'-'}</td>
-        <td style="text-align:right">$${parseFloat(r['SUBTOTAL']||0).toFixed(2)}</td>
-        <td style="text-align:right">${r['TOTAL PEDIDO ($)']?'$'+parseFloat(r['TOTAL PEDIDO ($)']).toFixed(2):'—'}</td>
-        <td><span class="badge badge-teal">${r['FORMA DE PAGO']||'-'}</span></td>
-      </tr>`).join('');
-    return `
-      <div class="cierre-cliente-block" style="margin:0 0 12px">
-        <div class="cierre-cliente-header">
-          <span class="cierre-cliente-nombre" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px" onclick="toggleDetalleClienteBloque(${idx})" title="Clic para ver/ocultar el detalle">👤 ${escHTML(cliente)} <span id="detalleClienteArrow-${idx}" style="font-size:10px;color:var(--teal)">▼</span></span>
-          <span class="cierre-cliente-meta">💳 ${c.formaPago||'Sin especificar'}</span>
-          <span class="cierre-cliente-total">$${totalCliente.toFixed(2)}</span>
-        </div>
-        <div id="detalleClienteBody-${idx}" style="display:none">
-        <div style="display:flex;gap:24px;flex-wrap:wrap;padding:10px 14px;background:var(--surface2);border-bottom:1px solid var(--border)">
-          <div><div style="font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted)">Cantidad total</div><div style="font-weight:800;color:var(--navy);font-size:14px">${cantidadTotal%1===0?parseInt(cantidadTotal):cantidadTotal.toFixed(1)} unidad(es)</div></div>
-          <div><div style="font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted)">Total</div><div style="font-weight:800;color:var(--teal);font-size:14px">$${totalCliente.toFixed(2)}</div></div>
-          <div><div style="font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted)">Formas de pago</div><div style="margin-top:2px">${tagsPagoCliente}</div></div>
-          ${deudaHtml}
-        </div>
-        <table class="cierre-cliente-table">
-          <thead><tr><th>Producto</th><th>Cant.</th><th>Subtotal</th><th>Total</th><th>Pago</th></tr></thead>
-          <tbody>${filas}</tbody>
-        </table>
-        </div>
-      </div>`;
+  const filas = filtrados.map(c => {
+    const checked = _clientesSeleccionadosPdf.has(c.nombre) ? 'checked' : '';
+    const asesorNombre = (c.asesor||'').split(':')[1]?.trim() || c.asesor || '-';
+    const deudaTexto = c.deudaVigente > 0.005 ? `<div style="font-size:11px;font-weight:700;color:var(--red)">$${c.deudaVigente.toFixed(2)}</div>` : '<span style="color:var(--muted);font-size:11px">—</span>';
+    return `<tr class="clickable" style="cursor:pointer" onclick="if(event.target.type!=='checkbox')abrirDetalleClienteModal('${encodeURIComponent(c.nombre)}')">
+      <td onclick="event.stopPropagation()"><input type="checkbox" ${checked} onchange="toggleClienteSeleccionadoPdf('${encodeURIComponent(c.nombre)}',this.checked)" style="width:16px;height:16px;accent-color:var(--teal);cursor:pointer"></td>
+      <td style="font-weight:700;color:var(--navy)">${escHTML(c.nombre)}</td>
+      <td style="font-size:12px;color:var(--muted)">${escHTML(c.telefono||'-')}</td>
+      <td style="font-size:12px;color:var(--muted);max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escapeAttr(c.direccion||'')}">${escHTML(c.direccion||'-')}</td>
+      <td style="text-align:center">${c.pedidos}</td>
+      <td style="text-align:right;font-weight:700;color:var(--teal)">$${c.total.toFixed(2)}</td>
+      <td style="font-size:12px;white-space:nowrap">${limpiarFecha(c.ultimoFecha)}<br><small style="color:var(--muted)">${c.diasSinPedido} días</small></td>
+      <td style="font-size:12px">${escHTML(asesorNombre)}</td>
+      <td>${_badgeEstadoCliente(c.estado)}</td>
+      <td>${deudaTexto}</td>
+    </tr>`;
   }).join('');
-  const totalBloque = clientesSeleccionados.filter(c => porCliente[c]).length > 1
-    ? `<div class="cierre-total-general" style="margin-top:4px"><div class="cierre-total-label">Total de los pedidos filtrados</div><div class="cierre-total-value">$${totalGeneral.toFixed(2)}</div></div>`
-    : '';
-  cont.innerHTML = bloques + totalBloque;
+
+  cont.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th></th><th>Cliente</th><th>Teléfono</th><th>Dirección</th><th style="text-align:center">Pedidos</th><th style="text-align:right">Valor Total</th><th>Último pedido</th><th>Asesor</th><th>Estado</th><th>Deuda</th></tr></thead>
+    <tbody>${filas}</tbody>
+  </table></div>`;
+
+  _actualizarBotonExportarClientes();
 }
-/* [NEW] Expande/oculta el detalle (cantidades, formas de pago, tabla de productos) de un
-   cliente en "Consultar por Cliente" al hacer clic en su nombre — sin tocar Resumen por
-   Cliente ni Cierre del Día, que siguen mostrando el detalle siempre visible. */
-function toggleDetalleClienteBloque(idx){
-  const body = document.getElementById('detalleClienteBody-'+idx);
-  const arrow = document.getElementById('detalleClienteArrow-'+idx);
-  if(!body) return;
-  const abrir = body.style.display === 'none';
-  body.style.display = abrir ? 'block' : 'none';
-  if(arrow) arrow.textContent = abrir ? '▲' : '▼';
+
+function toggleClienteSeleccionadoPdf(nombreCodificado, marcado) {
+  const nombre = decodeURIComponent(nombreCodificado);
+  if (marcado) _clientesSeleccionadosPdf.add(nombre);
+  else _clientesSeleccionadosPdf.delete(nombre);
+  _actualizarBotonExportarClientes();
 }
+function _actualizarBotonExportarClientes() {
+  const btn = document.getElementById('btnExportarClientesSeleccionados');
+  const txt = document.getElementById('btnExportarClientesTexto');
+  if (!btn) return;
+  const n = _clientesSeleccionadosPdf.size;
+  btn.style.display = n > 0 ? 'flex' : 'none';
+  if (txt) txt.textContent = `Exportar ${n} seleccionado${n!==1?'s':''} a PDF`;
+}
+
+/* [NEW] Modal 360° del cliente — KPIs, Deuda Vigente e historial de pedidos completo */
+function abrirDetalleClienteModal(nombreCodificado) {
+  const nombre = decodeURIComponent(nombreCodificado);
+  const c = _clientesTablaDatos.find(x => x.nombre === nombre);
+  if (!c) return;
+  document.getElementById('modalClienteNombre').textContent = c.nombre;
+  document.getElementById('modalClienteSub').textContent = `${c.telefono||'-'} · ${c.direccion||'-'}`;
+  const deudaHtml = c.deudaVigente > 0.005
+    ? `<div class="detail-item-dash"><label>Deuda Vigente</label><strong style="color:var(--red)">$${c.deudaVigente.toFixed(2)}</strong></div>`
+    : `<div class="detail-item-dash"><label>Deuda Vigente</label><strong style="color:var(--teal)">✅ Al día</strong></div>`;
+  document.getElementById('modalClienteStats').innerHTML = `
+    <div class="detail-item-dash"><label>Pedidos</label><strong>${c.pedidos}</strong></div>
+    <div class="detail-item-dash"><label>Valor total</label><strong>$${c.total.toFixed(2)}</strong></div>
+    <div class="detail-item-dash"><label>Último pedido</label><strong>${limpiarFecha(c.ultimoFecha)}</strong></div>
+    <div class="detail-item-dash"><label>Días sin compra</label><strong>${c.diasSinPedido}</strong></div>
+    <div class="detail-item-dash"><label>Asesor</label><strong>${escHTML((c.asesor||'').split(':')[1]?.trim()||c.asesor||'-')}</strong></div>
+    <div class="detail-item-dash"><label>Estado</label>${_badgeEstadoCliente(c.estado)}</div>
+    ${deudaHtml}
+  `;
+  const filasHistorial = c.items.map(r => `<tr>
+    <td style="font-size:12px">${limpiarFecha(r['FECHA'])}</td>
+    <td style="font-size:12px">${escHTML(r['PRODUCTO']||'-')}</td>
+    <td style="text-align:center">${r['CANTIDAD']||'-'}</td>
+    <td style="text-align:right;font-weight:700;color:var(--teal)">$${parseFloat(r['SUBTOTAL']||0).toFixed(2)}</td>
+    <td><span class="badge badge-teal">${escHTML(r['FORMA DE PAGO']||'-')}</span></td>
+  </tr>`).join('');
+  document.getElementById('modalClienteHistorial').innerHTML = filasHistorial || '<tr><td colspan="5" style="text-align:center;color:var(--muted)">Sin historial de productos</td></tr>';
+  const tel = (c.telefono||'').replace(/\D/g,'');
+  const waBtn = document.getElementById('modalClienteWa');
+  if (waBtn) waBtn.href = tel ? `https://wa.me/593${tel.replace(/^0/,'')}` : '#';
+  window._clienteModalActual = c; // para el botón de imprimir
+  document.getElementById('modalClienteOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function cerrarDetalleClienteModal() {
+  document.getElementById('modalClienteOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+/* [NEW] Imprimir / PDF de UN cliente, desde el modal 360° */
+function imprimirClienteModal() {
+  const c = window._clienteModalActual;
+  if (!c) return;
+  _imprimirClientesPDF([c]);
+}
+/* [NEW] Exporta a PDF los clientes marcados con checkbox en la tabla */
+function exportarClientesSeleccionadosPDF() {
+  const seleccionados = _clientesTablaDatos.filter(c => _clientesSeleccionadosPdf.has(c.nombre));
+  if (!seleccionados.length) { alert('Selecciona al menos un cliente primero.'); return; }
+  _imprimirClientesPDF(seleccionados);
+}
+function _imprimirClientesPDF(clientesArr) {
+  const bloques = clientesArr.map(c => {
+    const filas = c.items.map(r => `<tr><td>${escHTML(r['PRODUCTO']||'-')}</td><td style="text-align:center">${r['CANTIDAD']||'-'}</td><td style="text-align:right">$${parseFloat(r['SUBTOTAL']||0).toFixed(2)}</td><td>${escHTML(r['FORMA DE PAGO']||'-')}</td></tr>`).join('');
+    return `<div class="bloque-cliente-pdf">
+      <h2>${escHTML(c.nombre)}</h2>
+      <p class="sub">${escHTML(c.telefono||'-')} · ${escHTML(c.direccion||'-')}</p>
+      <div class="stats">
+        <div><label>Pedidos</label><span>${c.pedidos}</span></div>
+        <div><label>Valor total</label><span>$${c.total.toFixed(2)}</span></div>
+        <div><label>Último pedido</label><span>${limpiarFecha(c.ultimoFecha)}</span></div>
+        <div><label>Estado</label><span>${c.estado}</span></div>
+        <div><label>Deuda Vigente</label><span>${c.deudaVigente>0.005?'$'+c.deudaVigente.toFixed(2):'Al día'}</span></div>
+      </div>
+      <table><thead><tr><th>Producto</th><th>Cant.</th><th>Subtotal</th><th>Pago</th></tr></thead><tbody>${filas}</tbody></table>
+    </div>`;
+  }).join('<hr>');
+  const v = window.open('', '_blank', 'width=800,height=900');
+  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Clientes — Luan Aqua</title>
+  <style>
+    body{font-family:Arial,sans-serif;color:#1a3a5c;padding:24px}
+    h2{font-family:Georgia,serif;font-size:20px;margin-bottom:2px}
+    .sub{font-size:12px;color:#888;margin-bottom:14px}
+    .stats{display:flex;gap:16px;flex-wrap:wrap;background:#f0f5f8;border-radius:10px;padding:12px 16px;margin-bottom:14px}
+    .stats div{display:flex;flex-direction:column}
+    .stats label{font-size:9px;font-weight:700;text-transform:uppercase;color:#888}
+    .stats span{font-size:14px;font-weight:700}
+    table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:20px}
+    th{background:#1a3a5c;color:#fff;padding:8px 10px;text-align:left}
+    td{padding:7px 10px;border-bottom:1px solid #eee}
+    hr{border:none;border-top:2px dashed #ccc;margin:24px 0}
+  </style></head><body>${bloques}<script>window.onload=function(){window.print();}<\/script></body></html>`);
+  v.document.close();
+}
+
 
 /* ════════════════════════════════════════════════════════════
    [NEW] REPORTE POR ASESOR — clic en una tarjeta para ver el
@@ -3695,6 +3651,89 @@ async function eliminarGastoDash(id){
 }
 
 /* ════════════════════════════════════════════════════════════
+   [NEW] PEDIDOS WEB — cola de pedidos de la página pública (colección
+   aislada `pedidosWeb`, con create público abierto). El admin revisa
+   cada uno y lo Aprueba (creando el pedido real, con asesor y forma de
+   pago asignados) o lo Rechaza — nunca entran solos al sistema real.
+════════════════════════════════════════════════════════════ */
+let _unsubPedidosWeb = null, _pedidosWebRaw = [];
+function _iniciarListenerPedidosWeb(){
+  if(_unsubPedidosWeb){_unsubPedidosWeb();_unsubPedidosWeb=null;}
+  _unsubPedidosWeb = db.collection('pedidosWeb').onSnapshot(snap => {
+    _pedidosWebRaw = snap.docs.map(d => ({ _id: d.id, ...d.data() }))
+      .filter(p => !p.estado || p.estado === 'pendiente') // [NEW] trata como pendiente cualquier doc sin campo 'estado' — la web pública podría no enviarlo
+      .sort((a,b) => (a.creadoEn?.toMillis?.()||0) - (b.creadoEn?.toMillis?.()||0)); // más antiguo primero, como cola de trabajo
+    renderPedidosWeb();
+  }, err => console.error('listener pedidosWeb:', err));
+}
+function detenerListenerPedidosWeb(){ if(_unsubPedidosWeb){_unsubPedidosWeb();_unsubPedidosWeb=null;} }
+
+function renderPedidosWeb(){
+  const cont = document.getElementById('listaPedidosWeb');
+  const count = document.getElementById('pedidosWebCount');
+  if(!cont) return;
+  if(count) count.textContent = _pedidosWebRaw.length + ' pendiente' + (_pedidosWebRaw.length!==1?'s':'');
+  if(!_pedidosWebRaw.length){
+    cont.innerHTML = '<div class="empty-state"><div class="icon">🌐</div>No hay pedidos web pendientes de aprobación</div>';
+    return;
+  }
+  const optionsAsesor = _asesoresCache.map(r => `<option value="${escapeAttr(r)}">${r.split(':')[1]?.trim()||r}</option>`).join('');
+  cont.innerHTML = _pedidosWebRaw.map((p, idx) => {
+    const productos = (p.productos||[]).map(pr => `<tr><td>${escHTML(pr.nombre||'-')}</td><td style="text-align:center">${pr.cantidad||'-'}</td><td style="text-align:right">$${parseFloat(pr.precio||0).toFixed(2)}</td><td style="text-align:right">$${(parseFloat(pr.cantidad||0)*parseFloat(pr.precio||0)).toFixed(2)}</td></tr>`).join('');
+    const totalWeb = (p.productos||[]).reduce((s,pr)=> s + (parseFloat(pr.cantidad||0)*parseFloat(pr.precio||0)), 0);
+    return `
+    <div class="cierre-cliente-block" style="margin:0 0 14px">
+      <div class="cierre-cliente-header">
+        <span class="cierre-cliente-nombre">🌐 ${escHTML(p.cliente||'Sin nombre')}</span>
+        <span class="cierre-cliente-meta">📞 ${escHTML(p.telefono||'-')} · 📍 ${escHTML(p.direccion||'-')}</span>
+        <span class="cierre-cliente-total">$${totalWeb.toFixed(2)}</span>
+      </div>
+      <table class="cierre-cliente-table">
+        <thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Subtotal</th></tr></thead>
+        <tbody>${productos || '<tr><td colspan="4" style="text-align:center;color:var(--muted)">Sin productos</td></tr>'}</tbody>
+      </table>
+      ${p.notas ? `<div style="padding:8px 14px;font-size:12px;color:var(--muted);border-top:1px solid var(--border)">📝 ${escHTML(p.notas)}</div>` : ''}
+      <div style="padding:12px 14px;border-top:1px solid var(--border);display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <div class="editar-field" style="margin-bottom:0;min-width:180px"><label>Asesor / Ruta</label><select id="pwAsesor-${idx}"><option value="">-- Selecciona --</option>${optionsAsesor}</select></div>
+        <div class="editar-field" style="margin-bottom:0;min-width:150px"><label>Forma de Pago</label><select id="pwForma-${idx}"><option value="">-- Selecciona --</option><option value="Contado">Contado</option><option value="Crédito">Crédito</option><option value="Transferencia">Transferencia</option><option value="Cheque">Cheque</option></select></div>
+        <button class="btn-guardar-edicion" style="padding:9px 16px" onclick="aprobarPedidoWeb('${p._id}', ${idx})">✅ Aprobar</button>
+        <button class="btn-eliminar-fila" style="padding:9px 16px" onclick="rechazarPedidoWeb('${p._id}')">❌ Rechazar</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function aprobarPedidoWeb(id, idx){
+  const p = _pedidosWebRaw.find(x => x._id === id);
+  if(!p){ alert('Este pedido web ya no existe.'); return; }
+  const asesor = document.getElementById(`pwAsesor-${idx}`).value;
+  const formapago = document.getElementById(`pwForma-${idx}`).value;
+  if(!asesor){ alert('Selecciona a qué asesor/ruta se le asigna este pedido.'); return; }
+  if(!formapago){ alert('Selecciona la forma de pago.'); return; }
+  const productos = (p.productos||[]).map(pr => ({ nombre: pr.nombre||'', cantidad: parseFloat(pr.cantidad)||0, precio: parseFloat(pr.precio)||0, subtotal: +((parseFloat(pr.cantidad)||0)*(parseFloat(pr.precio)||0)).toFixed(2), regalias: [] }));
+  if(!productos.length){ alert('Este pedido no tiene productos válidos.'); return; }
+  const total = +productos.reduce((s,pr)=>s+pr.subtotal,0).toFixed(2);
+  try{
+    await db.collection('pedidos').add({
+      empleado: asesor, cliente: p.cliente||'Sin nombre', telefono: p.telefono||'', direccion: p.direccion||'',
+      fecha: fechaHoy(), notas: (p.notas||'') + ' [Pedido recibido desde la página web]',
+      formapago, total, productos, gps: null, origenWeb: true,
+      creadoPor: ADMIN_ACTUAL.uid || null, creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    await db.collection('pedidosWeb').doc(id).update({ estado: 'aprobado', aprobadoPor: ADMIN_ACTUAL.nombre||'admin', aprobadoEn: firebase.firestore.FieldValue.serverTimestamp() });
+    mostrarToastEdicion('✅ Pedido web aprobado — ya forma parte de las ventas reales.');
+  }catch(err){ console.error(err); alert('❌ No se pudo aprobar el pedido: ' + err.message); }
+}
+
+async function rechazarPedidoWeb(id){
+  if(!confirm('¿Rechazar este pedido web? No se creará ninguna venta real a partir de él.')) return;
+  try{
+    await db.collection('pedidosWeb').doc(id).update({ estado: 'rechazado', rechazadoPor: ADMIN_ACTUAL.nombre||'admin', rechazadoEn: firebase.firestore.FieldValue.serverTimestamp() });
+    mostrarToastEdicion('❌ Pedido web rechazado.');
+  }catch(err){ console.error(err); alert('❌ No se pudo rechazar el pedido: ' + err.message); }
+}
+
+/* ════════════════════════════════════════════════════════════
    [NEW] CREAR USUARIOS — Secretaria (solo Admin), ahora como pestaña
    del menú lateral en vez de modal — acceso de solo lectura al Dashboard.
 ════════════════════════════════════════════════════════════ */
@@ -3810,6 +3849,34 @@ async function eliminarSecretariaSeleccionada(){
     <div class="editar-footer">
       <button class="btn-cancelar-edicion" onclick="cerrarEditarPagoGasto()">❌ Cancelar</button>
       <button class="btn-guardar-edicion" id="btnGuardarPagoGasto" onclick="guardarEdicionPagoGasto()">✅ Guardar Cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ [NEW] MODAL 360° — Consultar por Cliente ═══════════════════ -->
+<div class="editar-overlay" id="modalClienteOverlay" onclick="if(event.target===this)cerrarDetalleClienteModal()">
+  <div class="editar-modal" style="max-width:640px">
+    <div class="editar-header">
+      <div>
+        <div class="editar-header-title" id="modalClienteNombre">—</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:2px" id="modalClienteSub">—</div>
+      </div>
+      <button class="btn-cerrar-editar" onclick="cerrarDetalleClienteModal()">✕</button>
+    </div>
+    <div class="editar-body">
+      <div class="editar-grid" id="modalClienteStats" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr));margin-bottom:18px"></div>
+      <div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:10px">📋 Historial de pedidos</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Fecha</th><th>Producto</th><th style="text-align:center">Cant.</th><th style="text-align:right">Total</th><th>Pago</th></tr></thead>
+          <tbody id="modalClienteHistorial"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="editar-footer" style="justify-content:flex-start;gap:10px">
+      <a id="modalClienteWa" href="#" target="_blank" class="btn-guardar-edicion" style="background:#25d366;text-decoration:none;display:inline-flex;align-items:center;gap:6px">💬 WhatsApp</a>
+      <button class="btn-guardar-edicion" style="background:#c0392b" onclick="imprimirClienteModal()">🖨 Imprimir / PDF</button>
+      <button class="btn-cancelar-edicion" onclick="cerrarDetalleClienteModal()">Cerrar</button>
     </div>
   </div>
 </div>
