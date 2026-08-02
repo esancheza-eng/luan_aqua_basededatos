@@ -898,7 +898,7 @@ display: inline-block;
           <div style="padding:0 1.25rem 10px" id="resumenFormasPago"></div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Cliente</th><th>Asesor / Ruta</th><th>Forma de Pago</th><th>Fecha</th><th style="text-align:right">Monto</th></tr></thead>
+              <thead><tr><th>Cliente</th><th>Asesor / Ruta</th><th>Forma de Pago</th><th>Fecha</th><th style="text-align:right">Monto</th><th>Acciones</th></tr></thead>
               <tbody id="tablaPagosDetalle"></tbody>
             </table>
           </div>
@@ -911,7 +911,7 @@ display: inline-block;
           </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Descripción</th><th>Responsable</th><th>Fecha</th><th style="text-align:right">Monto</th></tr></thead>
+              <thead><tr><th>Descripción</th><th>Responsable</th><th>Fecha</th><th style="text-align:right">Monto</th><th>Acciones</th></tr></thead>
               <tbody id="tablaGastosDetalle"></tbody>
             </table>
           </div>
@@ -1462,12 +1462,14 @@ function _recalcularTodosLosDatos() {
   _pagosRaw.forEach(pg => filas.push({
     'FECHA': pg.fecha || '', 'ASESOR / RUTA': pg.empleado || '', 'CLIENTE': pg.cliente || '',
     'TELÉFONO': '', 'DIRECCIÓN': '', 'PRODUCTO': '', 'CANTIDAD': '', 'PRECIO UNIT.': '', 'SUBTOTAL': '',
-    'TOTAL PEDIDO ($)': parseFloat(pg.monto) || 0, 'FORMA DE PAGO': pg.forma || '', 'LINK GPS': '', 'NOTAS': pg.notas || ''
+    'TOTAL PEDIDO ($)': parseFloat(pg.monto) || 0, 'FORMA DE PAGO': pg.forma || '', 'LINK GPS': '', 'NOTAS': pg.notas || '',
+    '_pagoId': pg._id || '' /* [NEW] */
   }));
   _gastosRaw.forEach(g => filas.push({
     'FECHA': g.fecha || '', 'ASESOR / RUTA': g.empleado || '', 'CLIENTE': '',
     'TELÉFONO': '', 'DIRECCIÓN': '', 'PRODUCTO': '', 'CANTIDAD': '', 'PRECIO UNIT.': '', 'SUBTOTAL': '',
-    'TOTAL PEDIDO ($)': -(parseFloat(g.monto) || 0), 'FORMA DE PAGO': '', 'LINK GPS': '', 'NOTAS': g.desc || g.categoria || ''
+    'TOTAL PEDIDO ($)': -(parseFloat(g.monto) || 0), 'FORMA DE PAGO': '', 'LINK GPS': '', 'NOTAS': g.desc || g.categoria || '',
+    '_gastoId': g._id || '' /* [NEW] */
   }));
   todosLosDatos = filas;
   renderDashboard();
@@ -1489,8 +1491,8 @@ function iniciarListenersDashboard() {
       .sort((a,b) => (b.creadoEn?.toMillis?.() || 0) - (a.creadoEn?.toMillis?.() || 0));
     _recalcularTodosLosDatos();
   }, err => { console.error('listener pedidos:', err); document.getElementById('kpiGrid').innerHTML = '<div class="loading"><span>⚠️ Error al cargar datos: '+err.message+'</span></div>'; }); /* [FIX] _id agregado — antes no se guardaba el id del documento, y sin él no era posible editar un pedido puntual */
-  _unsubPagosAll   = db.collection('pagos').onSnapshot(snap => { _pagosRaw = snap.docs.map(d => d.data()); _recalcularTodosLosDatos(); }, err => console.error('listener pagos:', err));
-  _unsubGastosAll  = db.collection('gastos').onSnapshot(snap => { _gastosRaw = snap.docs.map(d => d.data()); _recalcularTodosLosDatos(); }, err => console.error('listener gastos:', err));
+  _unsubPagosAll   = db.collection('pagos').onSnapshot(snap => { _pagosRaw = snap.docs.map(d => ({ _id: d.id, ...d.data() })); _recalcularTodosLosDatos(); }, err => console.error('listener pagos:', err)); /* [NEW] _id agregado para poder editar/eliminar */
+  _unsubGastosAll  = db.collection('gastos').onSnapshot(snap => { _gastosRaw = snap.docs.map(d => ({ _id: d.id, ...d.data() })); _recalcularTodosLosDatos(); }, err => console.error('listener gastos:', err)); /* [NEW] _id agregado para poder editar/eliminar */
 }
 function detenerListenersDashboard() {
   if (_unsubPedidosAll) { _unsubPedidosAll(); _unsubPedidosAll = null; }
@@ -1610,36 +1612,40 @@ function renderPagosGastosDetalle(pagos, gastos) {
 
   const tbodyPagos = document.getElementById('tablaPagosDetalle');
   if (!pagos.length) {
-    tbodyPagos.innerHTML = '<tr><td colspan="5"><div class="empty-state"><div class="icon">💳</div>No hay pagos en este período</div></td></tr>';
+    tbodyPagos.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="icon">💳</div>No hay pagos en este período</div></td></tr>';
   } else {
     const filas = pagos.map(r => {
       const monto = parseFloat(r['TOTAL PEDIDO ($)'])||0;
+      const accionesPago = (r['_pagoId'] && ROL_ACTUAL === 'admin') ? `<button class="btn-editar-fila" onclick="abrirEditarPago('${r['_pagoId']}')" title="Editar este pago">✏ Editar</button><button class="btn-eliminar-fila" onclick="eliminarPagoDash('${r['_pagoId']}')" title="Eliminar este pago">🗑 Eliminar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>'; /* [NEW] Secretaria no ve Editar/Eliminar */
       return `<tr>
         <td style="font-weight:600">${escHTML(r['CLIENTE']||'-')}</td>
         <td style="font-size:12px">${(r['ASESOR / RUTA']||'').split(':')[1]?.trim()||r['ASESOR / RUTA']||'-'}</td>
         <td><span class="badge badge-blue">${r['FORMA DE PAGO']||'-'}</span></td>
         <td style="font-size:11px;color:var(--muted);white-space:nowrap">${limpiarFecha(r['FECHA'])}</td>
         <td style="text-align:right;font-weight:700;color:var(--blue)">$${monto.toFixed(2)}</td>
+        <td>${accionesPago}</td>
       </tr>`;
     }).join('');
-    tbodyPagos.innerHTML = filas + `<tr style="background:#e8f0fd"><td colspan="4" style="text-align:right;font-weight:800;color:var(--blue)">SUBTOTAL PAGOS</td><td style="text-align:right;font-weight:800;color:var(--blue)">$${totalPagos.toFixed(2)}</td></tr>`;
+    tbodyPagos.innerHTML = filas + `<tr style="background:#e8f0fd"><td colspan="4" style="text-align:right;font-weight:800;color:var(--blue)">SUBTOTAL PAGOS</td><td style="text-align:right;font-weight:800;color:var(--blue)">$${totalPagos.toFixed(2)}</td><td></td></tr>`;
   }
 
   const tbodyGastos = document.getElementById('tablaGastosDetalle');
   if (!gastos.length) {
-    tbodyGastos.innerHTML = '<tr><td colspan="4"><div class="empty-state"><div class="icon">📉</div>No hay gastos en este período</div></td></tr>';
+    tbodyGastos.innerHTML = '<tr><td colspan="5"><div class="empty-state"><div class="icon">📉</div>No hay gastos en este período</div></td></tr>';
   } else {
     const filas = gastos.map(r => {
       const monto = Math.abs(parseFloat(r['TOTAL PEDIDO ($)'])||0);
       const desc = r['NOTAS'] || r['CLIENTE'] || r['DIRECCIÓN'] || '-'; // [NOTA] ver aviso más abajo sobre esta columna
+      const accionesGasto = (r['_gastoId'] && ROL_ACTUAL === 'admin') ? `<button class="btn-editar-fila" onclick="abrirEditarGasto('${r['_gastoId']}')" title="Editar este gasto">✏ Editar</button><button class="btn-eliminar-fila" onclick="eliminarGastoDash('${r['_gastoId']}')" title="Eliminar este gasto">🗑 Eliminar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>'; /* [NEW] Secretaria no ve Editar/Eliminar */
       return `<tr>
         <td style="font-weight:600">${escHTML(desc)}</td>
         <td style="font-size:12px">${(r['ASESOR / RUTA']||'').split(':')[1]?.trim()||r['ASESOR / RUTA']||'-'}</td>
         <td style="font-size:11px;color:var(--muted);white-space:nowrap">${limpiarFecha(r['FECHA'])}</td>
         <td style="text-align:right;font-weight:700;color:var(--red)">$${monto.toFixed(2)}</td>
+        <td>${accionesGasto}</td>
       </tr>`;
     }).join('');
-    tbodyGastos.innerHTML = filas + `<tr style="background:#fdecea"><td colspan="3" style="text-align:right;font-weight:800;color:var(--red)">SUBTOTAL GASTOS</td><td style="text-align:right;font-weight:800;color:var(--red)">$${totalGastos.toFixed(2)}</td></tr>`;
+    tbodyGastos.innerHTML = filas + `<tr style="background:#fdecea"><td colspan="3" style="text-align:right;font-weight:800;color:var(--red)">SUBTOTAL GASTOS</td><td style="text-align:right;font-weight:800;color:var(--red)">$${totalGastos.toFixed(2)}</td><td></td></tr>`;
   }
 }
 
@@ -3591,6 +3597,104 @@ function mostrarToastEdicion(msg){
 }
 
 /* ════════════════════════════════════════════════════════════
+   [NEW] EDITAR / ELIMINAR PAGO Y GASTO — Cuadre de Caja (solo Admin)
+════════════════════════════════════════════════════════════ */
+const FORMAS_PAGO_COBRO = ['Efectivo','Transferencia','Cheque']; // mismas opciones que usa index.html al registrar un pago
+let _editandoPagoGasto = null; // { tipo:'pago'|'gasto', id:'...' }
+
+function abrirEditarPago(id){
+  const p = _pagosRaw.find(x => x._id === id);
+  if(!p){ alert('No se encontró el pago — puede que ya se haya eliminado.'); return; }
+  _editandoPagoGasto = { tipo:'pago', id };
+  document.getElementById('editarPagoGastoTitulo').textContent = '✏ Editar Pago';
+  const optionsForma = FORMAS_PAGO_COBRO.map(f => `<option value="${f}" ${p.forma===f?'selected':''}>${f}</option>`).join('');
+  document.getElementById('editarPagoGastoBody').innerHTML = `
+    <div class="editar-grid full">
+      <div class="editar-field"><label>Cliente</label><input type="text" id="epgCliente" value="${escapeAttr(p.cliente||'')}"></div>
+      <div class="editar-field"><label>Monto ($)</label><input type="number" min="0" step="0.01" id="epgMonto" value="${parseFloat(p.monto)||0}"></div>
+      <div class="editar-field"><label>Forma de Pago</label><select id="epgForma">${optionsForma}</select></div>
+      <div class="editar-field"><label>Fecha</label><input type="date" id="epgFecha" value="${p.fecha||''}"></div>
+      <div class="editar-field"><label>Notas / Referencia</label><textarea id="epgNotas">${p.notas||''}</textarea></div>
+    </div>`;
+  document.getElementById('editarPagoGastoOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function abrirEditarGasto(id){
+  const g = _gastosRaw.find(x => x._id === id);
+  if(!g){ alert('No se encontró el gasto — puede que ya se haya eliminado.'); return; }
+  _editandoPagoGasto = { tipo:'gasto', id };
+  document.getElementById('editarPagoGastoTitulo').textContent = '✏ Editar Gasto';
+  document.getElementById('editarPagoGastoBody').innerHTML = `
+    <div class="editar-grid full">
+      <div class="editar-field"><label>Descripción</label><input type="text" id="epgDesc" value="${escapeAttr(g.desc||'')}"></div>
+      <div class="editar-field"><label>Categoría</label><input type="text" id="epgCategoria" value="${escapeAttr(g.categoria||'')}"></div>
+      <div class="editar-field"><label>Monto ($)</label><input type="number" min="0" step="0.01" id="epgMonto" value="${parseFloat(g.monto)||0}"></div>
+      <div class="editar-field"><label>Fecha</label><input type="date" id="epgFecha" value="${g.fecha||''}"></div>
+      <div class="editar-field"><label>Comprobante / Referencia</label><input type="text" id="epgRef" value="${escapeAttr(g.ref||'')}"></div>
+    </div>`;
+  document.getElementById('editarPagoGastoOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function cerrarEditarPagoGasto(){
+  document.getElementById('editarPagoGastoOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+  _editandoPagoGasto = null;
+}
+
+async function guardarEdicionPagoGasto(){
+  if(!_editandoPagoGasto) return;
+  const { tipo, id } = _editandoPagoGasto;
+  const monto = parseFloat(document.getElementById('epgMonto').value);
+  if(!monto || monto <= 0){ alert('Ingresa un monto válido mayor a $0.'); return; }
+  const btn = document.getElementById('btnGuardarPagoGasto');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  try{
+    if(tipo === 'pago'){
+      const cliente = document.getElementById('epgCliente').value.trim();
+      if(!cliente){ alert('El nombre del cliente no puede quedar vacío.'); btn.disabled=false; btn.textContent='✅ Guardar Cambios'; return; }
+      await db.collection('pagos').doc(id).update({
+        cliente, monto, forma: document.getElementById('epgForma').value,
+        fecha: document.getElementById('epgFecha').value, notas: document.getElementById('epgNotas').value.trim()
+      });
+    } else {
+      const desc = document.getElementById('epgDesc').value.trim();
+      if(!desc){ alert('La descripción no puede quedar vacía.'); btn.disabled=false; btn.textContent='✅ Guardar Cambios'; return; }
+      await db.collection('gastos').doc(id).update({
+        desc, categoria: document.getElementById('epgCategoria').value.trim(), monto,
+        fecha: document.getElementById('epgFecha').value, ref: document.getElementById('epgRef').value.trim()
+      });
+    }
+    mostrarToastEdicion(tipo === 'pago' ? '✅ Pago actualizado correctamente.' : '✅ Gasto actualizado correctamente.');
+    cerrarEditarPagoGasto();
+  }catch(err){
+    console.error(err);
+    alert('❌ Ocurrió un error al guardar: ' + err.message);
+  }finally{
+    btn.disabled = false; btn.textContent = '✅ Guardar Cambios';
+  }
+}
+
+async function eliminarPagoDash(id){
+  const p = _pagosRaw.find(x => x._id === id);
+  if(!confirm(`¿Eliminar el pago de "${p?.cliente||'este cliente'}" ($${(parseFloat(p?.monto)||0).toFixed(2)})? Esta acción no se puede deshacer.`)) return;
+  try{
+    await db.collection('pagos').doc(id).delete();
+    mostrarToastEdicion('🗑 Pago eliminado correctamente.');
+  }catch(err){ console.error(err); alert('❌ No se pudo eliminar el pago: ' + err.message); }
+}
+
+async function eliminarGastoDash(id){
+  const g = _gastosRaw.find(x => x._id === id);
+  if(!confirm(`¿Eliminar el gasto "${g?.desc||g?.categoria||'este gasto'}" ($${(parseFloat(g?.monto)||0).toFixed(2)})? Esta acción no se puede deshacer.`)) return;
+  try{
+    await db.collection('gastos').doc(id).delete();
+    mostrarToastEdicion('🗑 Gasto eliminado correctamente.');
+  }catch(err){ console.error(err); alert('❌ No se pudo eliminar el gasto: ' + err.message); }
+}
+
+/* ════════════════════════════════════════════════════════════
    [NEW] CREAR USUARIOS — Secretaria (solo Admin), ahora como pestaña
    del menú lateral en vez de modal — acceso de solo lectura al Dashboard.
 ════════════════════════════════════════════════════════════ */
@@ -3689,6 +3793,23 @@ async function eliminarSecretariaSeleccionada(){
     <div class="editar-footer">
       <button class="btn-cancelar-edicion" onclick="cerrarEditarPedido()">❌ Cancelar</button>
       <button class="btn-guardar-edicion" id="btnGuardarEdicion" onclick="guardarEdicionPedido()">✅ Guardar Cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ [NEW] MODAL EDITAR PAGO / GASTO (Cuadre de Caja) ═══════════════════ -->
+<div class="editar-overlay" id="editarPagoGastoOverlay" onclick="if(event.target===this)cerrarEditarPagoGasto()">
+  <div class="editar-modal" style="max-width:480px">
+    <div class="editar-header">
+      <div class="editar-header-title" id="editarPagoGastoTitulo">✏ Editar</div>
+      <button class="btn-cerrar-editar" onclick="cerrarEditarPagoGasto()">✕</button>
+    </div>
+    <div class="editar-body" id="editarPagoGastoBody">
+      <!-- Se llena dinámicamente -->
+    </div>
+    <div class="editar-footer">
+      <button class="btn-cancelar-edicion" onclick="cerrarEditarPagoGasto()">❌ Cancelar</button>
+      <button class="btn-guardar-edicion" id="btnGuardarPagoGasto" onclick="guardarEdicionPagoGasto()">✅ Guardar Cambios</button>
     </div>
   </div>
 </div>
