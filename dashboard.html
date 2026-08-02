@@ -791,6 +791,7 @@ display: inline-block;
             <button class="dash-nav-item" data-section="roles" id="navRoles" onclick="switchSeccionDash('roles')">💵 Roles de Pago</button>
             <button class="dash-nav-item" data-section="importar" id="navImportar" onclick="switchSeccionDash('importar')">📤 Importar Datos</button>
             <button class="dash-nav-item" data-section="usuarios" id="navUsuarios" onclick="switchSeccionDash('usuarios'); poblarSelectEliminarSecretaria();">👩‍💼 Crear Usuarios</button>
+            <button class="dash-nav-item" data-section="pedidosweb" id="navPedidosWeb" onclick="switchSeccionDash('pedidosweb')">🌐 Pedidos Web</button>
           </nav>
           <div class="dash-content">
         <div class="dash-section active" id="seccion-resumen">
@@ -1025,6 +1026,17 @@ display: inline-block;
           </div>
         </div>
         </div>
+        <div class="dash-section" id="seccion-pedidosweb">
+        <!-- [NEW] Pedidos Web — cola de pedidos que llegan de la página pública, pendientes de aprobación -->
+        <div class="table-card">
+          <div class="table-header">
+            <div class="table-title">🌐 Pedidos Web — Pendientes de Aprobación</div>
+            <span class="last-update" id="pedidosWebCount" style="margin-left:0">Cargando...</span>
+          </div>
+          <div style="font-size:11px;color:var(--muted);padding:0 1.25rem 12px">Estos pedidos llegaron desde la página web pública y todavía NO forman parte de las ventas reales — revísalos y apruébalos (asignando asesor y forma de pago) para que entren al sistema, o recházalos si son inválidos.</div>
+          <div id="listaPedidosWeb" style="padding:0 1.25rem 1.25rem"></div>
+        </div>
+        </div>
           </div>
         </div>
         <div class="notas-table-card" id="notasCard" style="display:none">
@@ -1242,6 +1254,7 @@ function cerrarSesion() {
   detenerListenerEliminados(); // [NEW]
   detenerListenerInventario(); // [NEW]
   detenerListenerRolesHistorial(); // [NEW]
+  detenerListenerPedidosWeb(); // [NEW]
   auth.signOut(); // la limpieza del overlay ocurre en onAuthStateChanged, más abajo
 }
 
@@ -1269,6 +1282,7 @@ auth.onAuthStateChanged(async (user)=>{
     detenerListenerEliminados(); // [NEW]
     detenerListenerInventario(); // [NEW]
     detenerListenerRolesHistorial(); // [NEW]
+    detenerListenerPedidosWeb(); // [NEW]
     document.getElementById('loginOverlay').classList.remove('hidden');
     document.getElementById('loginUser').value = '';
     document.getElementById('loginPass').value = '';
@@ -1362,6 +1376,7 @@ function iniciar() {
     _iniciarListenerEliminados(); // [NEW] respaldo de pedidos eliminados
     _iniciarListenerInventario(); // [NEW] entradas y salidas
     _iniciarListenerRolesHistorial(); // [NEW] historial de roles de pago
+    _iniciarListenerPedidosWeb(); // [NEW] cola de pedidos de la página web
     poblarSelectEliminarSecretaria(); // [NEW]
   }
   document.getElementById('invFecha').value = hoy; // [NEW]
@@ -1372,13 +1387,13 @@ function iniciar() {
 /* [NEW] Oculta las secciones y botones que son solo para Admin cuando entra Secretaria */
 function aplicarRestriccionesRol(){
   const esSecretaria = ROL_ACTUAL === 'secretaria';
-  ['navEliminados','navInventario','navRoles','navImportar','navUsuarios'].forEach(id => {
+  ['navEliminados','navInventario','navRoles','navImportar','navUsuarios','navPedidosWeb'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = esSecretaria ? 'none' : '';
   });
   if (esSecretaria) {
     // Si por alguna razón queda una de esas secciones activa, regresa a Resumen General
-    const seccionActivaOculta = ['eliminados','inventario','roles','importar','usuarios'].some(s => {
+    const seccionActivaOculta = ['eliminados','inventario','roles','importar','usuarios','pedidosweb'].some(s => {
       const sec = document.getElementById('seccion-'+s);
       return sec && sec.classList.contains('active');
     });
@@ -3692,6 +3707,89 @@ async function eliminarGastoDash(id){
     await db.collection('gastos').doc(id).delete();
     mostrarToastEdicion('🗑 Gasto eliminado correctamente.');
   }catch(err){ console.error(err); alert('❌ No se pudo eliminar el gasto: ' + err.message); }
+}
+
+/* ════════════════════════════════════════════════════════════
+   [NEW] PEDIDOS WEB — cola de pedidos de la página pública (colección
+   aislada `pedidosWeb`, con create público abierto). El admin revisa
+   cada uno y lo Aprueba (creando el pedido real, con asesor y forma de
+   pago asignados) o lo Rechaza — nunca entran solos al sistema real.
+════════════════════════════════════════════════════════════ */
+let _unsubPedidosWeb = null, _pedidosWebRaw = [];
+function _iniciarListenerPedidosWeb(){
+  if(_unsubPedidosWeb){_unsubPedidosWeb();_unsubPedidosWeb=null;}
+  _unsubPedidosWeb = db.collection('pedidosWeb').onSnapshot(snap => {
+    _pedidosWebRaw = snap.docs.map(d => ({ _id: d.id, ...d.data() }))
+      .filter(p => !p.estado || p.estado === 'pendiente') // [NEW] trata como pendiente cualquier doc sin campo 'estado' — la web pública podría no enviarlo
+      .sort((a,b) => (a.creadoEn?.toMillis?.()||0) - (b.creadoEn?.toMillis?.()||0)); // más antiguo primero, como cola de trabajo
+    renderPedidosWeb();
+  }, err => console.error('listener pedidosWeb:', err));
+}
+function detenerListenerPedidosWeb(){ if(_unsubPedidosWeb){_unsubPedidosWeb();_unsubPedidosWeb=null;} }
+
+function renderPedidosWeb(){
+  const cont = document.getElementById('listaPedidosWeb');
+  const count = document.getElementById('pedidosWebCount');
+  if(!cont) return;
+  if(count) count.textContent = _pedidosWebRaw.length + ' pendiente' + (_pedidosWebRaw.length!==1?'s':'');
+  if(!_pedidosWebRaw.length){
+    cont.innerHTML = '<div class="empty-state"><div class="icon">🌐</div>No hay pedidos web pendientes de aprobación</div>';
+    return;
+  }
+  const optionsAsesor = _asesoresCache.map(r => `<option value="${escapeAttr(r)}">${r.split(':')[1]?.trim()||r}</option>`).join('');
+  cont.innerHTML = _pedidosWebRaw.map((p, idx) => {
+    const productos = (p.productos||[]).map(pr => `<tr><td>${escHTML(pr.nombre||'-')}</td><td style="text-align:center">${pr.cantidad||'-'}</td><td style="text-align:right">$${parseFloat(pr.precio||0).toFixed(2)}</td><td style="text-align:right">$${(parseFloat(pr.cantidad||0)*parseFloat(pr.precio||0)).toFixed(2)}</td></tr>`).join('');
+    const totalWeb = (p.productos||[]).reduce((s,pr)=> s + (parseFloat(pr.cantidad||0)*parseFloat(pr.precio||0)), 0);
+    return `
+    <div class="cierre-cliente-block" style="margin:0 0 14px">
+      <div class="cierre-cliente-header">
+        <span class="cierre-cliente-nombre">🌐 ${escHTML(p.cliente||'Sin nombre')}</span>
+        <span class="cierre-cliente-meta">📞 ${escHTML(p.telefono||'-')} · 📍 ${escHTML(p.direccion||'-')}</span>
+        <span class="cierre-cliente-total">$${totalWeb.toFixed(2)}</span>
+      </div>
+      <table class="cierre-cliente-table">
+        <thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Subtotal</th></tr></thead>
+        <tbody>${productos || '<tr><td colspan="4" style="text-align:center;color:var(--muted)">Sin productos</td></tr>'}</tbody>
+      </table>
+      ${p.notas ? `<div style="padding:8px 14px;font-size:12px;color:var(--muted);border-top:1px solid var(--border)">📝 ${escHTML(p.notas)}</div>` : ''}
+      <div style="padding:12px 14px;border-top:1px solid var(--border);display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <div class="editar-field" style="margin-bottom:0;min-width:180px"><label>Asesor / Ruta</label><select id="pwAsesor-${idx}"><option value="">-- Selecciona --</option>${optionsAsesor}</select></div>
+        <div class="editar-field" style="margin-bottom:0;min-width:150px"><label>Forma de Pago</label><select id="pwForma-${idx}"><option value="">-- Selecciona --</option><option value="Contado">Contado</option><option value="Crédito">Crédito</option><option value="Transferencia">Transferencia</option><option value="Cheque">Cheque</option></select></div>
+        <button class="btn-guardar-edicion" style="padding:9px 16px" onclick="aprobarPedidoWeb('${p._id}', ${idx})">✅ Aprobar</button>
+        <button class="btn-eliminar-fila" style="padding:9px 16px" onclick="rechazarPedidoWeb('${p._id}')">❌ Rechazar</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function aprobarPedidoWeb(id, idx){
+  const p = _pedidosWebRaw.find(x => x._id === id);
+  if(!p){ alert('Este pedido web ya no existe.'); return; }
+  const asesor = document.getElementById(`pwAsesor-${idx}`).value;
+  const formapago = document.getElementById(`pwForma-${idx}`).value;
+  if(!asesor){ alert('Selecciona a qué asesor/ruta se le asigna este pedido.'); return; }
+  if(!formapago){ alert('Selecciona la forma de pago.'); return; }
+  const productos = (p.productos||[]).map(pr => ({ nombre: pr.nombre||'', cantidad: parseFloat(pr.cantidad)||0, precio: parseFloat(pr.precio)||0, subtotal: +((parseFloat(pr.cantidad)||0)*(parseFloat(pr.precio)||0)).toFixed(2), regalias: [] }));
+  if(!productos.length){ alert('Este pedido no tiene productos válidos.'); return; }
+  const total = +productos.reduce((s,pr)=>s+pr.subtotal,0).toFixed(2);
+  try{
+    await db.collection('pedidos').add({
+      empleado: asesor, cliente: p.cliente||'Sin nombre', telefono: p.telefono||'', direccion: p.direccion||'',
+      fecha: fechaHoy(), notas: (p.notas||'') + ' [Pedido recibido desde la página web]',
+      formapago, total, productos, gps: null, origenWeb: true,
+      creadoPor: ADMIN_ACTUAL.uid || null, creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    await db.collection('pedidosWeb').doc(id).update({ estado: 'aprobado', aprobadoPor: ADMIN_ACTUAL.nombre||'admin', aprobadoEn: firebase.firestore.FieldValue.serverTimestamp() });
+    mostrarToastEdicion('✅ Pedido web aprobado — ya forma parte de las ventas reales.');
+  }catch(err){ console.error(err); alert('❌ No se pudo aprobar el pedido: ' + err.message); }
+}
+
+async function rechazarPedidoWeb(id){
+  if(!confirm('¿Rechazar este pedido web? No se creará ninguna venta real a partir de él.')) return;
+  try{
+    await db.collection('pedidosWeb').doc(id).update({ estado: 'rechazado', rechazadoPor: ADMIN_ACTUAL.nombre||'admin', rechazadoEn: firebase.firestore.FieldValue.serverTimestamp() });
+    mostrarToastEdicion('❌ Pedido web rechazado.');
+  }catch(err){ console.error(err); alert('❌ No se pudo rechazar el pedido: ' + err.message); }
 }
 
 /* ════════════════════════════════════════════════════════════
