@@ -1,0 +1,21 @@
+{
+  "background_color": "#1a3a5c",
+  "dir": "ltr",
+  "display": "standalone",
+  "name": "Aqua Luan - Sistema de Pedidos",
+  "orientation": "portrait",
+  "scope": "/",
+  "short_name": "Aqua Luan",
+  "start_url": "/",
+  "theme_color": "#1a3a5c",
+  "icons": [
+    { "src": "icons/android-launchericon-48-48.png", "type": "image/png", "sizes": "48x48" },
+    { "src": "icons/android-launchericon-72-72.png", "type": "image/png", "sizes": "72x72" },
+    { "src": "icons/android-launchericon-96-96.png", "type": "image/png", "sizes": "96x96" },
+    { "src": "icons/android-launchericon-144-144.png", "type": "image/png", "sizes": "144x144" },
+    { "src": "icons/android-launchericon-192-192.png", "type": "image/png", "sizes": "192x192" },
+    { "src": "icons/android-launchericon-512-512.png", "type": "image/png", "sizes": "512x512", "purpose": "any maskable" }
+  ],
+  "description": "Sistema de pedidos y registro de ventas para asesores de Aqua Luan",
+  "lang": "es"
+}
