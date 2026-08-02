@@ -981,6 +981,11 @@ tr.clickable:hover td { background: rgba(10,124,110,0.05); }
             <input type="file" id="importarArchivo" accept=".xlsx,.xls,.csv">
             <button class="btn-filter" style="background:var(--teal);margin-left:10px" onclick="procesarArchivoImportado()">📂 Leer archivo</button>
             <div id="importarPreview" style="margin-top:16px"></div>
+            <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+              <div style="font-size:11px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--orange);margin-bottom:8px">⚠️ Corregir asesores mal guardados</div>
+              <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Corrige pedidos ya importados cuyo asesor no coincide con el formato de las rutas (ej. "JEFFERSON" → "RUTA 1: Jefferson"). Los filtros por asesor no funcionan hasta que se corrijan.</div>
+              <button class="btn-filter" style="background:var(--orange)" onclick="corregirAsesoresPedidosExistentes()">🔧 Corregir pedidos existentes</button>
+            </div>
           </div>
         </div>
         </div>
@@ -3405,6 +3410,44 @@ function escapeAttrDash(s){ return String(s).replace(/&/g,'&amp;').replace(/"/g,
    esto rompía TODO lo que la usaba (Consultar por Cliente, Pedidos Eliminados, Editar Pedido, etc.) */
 function escapeAttr(s){ return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
+/* [NEW] Normaliza el texto de Asesor que viene del Excel (ej. "JEFFERSON", "Vicente",
+   "jefferson") contra las rutas reales registradas ("RUTA 1: Jefferson", etc.), para que
+   el filtro de asesor SIEMPRE encuentre coincidencia exacta después de importar. */
+function _matchAsesorCanonico(texto){
+  if(!texto) return '';
+  const t = texto.toLowerCase().trim();
+  let exacto = _asesoresCache.find(r => r.toLowerCase() === t);
+  if (exacto) return exacto;
+  let porNombre = _asesoresCache.find(r => (r.split(':')[1]||'').trim().toLowerCase() === t);
+  if (porNombre) return porNombre;
+  let parcial = _asesoresCache.find(r => r.toLowerCase().includes(t) || t.includes((r.split(':')[1]||'').trim().toLowerCase()));
+  return parcial || texto; // si no encuentra match, deja el texto original (se ve en la preview)
+}
+
+/* [NEW] Migración única — corrige pedidos ya importados cuyo campo 'empleado'
+   no coincide exactamente con el formato "RUTA N: Nombre" usado por los filtros. */
+async function corregirAsesoresPedidosExistentes(){
+  const candidatos = _pedidosRaw.filter(p => p.empleado && !_asesoresCache.includes(p.empleado));
+  if(!candidatos.length){ alert('No se encontraron pedidos con asesor mal formateado.'); return; }
+
+  const preview = candidatos.slice(0,15).map(p => `"${p.empleado}" → "${_matchAsesorCanonico(p.empleado)}"`).join('\n');
+  if(!confirm(`Se corregirán ${candidatos.length} pedido(s). Ejemplos:\n\n${preview}${candidatos.length>15?'\n...':''}\n\n¿Continuar?`)) return;
+
+  try{
+    let lote = db.batch(); let contador = 0;
+    for(const p of candidatos){
+      const corregido = _matchAsesorCanonico(p.empleado);
+      if(corregido !== p.empleado){
+        lote.update(db.collection('pedidos').doc(p._id), { empleado: corregido });
+        contador++;
+        if(contador % 400 === 0){ await lote.commit(); lote = db.batch(); }
+      }
+    }
+    await lote.commit();
+    mostrarToastEdicion(`✅ ${contador} pedido(s) corregido(s) correctamente.`);
+  }catch(err){ console.error(err); alert('❌ Error al corregir: ' + err.message); }
+}
+
 /* ════════════════════════════════════════════════════════════
    [NEW] ROLES DE PAGO — sueldo base + comisión por ventas
    El % de comisión por asesor está en 0 por defecto (aún no hay
@@ -3494,7 +3537,7 @@ function agruparYPrevisualizarImportacion(filas){
   const grupos = {};
   filas.forEach(f => {
     const fecha = String(f['Fecha']||f['fecha']||'').trim();
-    const asesor = String(f['Asesor']||f['asesor']||'').trim();
+    const asesor = _matchAsesorCanonico(String(f['Asesor']||f['asesor']||'').trim());
     const cliente = String(f['Cliente']||f['cliente']||'').trim();
     if (!fecha || !cliente) return;
     const key = `${cliente}|${fecha}|${asesor}`;
