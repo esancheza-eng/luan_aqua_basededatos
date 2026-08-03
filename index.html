@@ -13,9 +13,9 @@
 -->
 <title>Luan Aqua v3.0 — Sistema de Pedidos Empresarial</title>
 <link rel="icon" type="image/png" href="logo-luanaqua.png">
-<link rel="manifest" href="./manifest.json">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+<link rel="manifest" href="./manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1346,7 +1346,7 @@ async function abrirModal(){
   document.getElementById('m-productos').innerHTML=productos.map(p=>{
     let fila=`<tr><td>${escHTML(p.nombre)}</td><td style="text-align:center">${escHTML(String(p.cantidad))}</td><td style="text-align:right">$${escHTML(p.precio.toFixed(2))}</td><td>$${escHTML(p.subtotal.toFixed(2))}</td></tr>`;
     if(p.regalias&&p.regalias.length){
-      fila+=p.regalias.map(r=>`<tr><td colspan="2" style="font-size:11px;color:var(--teal-dark);font-style:italic">🎁 ${escHTML(r.nombre)} x${escHTML(String(r.cantidad))}</td><td style="font-size:11px;color:var(--teal-dark);font-style:italic;text-align:right">Regalo</td><td style="font-size:11px;color:var(--teal-dark);font-style:italic">$0.00</td></tr>`).join('');
+      fila+=p.regalias.map(r=>`<tr><td colspan="2" style="font-size:11px;color:var(--teal-dark);font-style:italic">🎁 Regalo: ${escHTML(r.nombre)} x${escHTML(String(r.cantidad))}</td><td style="font-size:11px;color:var(--teal-dark);font-style:italic;text-align:right">Regalo</td><td style="font-size:11px;color:var(--teal-dark);font-style:italic">$0.00</td></tr>`).join('');
     }
     return fila;
   }).join('');
@@ -1736,6 +1736,7 @@ async function poblarSelectEliminarAsesor(){
     const snap = await db.collection('usuarios').where('esAdmin','==',false).get();
     snap.forEach(doc=>{
       const reg = doc.data();
+      if (reg.esSecretaria === true) return; /* [FIX] excluye cuentas de Secretaria de este selector — solo debe mostrar asesores con ruta, evita que aparezcan mezcladas con las secretarias creadas desde el Dashboard */
       const opt = document.createElement('option');
       opt.value = doc.id;
       opt.textContent = `${reg.nombre} — ${reg.ruta}`;
