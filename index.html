@@ -1838,9 +1838,20 @@ async function _llamarFuncion(nombre, datos){
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
     body: JSON.stringify({ data: datos })
   });
+  const rawText = await resp.text();
+  /* [DIAGNÓSTICO TEMPORAL] */
+  if(!resp.ok){
+    alert('DIAGNÓSTICO RESPUESTA CRUDA:\nStatus HTTP: ' + resp.status + '\nCuerpo: ' + rawText);
+  }
+  /* [FIN DIAGNÓSTICO TEMPORAL] */
   let json;
-  try{ json = await resp.json(); }catch{ json = {}; }
-  if(!resp.ok){ throw new Error(json.error || ('Error desconocido (' + resp.status + ')')); }
+  try{ json = JSON.parse(rawText); }catch{ json = {}; }
+  if(!resp.ok){
+    const msg = (json && typeof json.error === 'string') ? json.error
+              : (json && json.error && json.error.message) ? json.error.message
+              : ('Error desconocido (' + resp.status + ')');
+    throw new Error(msg);
+  }
   return json.result;
 }
 
