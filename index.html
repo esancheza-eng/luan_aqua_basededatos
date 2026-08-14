@@ -1805,6 +1805,24 @@ async function resetearPasswordAsesor(){
   const btn = document.getElementById('na-reset-btn');
   if(!uid){ alert('Selecciona un asesor de la lista.'); return; }
   if(!nuevaPassword || nuevaPassword.length < 6){ alert('La contraseña debe tener al menos 6 caracteres.'); return; }
+
+  /* [DIAGNÓSTICO TEMPORAL — quitar después de resolver el bug] */
+  const cu = auth.currentUser;
+  if(!cu){
+    alert('DIAGNÓSTICO: auth.currentUser es NULL.\nNo hay sesión de Firebase Auth activa en este navegador ahora mismo.\nusuarioActual: ' + JSON.stringify(usuarioActual));
+    return;
+  }
+  let tokenOk = false, tokenErrMsg = '', tokenPreview = '';
+  try{
+    const tok = await cu.getIdToken(true);
+    tokenOk = !!tok;
+    tokenPreview = tok ? (tok.substring(0,25) + '...') : '';
+  }catch(e){
+    tokenErrMsg = e.message || String(e);
+  }
+  alert('DIAGNÓSTICO SESIÓN:\nEmail: ' + cu.email + '\nUID: ' + cu.uid + '\nToken obtenido: ' + (tokenOk ? 'SÍ (' + tokenPreview + ')' : 'NO — ' + tokenErrMsg));
+  /* [FIN DIAGNÓSTICO TEMPORAL] */
+
   btn.disabled = true; btn.textContent = 'Actualizando...';
   try{
     const fn = cloudFns.httpsCallable('resetAsesorPassword');
@@ -1817,7 +1835,9 @@ async function resetearPasswordAsesor(){
     document.getElementById('na-reset-pass').value = '';
   }catch(e){
     console.error(e);
-    alert('No se pudo restablecer la contraseña: ' + (e.message || 'error desconocido'));
+    /* [DIAGNÓSTICO TEMPORAL] */
+    alert('DIAGNÓSTICO ERROR COMPLETO:\ncode: ' + (e.code || '-') + '\nmessage: ' + (e.message || '-') + '\ndetails: ' + JSON.stringify(e.details || {}) + '\nname: ' + (e.name || '-'));
+    /* [FIN DIAGNÓSTICO TEMPORAL] */
   }finally{
     btn.disabled = false;
     btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="3" y="7" width="10" height="7" rx="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M5 7V5a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg> Restablecer contraseña';
