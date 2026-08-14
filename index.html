@@ -1839,11 +1839,6 @@ async function _llamarFuncion(nombre, datos){
     body: JSON.stringify({ data: datos })
   });
   const rawText = await resp.text();
-  /* [DIAGNÓSTICO TEMPORAL] */
-  if(!resp.ok){
-    alert('DIAGNÓSTICO RESPUESTA CRUDA:\nStatus HTTP: ' + resp.status + '\nCuerpo: ' + rawText);
-  }
-  /* [FIN DIAGNÓSTICO TEMPORAL] */
   let json;
   try{ json = JSON.parse(rawText); }catch{ json = {}; }
   if(!resp.ok){
