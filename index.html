@@ -862,6 +862,24 @@ body { padding: 1rem 0.75rem 3rem; }
       Eliminar acceso
     </button>
 
+    <hr class="divider" style="margin:1.5rem 0">
+    <div class="section-title blue">Restablecer contraseña</div>
+    <div class="field">
+      <label for="na-reset-select">Selecciona el asesor</label>
+      <select id="na-reset-select">
+        <option value="">-- Selecciona --</option>
+      </select>
+    </div>
+    <div class="field" style="margin-bottom:1rem">
+      <label for="na-reset-pass">Nueva contraseña</label>
+      <input type="password" id="na-reset-pass" placeholder="Mínimo 6 caracteres" autocomplete="new-password" maxlength="128">
+    </div>
+    <button class="btn blue" id="na-reset-btn" onclick="resetearPasswordAsesor()">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="3" y="7" width="10" height="7" rx="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M5 7V5a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      Restablecer contraseña
+    </button>
+    <div id="na-reset-resultado" style="display:none;margin-top:14px;padding:12px 14px;border-radius:12px;background:var(--success-bg);border:1px solid var(--success-border);color:var(--success-text);font-size:13px;font-weight:600;line-height:1.5"></div>
+
     <button class="btn btn-outline" style="margin-top:10px" onclick="cerrarModalAsesor()">Cerrar</button>
   </div>
 </div>
@@ -902,6 +920,7 @@ body { padding: 1rem 0.75rem 3rem; }
 <script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-app-compat.js" integrity="sha384-tgDxKHbfk8o2rrXLSytbpDGsGk0bdZehHXoeD7LhuGriE89B5ovitrlBu7FX4kj/" crossorigin="anonymous"></script>
 <script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-auth-compat.js" integrity="sha384-UaGuhpArNP+gULAiiQrJNwk1AWTIZsfFEygQkDQYIGsTjoBmbSXgWfQeFJJXuFub" crossorigin="anonymous"></script>
 <script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore-compat.js" integrity="sha384-O2tgK2bVAUCyEX//gu7nH2z8A92RsaKhRAQABpJ7kLaF/4KQYEltHstFCV7nxWpr" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-functions-compat.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
 <script>
 const SCRIPT_URL     = "https://script.google.com/macros/s/AKfycbzKcilhv6mJf61EnC1Plows6sPd1DIgirpNoSE5KG751k8LW89l0b8HkTvSot07i9F4/exec";
@@ -930,6 +949,11 @@ firebase.initializeApp(firebaseConfig);
    Dashboard (dashboard.html) — el admin siempre trabaja con internet en oficina. */
 const auth = firebase.auth();
 const db   = firebase.firestore();
+/* [NEW] Cloud Functions — usado por la gestión de asesores (restablecer contraseña
+   y eliminar cuenta completa) porque el SDK de cliente nunca puede tocar la
+   contraseña ni la cuenta de Auth de OTRO usuario; eso solo lo puede hacer un
+   backend con Admin SDK. Ver functions/index.js en el repo. */
+const cloudFns = firebase.functions();
 // [NEW] Persistencia offline nativa de Firestore — reemplaza el IndexedDB/cola manual
 // que se usaba con Google Sheets. Firestore guarda los cambios localmente cuando no hay
 // internet y los sincroniza solo apenas vuelve la conexión, sin código adicional.
@@ -1724,36 +1748,80 @@ function abrirModalAsesor(){
   document.getElementById('na-usuario').value='';
   document.getElementById('na-pass').value='';
   document.getElementById('na-resultado').style.display='none';
+  document.getElementById('na-reset-pass').value=''; // [NEW]
+  document.getElementById('na-reset-resultado').style.display='none'; // [NEW]
   poblarSelectEliminarAsesor();
   document.getElementById('modalAsesorOverlay').classList.add('open');
   document.body.style.overflow='hidden';
 }
-/* [NEW] Lista los asesores reales desde Firestore (ya no desde AUTH_REGISTRY) */
+/* [REEMPLAZADA] Ahora llena AMBOS selects: el de eliminar y el de restablecer contraseña. */
 async function poblarSelectEliminarAsesor(){
-  const sel = document.getElementById('na-eliminar-select');
-  sel.innerHTML = '<option value="">-- Selecciona --</option>';
+  const selEliminar = document.getElementById('na-eliminar-select');
+  const selReset = document.getElementById('na-reset-select'); // [NEW]
+  selEliminar.innerHTML = '<option value="">-- Selecciona --</option>';
+  if(selReset) selReset.innerHTML = '<option value="">-- Selecciona --</option>'; // [NEW]
   try{
     const snap = await db.collection('usuarios').where('esAdmin','==',false).get();
     snap.forEach(doc=>{
       const reg = doc.data();
       if (reg.esSecretaria === true) return; /* [FIX] excluye cuentas de Secretaria de este selector — solo debe mostrar asesores con ruta, evita que aparezcan mezcladas con las secretarias creadas desde el Dashboard */
+      const label = `${reg.nombre} — ${reg.ruta}`;
       const opt = document.createElement('option');
       opt.value = doc.id;
-      opt.textContent = `${reg.nombre} — ${reg.ruta}`;
-      sel.appendChild(opt);
+      opt.textContent = label;
+      selEliminar.appendChild(opt);
+      if(selReset){ // [NEW]
+        const opt2 = document.createElement('option');
+        opt2.value = doc.id;
+        opt2.textContent = label;
+        selReset.appendChild(opt2);
+      }
     });
   }catch(e){ console.error(e); }
 }
-/* [NEW] Revoca el acceso del asesor (borra su perfil de Firestore) — ya no genera instrucciones */
+/* [REEMPLAZADA] Ahora usa la Cloud Function eliminarAsesorCompleto — borra Firestore Y
+   la cuenta de Firebase Auth, así el mismo usuario/login se puede volver a crear después
+   sin chocar con "ese correo ya existe" (antes solo se borraba el perfil de Firestore
+   y la cuenta de Auth quedaba huérfana). */
 async function eliminarAsesorSeleccionado(){
   const uid = document.getElementById('na-eliminar-select').value;
   if(!uid){ alert('Selecciona un asesor de la lista.'); return; }
   if(!confirm('¿Quitar el acceso de este asesor? Sus pedidos/pagos/gastos ya registrados NO se borran.')) return;
   try{
-    await db.collection('usuarios').doc(uid).delete();
-    alert('✓ Acceso revocado. El asesor ya no podrá iniciar sesión.');
+    const fn = cloudFns.httpsCallable('eliminarAsesorCompleto');
+    await fn({ uid });
+    alert('✓ Acceso eliminado por completo. El asesor ya no puede iniciar sesión, y el usuario queda libre para volver a crearse si hace falta.');
     poblarSelectEliminarAsesor();
-  }catch(e){ console.error(e); alert('No se pudo eliminar. Revisa la consola del navegador.'); }
+  }catch(e){
+    console.error(e);
+    alert('No se pudo eliminar: ' + (e.message || 'error desconocido'));
+  }
+}
+/* [NEW] Restablece la contraseña del asesor seleccionado, vía Cloud Function
+   (el SDK de cliente nunca puede cambiar la contraseña de otra cuenta). */
+async function resetearPasswordAsesor(){
+  const uid = document.getElementById('na-reset-select').value;
+  const nuevaPassword = document.getElementById('na-reset-pass').value;
+  const btn = document.getElementById('na-reset-btn');
+  if(!uid){ alert('Selecciona un asesor de la lista.'); return; }
+  if(!nuevaPassword || nuevaPassword.length < 6){ alert('La contraseña debe tener al menos 6 caracteres.'); return; }
+  btn.disabled = true; btn.textContent = 'Actualizando...';
+  try{
+    const fn = cloudFns.httpsCallable('resetAsesorPassword');
+    await fn({ uid, nuevaPassword });
+    const sel = document.getElementById('na-reset-select');
+    const nombreAsesor = sel.options[sel.selectedIndex]?.textContent || 'el asesor';
+    document.getElementById('na-reset-resultado').innerHTML =
+      `✓ Contraseña actualizada para <b>${escHTML(nombreAsesor)}</b>. Ya puede iniciar sesión con la nueva contraseña desde cualquier celular.`;
+    document.getElementById('na-reset-resultado').style.display = 'block';
+    document.getElementById('na-reset-pass').value = '';
+  }catch(e){
+    console.error(e);
+    alert('No se pudo restablecer la contraseña: ' + (e.message || 'error desconocido'));
+  }finally{
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="3" y="7" width="10" height="7" rx="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M5 7V5a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg> Restablecer contraseña';
+  }
 }
 function cerrarModalAsesor(){
   document.getElementById('modalAsesorOverlay').classList.remove('open');
