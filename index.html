@@ -1539,7 +1539,13 @@ async function registrarPago(){
       empleado, fecha, cliente, monto, forma, notas,
       creadoPor:usuarioActual?.uid||null, creadoEn:firebase.firestore.FieldValue.serverTimestamp()
     });
-    ['pago-empleado','pago-forma'].forEach(id=>document.getElementById(id).value='');
+    // [FIX] Solo se limpia 'pago-empleado' si es un <select> real (admin). Si es un asesor
+    // con la ruta bloqueada, ese campo es un <input type="hidden"> y limpiarlo dejaba el
+    // valor en "" aunque el div visual seguía mostrando el nombre — el siguiente guardado
+    // fallaba con "Selecciona el asesor / ruta." sin que el usuario hubiera tocado nada.
+    const elPagoEmpleado=document.getElementById('pago-empleado');
+    if(elPagoEmpleado && elPagoEmpleado.tagName==='SELECT') elPagoEmpleado.value='';
+    document.getElementById('pago-forma').value='';
     ['pago-cliente','pago-monto','pago-notas'].forEach(id=>document.getElementById(id).value='');
     setStatusPagos('success',`✓ Pago de $${monto.toFixed(2)} registrado para ${escHTML(cliente)}.`);
   }catch(err){
@@ -1582,7 +1588,12 @@ async function registrarGasto(){
       empleado, fecha, categoria, monto, desc, ref,
       creadoPor:usuarioActual?.uid||null, creadoEn:firebase.firestore.FieldValue.serverTimestamp()
     });
-    ['gasto-empleado','gasto-categoria'].forEach(id=>document.getElementById(id).value='');
+    // [FIX] Mismo caso que en registrarPago(): solo limpiar 'gasto-empleado' si es un
+    // <select> real (admin). Para el asesor con ruta bloqueada es un input oculto, y
+    // limpiarlo rompía el siguiente guardado con "Selecciona el responsable."
+    const elGastoEmpleado=document.getElementById('gasto-empleado');
+    if(elGastoEmpleado && elGastoEmpleado.tagName==='SELECT') elGastoEmpleado.value='';
+    document.getElementById('gasto-categoria').value='';
     ['gasto-monto','gasto-desc','gasto-ref'].forEach(id=>document.getElementById(id).value='');
     setStatusGastos('success',`✓ Gasto de $${monto.toFixed(2)} registrado — ${escHTML(desc)}.`);
   }catch(err){
