@@ -1449,9 +1449,14 @@ async function confirmarEnvio(){
      dispara ya (Firestore la encola localmente al instante gracias a la persistencia
      offline), y el resto de este bloque decide cuánto esperar antes de confirmar en
      pantalla — nunca de forma indefinida, igual que antes. */
+  let _errorRealGuardado=null; // [FIX] distingue "aún sincronizando" de "falló de verdad"
   const escrituraPedido = db.collection('pedidos').add(doc)
     .then(refPedido => { _descontarInventarioAutomatico(doc, refPedido.id); return refPedido; })
-    .catch(err => { console.warn('Pedido en cola, pendiente de sincronizar:', err); return null; });
+    .catch(err => {
+      console.warn('Error real al guardar el pedido:', err);
+      _errorRealGuardado=err;
+      return null;
+    });
 
   const mostrarExito = () => {
     ultimoRegistro={...dataPendiente};
@@ -1475,7 +1480,18 @@ async function confirmarEnvio(){
       // indefinidamente — pasado ese tiempo, se confirma igual (Firestore ya la encoló
       // localmente) en vez de dejar al asesor viendo "Guardando..." sin fin.
       await Promise.race([ escrituraPedido, new Promise(res=>setTimeout(res,4000)) ]);
-      mostrarExito();
+      // [FIX] Antes se llamaba mostrarExito() sin revisar si escrituraPedido falló de
+      // verdad (permisos, cuota, regla de seguridad, etc). El .catch() de arriba nunca
+      // rechaza la promesa (para no romper el caso "sin internet"), así que sin esta
+      // revisión el usuario veía "✓ Pedido guardado" y el botón de PDF aunque el pedido
+      // NUNCA se haya escrito en Firestore — de ahí que no apareciera en Dashboard ni
+      // Historial. Si hubo un error real, se avisa y NO se muestra éxito ni se habilita
+      // el PDF, para no dar una falsa confirmación.
+      if(_errorRealGuardado){
+        setStatus('error','❌ No se pudo guardar el pedido: '+(_errorRealGuardado.message||_errorRealGuardado.code||'error desconocido')+'. No se registró. Verifica tu conexión o vuelve a intentarlo.');
+      } else {
+        mostrarExito();
+      }
     }
   }catch(err){
     console.error(err);
