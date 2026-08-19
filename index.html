@@ -729,6 +729,12 @@ body { padding: 1rem 0.75rem 3rem; }
         <div class="resumen-card blue"><span class="resumen-label">Total cobrado</span><span class="resumen-value" id="pago-total-dia">$0.00</span><span class="resumen-sub" id="pago-count-dia">0 pagos registrados</span></div>
         <div class="resumen-card navy"><span class="resumen-label">Último pago</span><span class="resumen-value" id="pago-ultimo">—</span><span class="resumen-sub" id="pago-ultimo-cliente" style="color:rgba(255,255,255,0.4)">Sin registros</span></div>
       </div>
+      <!-- [NEW] Cierre de caja automático: Pagos + Ventas de contado − Gastos, se recalcula solo -->
+      <div class="resumen-total-general" id="cierreCajaAutoBar" style="background:var(--teal-dark)">
+        <span class="resumen-total-general-label">🧮 Cierre de caja (Pagos + Ventas contado − Gastos)</span>
+        <span class="resumen-total-general-value" id="cierreCajaAutoValor">$0.00</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5" id="cierreCajaAutoDesglose"></div>
     </div>
     <div class="card">
       <div class="section-title blue">Registrar pago recibido</div>
@@ -1145,18 +1151,21 @@ function _iniciarListenersDelDia(u){
     // hasta que el asesor lo cierre y lo vuelva a abrir manualmente.
     const resumenAbierto=document.getElementById('resumenModalOverlay');
     if(resumenAbierto&&resumenAbierto.classList.contains('open'))_renderResumenDiaContenido();
+    actualizarCierreCajaAuto(); // [NEW] las ventas de contado del día entran en el cierre automático
   },err=>console.error('listener pedidos:',err));
   _unsubPagosHoy=qPagos.onSnapshot(snap=>{
     listaPagos=snap.docs.map(d=>{ const r=d.data(); return {id:d.id,...r,hora:_horaDeTimestamp(r.creadoEn),_ts:r.creadoEn?.toMillis?.()||0}; }).sort((a,b)=>b._ts-a._ts);
     renderPagos(); actualizarResumenPagos();
     const rAbierto=document.getElementById('resumenModalOverlay'); // [FIX] refresco en vivo del Resumen del Día
     if(rAbierto&&rAbierto.classList.contains('open'))_renderResumenDiaContenido();
+    actualizarCierreCajaAuto(); // [NEW]
   },err=>console.error('listener pagos:',err));
   _unsubGastosHoy=qGastos.onSnapshot(snap=>{
     listaGastos=snap.docs.map(d=>{ const r=d.data(); return {id:d.id,...r,hora:_horaDeTimestamp(r.creadoEn),_ts:r.creadoEn?.toMillis?.()||0}; }).sort((a,b)=>b._ts-a._ts);
     renderGastos(); actualizarResumenGastos();
     const rAbierto2=document.getElementById('resumenModalOverlay'); // [FIX] refresco en vivo del Resumen del Día
     if(rAbierto2&&rAbierto2.classList.contains('open'))_renderResumenDiaContenido();
+    actualizarCierreCajaAuto(); // [NEW]
   },err=>console.error('listener gastos:',err));
 }
 /* [NEW] Catálogo de rutas/asesores en tiempo real — reemplaza la lista fija de
@@ -1250,7 +1259,7 @@ function _verificarCambioDeDia(){
   if(usuarioActual){
     _iniciarListenersDelDia(usuarioActual); // [FIX] re-suscribe con la fecha del nuevo día
   } else {
-    listaPagos=[]; listaGastos=[]; renderPagos(); actualizarResumenPagos(); renderGastos(); actualizarResumenGastos();
+    listaPagos=[]; listaGastos=[]; renderPagos(); actualizarResumenPagos(); renderGastos(); actualizarResumenGastos(); actualizarCierreCajaAuto(); // [NEW]
   }
   const contHist=document.getElementById('content-historial');
   if(contHist&&contHist.classList.contains('active')) cargarHistorial();
@@ -1570,6 +1579,24 @@ function actualizarResumenPagos(){
   document.getElementById('pago-count-dia').textContent=`${listaPagos.length} pago${listaPagos.length!==1?'s':''} registrado${listaPagos.length!==1?'s':''}`;
   if(listaPagos.length>0){document.getElementById('pago-ultimo').textContent='$'+listaPagos[0].monto.toFixed(2);document.getElementById('pago-ultimo-cliente').textContent=listaPagos[0].cliente;}
   else{document.getElementById('pago-ultimo').textContent='—';document.getElementById('pago-ultimo-cliente').textContent='Sin registros';}
+}
+
+/* [NEW] CIERRE DE CAJA AUTOMÁTICO --------------------------------------------------------
+   Se recalcula solo, sin ningún clic ni dato manual, cada vez que cambian los pagos, los
+   gastos o las ventas del día (los 3 listeners en tiempo real lo llaman al final).
+   Fórmula: Total Pagos registrados + Ventas de contado (pedidos con formapago='Contado')
+            − Total Gastos del día. */
+function actualizarCierreCajaAuto(){
+  const barra=document.getElementById('cierreCajaAutoBar');
+  if(!barra) return; // por si esta vista aún no está en el DOM
+  let hist=[]; try{hist=JSON.parse(sessionStorage.getItem('aqualuan-historial')||'[]');}catch{}
+  const totalPagos=listaPagos.reduce((s,p)=>s+p.monto,0);
+  const totalGastos=listaGastos.reduce((s,g)=>s+g.monto,0);
+  const totalVentasContado=hist.filter(p=>p.formapago==='Contado').reduce((s,p)=>s+(Number(p.total)||0),0);
+  const cierre=totalPagos+totalVentasContado-totalGastos;
+  document.getElementById('cierreCajaAutoValor').textContent='$'+cierre.toFixed(2);
+  barra.style.background=cierre>=0?'var(--teal-dark)':'#7a2020';
+  document.getElementById('cierreCajaAutoDesglose').textContent=`Pagos $${totalPagos.toFixed(2)} + Ventas contado $${totalVentasContado.toFixed(2)} − Gastos $${totalGastos.toFixed(2)}`;
 }
 
 async function registrarGasto(){
