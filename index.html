@@ -107,6 +107,14 @@ font-size: 11px; font-weight: 700; cursor: pointer;
 transition: background 0.2s;
 }
 .btn-limpiar-hist:hover { background: #fee2e2; color: #b71c1c; border-color: #fca5a5; }
+.btn-liquid-pdf {
+height: 28px; padding: 0 12px; background: var(--green-light);
+color: var(--green-dark); border: 1px solid var(--green);
+border-radius: 100px; font-family: 'DM Sans', sans-serif;
+font-size: 11px; font-weight: 700; cursor: pointer;
+display: flex; align-items: center; gap: 5px; transition: background 0.2s;
+}
+.btn-liquid-pdf:hover { background: var(--green); color: #fff; }
 .tab-content { display: none; }
 .tab-content.active { display: block; animation: fadeUp 0.3s ease both; }
 .offline-banner {
@@ -742,17 +750,11 @@ body { padding: 1rem 0.75rem 3rem; }
   <!-- TAB PAGOS -->
   <div class="tab-content" id="content-pagos">
     <div class="card">
-      <div class="section-title blue">Resumen del día</div>
-      <div class="resumen-grid">
-        <div class="resumen-card blue"><span class="resumen-label">Total cobrado</span><span class="resumen-value" id="pago-total-dia">$0.00</span><span class="resumen-sub" id="pago-count-dia">0 pagos registrados</span></div>
-        <div class="resumen-card navy"><span class="resumen-label">Último pago</span><span class="resumen-value" id="pago-ultimo">—</span><span class="resumen-sub" id="pago-ultimo-cliente" style="color:rgba(255,255,255,0.4)">Sin registros</span></div>
+      <div class="section-title blue" style="margin-bottom:0.75rem">Registro total de pagos</div>
+      <div class="resumen-total-general" style="background:var(--blue-dark)">
+        <span class="resumen-total-general-label" id="pago-count-dia">0 pagos registrados</span>
+        <span class="resumen-total-general-value" id="pago-total-dia">$0.00</span>
       </div>
-      <!-- [NEW] Cierre de caja automático: Pagos + Ventas de contado − Gastos, se recalcula solo -->
-      <div class="resumen-total-general js-cierreCajaAutoBar" id="cierreCajaAutoBar" style="background:var(--teal-dark)">
-        <span class="resumen-total-general-label">🧮 Cierre de caja (Pagos + Ventas contado − Gastos)</span>
-        <span class="resumen-total-general-value js-cierreCajaAutoValor" id="cierreCajaAutoValor">$0.00</span>
-      </div>
-      <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5" class="js-cierreCajaAutoDesglose" id="cierreCajaAutoDesglose"></div>
     </div>
     <div class="card">
       <div class="section-title blue">Registrar pago recibido</div>
@@ -826,7 +828,13 @@ body { padding: 1rem 0.75rem 3rem; }
   <!-- TAB LIQUIDACIÓN -->
   <div class="tab-content" id="content-liquidacion">
     <div class="card">
-      <div class="section-title green" style="margin-bottom:0.75rem">Liquidación de efectivo por asesor</div>
+      <div class="historial-header-row">
+        <div class="section-title green" style="margin-bottom:0;flex:1">Liquidación de efectivo por asesor</div>
+        <button class="btn-liquid-pdf" onclick="descargarPDFLiquidacion()">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M4 2h6l3 3v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M10 2v3h3" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+          Imprimir PDF
+        </button>
+      </div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:1rem;line-height:1.5">Efectivo que cada asesor de ruta debe entregar hoy: ventas al contado + pagos cobrados en efectivo, menos los gastos que hizo con esa misma caja. Los cobros por transferencia o cheque no se piden en efectivo, así que se muestran aparte solo como referencia.</div>
       <div class="liquidacion-total-bar">
         <span class="liquidacion-total-label">💵 Total efectivo a entregar hoy (todas las rutas)</span>
@@ -1616,8 +1624,6 @@ function actualizarResumenPagos(){
   const t=listaPagos.reduce((s,p)=>s+p.monto,0);
   document.getElementById('pago-total-dia').textContent='$'+t.toFixed(2);
   document.getElementById('pago-count-dia').textContent=`${listaPagos.length} pago${listaPagos.length!==1?'s':''} registrado${listaPagos.length!==1?'s':''}`;
-  if(listaPagos.length>0){document.getElementById('pago-ultimo').textContent='$'+listaPagos[0].monto.toFixed(2);document.getElementById('pago-ultimo-cliente').textContent=listaPagos[0].cliente;}
-  else{document.getElementById('pago-ultimo').textContent='—';document.getElementById('pago-ultimo-cliente').textContent='Sin registros';}
 }
 
 /* [NEW] CIERRE DE CAJA AUTOMÁTICO --------------------------------------------------------
@@ -1648,10 +1654,7 @@ function actualizarCierreCajaAuto(){
    Solo cuenta lo que es físicamente efectivo: ventas al contado + pagos cobrados en
    efectivo, menos los gastos hechos con esa caja. Transferencias y cheques se muestran
    aparte, solo de referencia, porque ese dinero no se entrega en efectivo. */
-function renderLiquidacion(){
-  const cont=document.getElementById('liquidacionLista');
-  if(!cont) return; // por si esta vista aún no está en el DOM
-  const emptyMsg=document.getElementById('liquidacionEmptyMsg');
+function _calcularLiquidacion(){
   let hist=[]; try{hist=JSON.parse(sessionStorage.getItem('aqualuan-historial')||'[]');}catch{}
   const porAsesor={};
   const getAsesor=nombre=>{ if(!porAsesor[nombre])porAsesor[nombre]={ventasContado:0,ventasOtras:0,pagosEfectivo:0,pagosOtros:0,gastos:0}; return porAsesor[nombre]; };
@@ -1664,6 +1667,14 @@ function renderLiquidacion(){
     if(p.forma==='Efectivo') d.pagosEfectivo+=p.monto; else d.pagosOtros+=p.monto;
   });
   listaGastos.forEach(g=>{ getAsesor(g.empleado||'Sin asignar').gastos+=g.monto; });
+  return porAsesor;
+}
+
+function renderLiquidacion(){
+  const cont=document.getElementById('liquidacionLista');
+  if(!cont) return; // por si esta vista aún no está en el DOM
+  const emptyMsg=document.getElementById('liquidacionEmptyMsg');
+  const porAsesor=_calcularLiquidacion();
 
   const asesores=Object.keys(porAsesor).sort((a,b)=>a.localeCompare(b,'es'));
   if(!asesores.length){
@@ -1695,6 +1706,80 @@ function renderLiquidacion(){
     </div>`;
   }).join('');
   document.getElementById('liquidacionTotalValor').textContent='$'+totalGeneral.toFixed(2);
+}
+
+/* [NEW] PDF de la Liquidación de Efectivo — mismo estilo visual que el PDF de pedidos. */
+function _buildLiquidacionPDF(doc){
+  const pageW=210,margin=18;
+  const porAsesor=_calcularLiquidacion();
+  const asesores=Object.keys(porAsesor).sort((a,b)=>a.localeCompare(b,'es'));
+
+  doc.setFillColor(26,58,92);doc.rect(0,0,pageW,38,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(20);doc.setTextColor(255,255,255);doc.text('LUAN AQUA',margin,16);
+  doc.setFontSize(8);doc.setTextColor(78,201,160);doc.text('LIQUIDACIÓN DE EFECTIVO POR ASESOR',margin,22);
+  const hoyStr=new Date().toLocaleDateString('es-EC',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  doc.setFontSize(9);doc.setTextColor(200,220,240);doc.text(`Fecha: ${hoyStr}`,margin,30);
+  doc.setFont('helvetica','normal');
+  doc.text(`Generado: ${new Date().toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'})}`,pageW-margin,30,{align:'right'});
+
+  let y=48,totalGeneral=0;
+  const nuevaPaginaSiNecesita=alto=>{ if(y+alto>275){ doc.addPage(); y=20; } };
+
+  if(!asesores.length){
+    doc.setFont('helvetica','italic');doc.setFontSize(10);doc.setTextColor(100,130,160);
+    doc.text('No hay ventas, pagos ni gastos registrados hoy.',margin,y);
+  }
+
+  asesores.forEach(nombre=>{
+    const d=porAsesor[nombre];
+    const totalEntregar=d.ventasContado+d.pagosEfectivo-d.gastos;
+    totalGeneral+=totalEntregar;
+    const extras=(d.ventasOtras>0?1:0)+(d.pagosOtros>0?1:0);
+    nuevaPaginaSiNecesita(14+18+extras*6+6);
+
+    doc.setFillColor(240,245,248);doc.roundedRect(margin,y,pageW-margin*2,10,2,2,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(26,58,92);
+    doc.text(nombre,margin+4,y+7);
+    doc.setFontSize(11);
+    if(totalEntregar>=0)doc.setTextColor(15,124,56); else doc.setTextColor(169,50,38);
+    doc.text(`$${totalEntregar.toFixed(2)}`,pageW-margin-4,y+7,{align:'right'});
+    y+=14;
+
+    [['Ventas al contado',d.ventasContado],['Pagos cobrados en efectivo',d.pagosEfectivo],['Gastos de la ruta',-d.gastos]].forEach(([lbl,val])=>{
+      doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(60,90,120);doc.text(lbl,margin+4,y+4);
+      doc.setFont('helvetica','bold');doc.setTextColor(26,58,92);
+      doc.text(`${val<0?'-':''}$${Math.abs(val).toFixed(2)}`,pageW-margin-4,y+4,{align:'right'});
+      y+=6;
+    });
+    if(d.ventasOtras>0){
+      doc.setFont('helvetica','italic');doc.setFontSize(8);doc.setTextColor(140,160,180);
+      doc.text('Ventas crédito/transf./cheque (no efectivo)',margin+4,y+4);
+      doc.text(`$${d.ventasOtras.toFixed(2)}`,pageW-margin-4,y+4,{align:'right'});y+=6;
+    }
+    if(d.pagosOtros>0){
+      doc.setFont('helvetica','italic');doc.setFontSize(8);doc.setTextColor(140,160,180);
+      doc.text('Pagos transf./cheque (no efectivo)',margin+4,y+4);
+      doc.text(`$${d.pagosOtros.toFixed(2)}`,pageW-margin-4,y+4,{align:'right'});y+=6;
+    }
+    y+=6;
+  });
+
+  nuevaPaginaSiNecesita(14);
+  doc.setFillColor(26,58,92);doc.roundedRect(margin,y,pageW-margin*2,14,3,3,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(200,220,240);
+  doc.text('TOTAL EFECTIVO A ENTREGAR HOY (TODAS LAS RUTAS)',margin+4,y+9);
+  doc.setFontSize(13);doc.setTextColor(78,201,160);
+  doc.text(`$${totalGeneral.toFixed(2)}`,pageW-margin-4,y+9.5,{align:'right'});
+
+  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(160,180,200);
+  doc.text('www.elhyai.com | Luan Aqua — Sistema de Pedidos',pageW/2,287,{align:'center'});
+}
+
+function descargarPDFLiquidacion(){
+  const{jsPDF}=window.jspdf; const doc=new jsPDF({unit:'mm',format:'a4'});
+  _buildLiquidacionPDF(doc);
+  const fs=_fechaLocalHoy().replace(/[^0-9\-]/g,'');
+  doc.save(`Liquidacion_Efectivo_${fs}.pdf`);
 }
 
 async function registrarGasto(){
