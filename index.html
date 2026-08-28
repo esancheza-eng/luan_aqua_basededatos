@@ -730,11 +730,11 @@ body { padding: 1rem 0.75rem 3rem; }
         <div class="resumen-card navy"><span class="resumen-label">Último pago</span><span class="resumen-value" id="pago-ultimo">—</span><span class="resumen-sub" id="pago-ultimo-cliente" style="color:rgba(255,255,255,0.4)">Sin registros</span></div>
       </div>
       <!-- [NEW] Cierre de caja automático: Pagos + Ventas de contado − Gastos, se recalcula solo -->
-      <div class="resumen-total-general" id="cierreCajaAutoBar" style="background:var(--teal-dark)">
+      <div class="resumen-total-general js-cierreCajaAutoBar" id="cierreCajaAutoBar" style="background:var(--teal-dark)">
         <span class="resumen-total-general-label">🧮 Cierre de caja (Pagos + Ventas contado − Gastos)</span>
-        <span class="resumen-total-general-value" id="cierreCajaAutoValor">$0.00</span>
+        <span class="resumen-total-general-value js-cierreCajaAutoValor" id="cierreCajaAutoValor">$0.00</span>
       </div>
-      <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5" id="cierreCajaAutoDesglose"></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5" class="js-cierreCajaAutoDesglose" id="cierreCajaAutoDesglose"></div>
     </div>
     <div class="card">
       <div class="section-title blue">Registrar pago recibido</div>
@@ -765,6 +765,12 @@ body { padding: 1rem 0.75rem 3rem; }
         <div class="resumen-card red"><span class="resumen-label">Total gastos</span><span class="resumen-value" id="gasto-total-dia">$0.00</span><span class="resumen-sub" id="gasto-count-dia">0 gastos registrados</span></div>
         <div class="resumen-card navy"><span class="resumen-label">Último gasto</span><span class="resumen-value" id="gasto-ultimo">—</span><span class="resumen-sub" id="gasto-ultimo-desc" style="color:rgba(255,255,255,0.4)">Sin registros</span></div>
       </div>
+      <!-- [NEW] Cierre de caja automático también visible en la pestaña Gastos, igual que en Pagos -->
+      <div class="resumen-total-general js-cierreCajaAutoBar" style="background:var(--teal-dark)">
+        <span class="resumen-total-general-label">🧮 Cierre de caja (Pagos + Ventas contado − Gastos)</span>
+        <span class="resumen-total-general-value js-cierreCajaAutoValor">$0.00</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5" class="js-cierreCajaAutoDesglose"></div>
     </div>
     <div class="card">
       <div class="section-title red">Registrar gasto</div>
@@ -1587,16 +1593,22 @@ function actualizarResumenPagos(){
    Fórmula: Total Pagos registrados + Ventas de contado (pedidos con formapago='Contado')
             − Total Gastos del día. */
 function actualizarCierreCajaAuto(){
-  const barra=document.getElementById('cierreCajaAutoBar');
-  if(!barra) return; // por si esta vista aún no está en el DOM
+  // [NEW] Ahora hay una barra en Pagos y otra en Gastos: se actualizan todas las que existan en el DOM
+  const barras=document.querySelectorAll('.js-cierreCajaAutoBar');
+  if(!barras.length) return; // por si ninguna vista está en el DOM todavía
   let hist=[]; try{hist=JSON.parse(sessionStorage.getItem('aqualuan-historial')||'[]');}catch{}
   const totalPagos=listaPagos.reduce((s,p)=>s+p.monto,0);
   const totalGastos=listaGastos.reduce((s,g)=>s+g.monto,0);
   const totalVentasContado=hist.filter(p=>p.formapago==='Contado').reduce((s,p)=>s+(Number(p.total)||0),0);
   const cierre=totalPagos+totalVentasContado-totalGastos;
-  document.getElementById('cierreCajaAutoValor').textContent='$'+cierre.toFixed(2);
-  barra.style.background=cierre>=0?'var(--teal-dark)':'#7a2020';
-  document.getElementById('cierreCajaAutoDesglose').textContent=`Pagos $${totalPagos.toFixed(2)} + Ventas contado $${totalVentasContado.toFixed(2)} − Gastos $${totalGastos.toFixed(2)}`;
+  const colorFondo=cierre>=0?'var(--teal-dark)':'#7a2020';
+  const desglose=`Pagos $${totalPagos.toFixed(2)} + Ventas contado $${totalVentasContado.toFixed(2)} − Gastos $${totalGastos.toFixed(2)}`;
+  barras.forEach(barra=>{
+    barra.style.background=colorFondo;
+    const valor=barra.querySelector('.js-cierreCajaAutoValor');
+    if(valor) valor.textContent='$'+cierre.toFixed(2);
+  });
+  document.querySelectorAll('.js-cierreCajaAutoDesglose').forEach(d=>{ d.textContent=desglose; });
 }
 
 async function registrarGasto(){
