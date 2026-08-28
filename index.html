@@ -2145,19 +2145,12 @@ function _renderResumenDiaContenido(){
   let hist=[]; try{hist=JSON.parse(sessionStorage.getItem('aqualuan-historial')||'[]');}catch{}
   const contenedor=document.getElementById('resumenDiaContenido'),sub=document.getElementById('resumenDiaSub'),totalBox=document.getElementById('resumenTotalGeneral'),totalValor=document.getElementById('resumenTotalValor');
 
+  /* [ELIMINADO] Los cuadros de Ingresos/Egresos/Total en caja se quitaron de aquí — esa
+     información ya vive en la pestaña Liquid., calculada por asesor y con más detalle. */
   const totalIngresos=listaPagos.reduce((s,p)=>s+p.monto,0);
   const totalEgresos=listaGastos.reduce((s,g)=>s+g.monto,0);
   const netoCaja=totalIngresos-totalEgresos;
-  const hayCaja=listaPagos.length>0||listaGastos.length>0;
-  const cajaHtml=hayCaja?`
-    <div class="resumen-grid" style="margin-bottom:1rem">
-      <div class="resumen-card teal"><span class="resumen-label">🟢 Ingresos (pagos)</span><span class="resumen-value">$${totalIngresos.toFixed(2)}</span><span class="resumen-sub">${listaPagos.length} pago(s)</span></div>
-      <div class="resumen-card red"><span class="resumen-label">🔴 Egresos (gastos)</span><span class="resumen-value">$${totalEgresos.toFixed(2)}</span><span class="resumen-sub">${listaGastos.length} gasto(s)</span></div>
-    </div>
-    <div class="resumen-total-general" style="background:${netoCaja>=0?'var(--navy)':'#7a2020'};margin-top:0;margin-bottom:1.25rem">
-      <span class="resumen-total-general-label">🧮 Total en caja (Ingresos − Egresos)</span>
-      <span class="resumen-total-general-value">$${netoCaja.toFixed(2)}</span>
-    </div>`:'';
+  const cajaHtml='';
 
   if(!hist.length){ contenedor.innerHTML=cajaHtml+`<div class="empty-msg" style="margin-top:0">No hay pedidos registrados en esta sesión.</div>`; totalBox.style.display='none'; _resumenDiaData={porAsesor:{},totalGeneral:0,formasPagoGlobal:{},hoy:new Date().toLocaleDateString('es-EC',{weekday:'long',day:'numeric',month:'long',year:'numeric'}),totalPedidos:0,totalIngresos,totalEgresos,netoCaja}; return; }
   const hoy=new Date().toLocaleDateString('es-EC',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
