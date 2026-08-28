@@ -783,17 +783,11 @@ body { padding: 1rem 0.75rem 3rem; }
   <!-- TAB GASTOS -->
   <div class="tab-content" id="content-gastos">
     <div class="card">
-      <div class="section-title red">Resumen del día</div>
-      <div class="resumen-grid">
-        <div class="resumen-card red"><span class="resumen-label">Total gastos</span><span class="resumen-value" id="gasto-total-dia">$0.00</span><span class="resumen-sub" id="gasto-count-dia">0 gastos registrados</span></div>
-        <div class="resumen-card navy"><span class="resumen-label">Último gasto</span><span class="resumen-value" id="gasto-ultimo">—</span><span class="resumen-sub" id="gasto-ultimo-desc" style="color:rgba(255,255,255,0.4)">Sin registros</span></div>
+      <div class="section-title red" style="margin-bottom:0.75rem">Registro total de gastos</div>
+      <div class="resumen-total-general" style="background:var(--red-dark)">
+        <span class="resumen-total-general-label" id="gasto-count-dia">0 gastos registrados</span>
+        <span class="resumen-total-general-value" id="gasto-total-dia">$0.00</span>
       </div>
-      <!-- [NEW] Cierre de caja automático también visible en la pestaña Gastos, igual que en Pagos -->
-      <div class="resumen-total-general js-cierreCajaAutoBar" style="background:var(--teal-dark)">
-        <span class="resumen-total-general-label">🧮 Cierre de caja (Pagos + Ventas contado − Gastos)</span>
-        <span class="resumen-total-general-value js-cierreCajaAutoValor">$0.00</span>
-      </div>
-      <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5" class="js-cierreCajaAutoDesglose"></div>
     </div>
     <div class="card">
       <div class="section-title red">Registrar gasto</div>
@@ -1833,8 +1827,6 @@ function actualizarResumenGastos(){
   const t=listaGastos.reduce((s,g)=>s+g.monto,0);
   document.getElementById('gasto-total-dia').textContent='$'+t.toFixed(2);
   document.getElementById('gasto-count-dia').textContent=`${listaGastos.length} gasto${listaGastos.length!==1?'s':''} registrado${listaGastos.length!==1?'s':''}`;
-  if(listaGastos.length>0){document.getElementById('gasto-ultimo').textContent='$'+listaGastos[0].monto.toFixed(2);document.getElementById('gasto-ultimo-desc').textContent=listaGastos[0].desc;}
-  else{document.getElementById('gasto-ultimo').textContent='—';document.getElementById('gasto-ultimo-desc').textContent='Sin registros';}
 }
 
 function _buildPDF(doc,d){
