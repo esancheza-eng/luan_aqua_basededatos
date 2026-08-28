@@ -1,4 +1,3 @@
-
 /* ════════════════════════════════════════
    CONFIG
 ════════════════════════════════════════ */
@@ -2516,7 +2515,7 @@ function abrirEditarPago(id){
       <div class="editar-field"><label>Monto ($)</label><input type="number" min="0" step="0.01" id="epgMonto" value="${parseFloat(p.monto)||0}"></div>
       <div class="editar-field"><label>Forma de Pago</label><select id="epgForma">${optionsForma}</select></div>
       <div class="editar-field"><label>Fecha</label><input type="date" id="epgFecha" value="${p.fecha||''}"></div>
-      <div class="editar-field"><label>Notas / Referencia</label><textarea id="epgNotas">${p.notas||''}</textarea></div>
+      <div class="editar-field"><label>Notas / Referencia</label><textarea id="epgNotas">${escHTML(p.notas||'')}</textarea></div>
     </div>`;
   document.getElementById('editarPagoGastoOverlay').classList.add('open');
   document.body.style.overflow = 'hidden';
