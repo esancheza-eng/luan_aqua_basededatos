@@ -34,6 +34,7 @@
 --blue: #1565c0; --blue-dark: #0d47a1; --blue-light: #e8f0fd;
 --red: #c0392b; --red-dark: #a93226; --red-light: #fdecea;
 --orange: #e67e22;
+--green: #16a34a; --green-dark: #0f7c38; --green-light: #e6f7ec;
 }
 html { font-size: 16px; }
 body {
@@ -46,7 +47,7 @@ padding: 2rem 1rem 4rem; -webkit-text-size-adjust: 100%;
 .container { width: 100%; max-width: 640px; animation: fadeUp 0.4s ease both; }
 @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
 .tabs-nav {
-display: grid; grid-template-columns: 1fr 1fr 1fr 1fr;
+display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
 background: var(--navy); border-radius: var(--radius-lg);
 padding: 6px; margin-bottom: 1.25rem; gap: 4px; box-shadow: var(--shadow);
 }
@@ -63,6 +64,7 @@ gap: 6px; transition: background 0.2s, color 0.2s; letter-spacing: 0.02em;
 .tab-btn.active-pagos { background: var(--blue); color: #fff; }
 .tab-btn.active-gastos { background: var(--red); color: #fff; }
 .tab-btn.active-historial { background: #6d28d9; color: #fff; }
+.tab-btn.active-liquidacion { background: var(--green); color: #fff; }
 .campo-bloqueado {
 background: var(--teal-light); border: 1.5px solid var(--teal);
 border-radius: var(--radius); padding: 11px 14px;
@@ -169,6 +171,18 @@ gap: 1rem; flex-wrap: wrap; box-shadow: var(--shadow);
 .section-title.blue::after { background: var(--blue-light); }
 .section-title.red { color: var(--red); }
 .section-title.red::after { background: var(--red-light); }
+.section-title.green { color: var(--green-dark); }
+.section-title.green::after { background: var(--green-light); }
+.liquidacion-total-bar {
+background: var(--green-dark); color: #fff; border-radius: var(--radius);
+padding: 14px 16px; display: flex; align-items: center; justify-content: space-between;
+gap: 10px; margin-bottom: 1rem; flex-wrap: wrap;
+}
+.liquidacion-total-label { font-size: 12px; font-weight: 700; letter-spacing: 0.02em; }
+.liquidacion-total-value { font-family: 'DM Serif Display', serif; font-size: 1.4rem; }
+.liquidacion-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); padding: 3px 0; }
+.liquidacion-row.merma { opacity: 0.65; }
+.liquidacion-row span:last-child { font-weight: 600; color: var(--text); }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
 .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
@@ -605,6 +619,10 @@ body { padding: 1rem 0.75rem 3rem; }
       <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
       Historial
     </button>
+    <button class="tab-btn" onclick="cambiarTab('liquidacion')" id="tab-liquidacion">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.5"/><path d="M8 4.5v7M10 6.2c0-.9-.9-1.6-2-1.6s-2 .6-2 1.4c0 2 4 1 4 3 0 .8-.9 1.4-2 1.4s-2-.7-2-1.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Liquid.
+    </button>
   </div>
 
   <!-- TAB VENTAS -->
@@ -802,6 +820,20 @@ body { padding: 1rem 0.75rem 3rem; }
         <button class="btn-limpiar-hist" onclick="limpiarHistorial()">🗑 Limpiar</button>
       </div>
       <div id="historialLista"></div>
+    </div>
+  </div>
+
+  <!-- TAB LIQUIDACIÓN -->
+  <div class="tab-content" id="content-liquidacion">
+    <div class="card">
+      <div class="section-title green" style="margin-bottom:0.75rem">Liquidación de efectivo por asesor</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:1rem;line-height:1.5">Efectivo que cada asesor de ruta debe entregar hoy: ventas al contado + pagos cobrados en efectivo, menos los gastos que hizo con esa misma caja. Los cobros por transferencia o cheque no se piden en efectivo, así que se muestran aparte solo como referencia.</div>
+      <div class="liquidacion-total-bar">
+        <span class="liquidacion-total-label">💵 Total efectivo a entregar hoy (todas las rutas)</span>
+        <span class="liquidacion-total-value" id="liquidacionTotalValor">$0.00</span>
+      </div>
+      <div id="liquidacionLista"></div>
+      <div id="liquidacionEmptyMsg" class="empty-msg" style="display:none">Aún no hay ventas, pagos ni gastos registrados hoy.</div>
     </div>
   </div>
 
@@ -1157,21 +1189,21 @@ function _iniciarListenersDelDia(u){
     // hasta que el asesor lo cierre y lo vuelva a abrir manualmente.
     const resumenAbierto=document.getElementById('resumenModalOverlay');
     if(resumenAbierto&&resumenAbierto.classList.contains('open'))_renderResumenDiaContenido();
-    actualizarCierreCajaAuto(); // [NEW] las ventas de contado del día entran en el cierre automático
+    actualizarCierreCajaAuto(); renderLiquidacion(); // [NEW] las ventas de contado del día entran en el cierre automático
   },err=>console.error('listener pedidos:',err));
   _unsubPagosHoy=qPagos.onSnapshot(snap=>{
     listaPagos=snap.docs.map(d=>{ const r=d.data(); return {id:d.id,...r,hora:_horaDeTimestamp(r.creadoEn),_ts:r.creadoEn?.toMillis?.()||0}; }).sort((a,b)=>b._ts-a._ts);
     renderPagos(); actualizarResumenPagos();
     const rAbierto=document.getElementById('resumenModalOverlay'); // [FIX] refresco en vivo del Resumen del Día
     if(rAbierto&&rAbierto.classList.contains('open'))_renderResumenDiaContenido();
-    actualizarCierreCajaAuto(); // [NEW]
+    actualizarCierreCajaAuto(); renderLiquidacion(); // [NEW]
   },err=>console.error('listener pagos:',err));
   _unsubGastosHoy=qGastos.onSnapshot(snap=>{
     listaGastos=snap.docs.map(d=>{ const r=d.data(); return {id:d.id,...r,hora:_horaDeTimestamp(r.creadoEn),_ts:r.creadoEn?.toMillis?.()||0}; }).sort((a,b)=>b._ts-a._ts);
     renderGastos(); actualizarResumenGastos();
     const rAbierto2=document.getElementById('resumenModalOverlay'); // [FIX] refresco en vivo del Resumen del Día
     if(rAbierto2&&rAbierto2.classList.contains('open'))_renderResumenDiaContenido();
-    actualizarCierreCajaAuto(); // [NEW]
+    actualizarCierreCajaAuto(); renderLiquidacion(); // [NEW]
   },err=>console.error('listener gastos:',err));
 }
 /* [NEW] Catálogo de rutas/asesores en tiempo real — reemplaza la lista fija de
@@ -1224,11 +1256,12 @@ function aplicarUsuario(){
   document.getElementById('wrap-gasto-empleado').innerHTML=bHtml('gasto-empleado');
 }
 
-const tabSubs={ventas:'Registro de Pedidos',pagos:'Registro de Pagos',gastos:'Registro de Gastos',historial:'Historial de Pedidos'};
+const tabSubs={ventas:'Registro de Pedidos',pagos:'Registro de Pagos',gastos:'Registro de Gastos',historial:'Historial de Pedidos',liquidacion:'Liquidación de Efectivo'};
 function cambiarTab(tab){
-  ['ventas','pagos','gastos','historial'].forEach(t=>{ document.getElementById('content-'+t).classList.toggle('active',t===tab); document.getElementById('tab-'+t).className='tab-btn'+(t===tab?' active-'+t:''); });
+  ['ventas','pagos','gastos','historial','liquidacion'].forEach(t=>{ document.getElementById('content-'+t).classList.toggle('active',t===tab); document.getElementById('tab-'+t).className='tab-btn'+(t===tab?' active-'+t:''); });
   document.getElementById('logoSub').textContent=tabSubs[tab];
   if(tab==='historial')cargarHistorial();
+  if(tab==='liquidacion')renderLiquidacion();
 }
 
 function actualizarBanners(){
@@ -1265,7 +1298,7 @@ function _verificarCambioDeDia(){
   if(usuarioActual){
     _iniciarListenersDelDia(usuarioActual); // [FIX] re-suscribe con la fecha del nuevo día
   } else {
-    listaPagos=[]; listaGastos=[]; renderPagos(); actualizarResumenPagos(); renderGastos(); actualizarResumenGastos(); actualizarCierreCajaAuto(); // [NEW]
+    listaPagos=[]; listaGastos=[]; renderPagos(); actualizarResumenPagos(); renderGastos(); actualizarResumenGastos(); actualizarCierreCajaAuto(); renderLiquidacion(); // [NEW]
   }
   const contHist=document.getElementById('content-historial');
   if(contHist&&contHist.classList.contains('active')) cargarHistorial();
@@ -1609,6 +1642,59 @@ function actualizarCierreCajaAuto(){
     if(valor) valor.textContent='$'+cierre.toFixed(2);
   });
   document.querySelectorAll('.js-cierreCajaAutoDesglose').forEach(d=>{ d.textContent=desglose; });
+}
+
+/* [NEW] Liquidación de efectivo por asesor: cuánto efectivo debe entregar cada ruta hoy.
+   Solo cuenta lo que es físicamente efectivo: ventas al contado + pagos cobrados en
+   efectivo, menos los gastos hechos con esa caja. Transferencias y cheques se muestran
+   aparte, solo de referencia, porque ese dinero no se entrega en efectivo. */
+function renderLiquidacion(){
+  const cont=document.getElementById('liquidacionLista');
+  if(!cont) return; // por si esta vista aún no está en el DOM
+  const emptyMsg=document.getElementById('liquidacionEmptyMsg');
+  let hist=[]; try{hist=JSON.parse(sessionStorage.getItem('aqualuan-historial')||'[]');}catch{}
+  const porAsesor={};
+  const getAsesor=nombre=>{ if(!porAsesor[nombre])porAsesor[nombre]={ventasContado:0,ventasOtras:0,pagosEfectivo:0,pagosOtros:0,gastos:0}; return porAsesor[nombre]; };
+  hist.forEach(p=>{
+    const d=getAsesor(p.empleado||'Sin asignar'); const tot=parseFloat(p.total||0);
+    if(p.formapago==='Contado') d.ventasContado+=tot; else d.ventasOtras+=tot;
+  });
+  listaPagos.forEach(p=>{
+    const d=getAsesor(p.empleado||'Sin asignar');
+    if(p.forma==='Efectivo') d.pagosEfectivo+=p.monto; else d.pagosOtros+=p.monto;
+  });
+  listaGastos.forEach(g=>{ getAsesor(g.empleado||'Sin asignar').gastos+=g.monto; });
+
+  const asesores=Object.keys(porAsesor).sort((a,b)=>a.localeCompare(b,'es'));
+  if(!asesores.length){
+    cont.innerHTML='';
+    if(emptyMsg)emptyMsg.style.display='block';
+    document.getElementById('liquidacionTotalValor').textContent='$0.00';
+    return;
+  }
+  if(emptyMsg)emptyMsg.style.display='none';
+
+  let totalGeneral=0;
+  cont.innerHTML=asesores.map(nombre=>{
+    const d=porAsesor[nombre];
+    const totalEntregar=d.ventasContado+d.pagosEfectivo-d.gastos;
+    totalGeneral+=totalEntregar;
+    const otrasLineas=[];
+    if(d.ventasOtras>0)otrasLineas.push(`<div class="liquidacion-row merma"><span>🏦 Ventas crédito/transf./cheque (no efectivo)</span><span>$${d.ventasOtras.toFixed(2)}</span></div>`);
+    if(d.pagosOtros>0)otrasLineas.push(`<div class="liquidacion-row merma"><span>🏦 Pagos transf./cheque (no efectivo)</span><span>$${d.pagosOtros.toFixed(2)}</span></div>`);
+    return `<div class="historial-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:2px">
+        <span class="historial-cliente">👷 ${escHTML(nombre)}</span>
+        <span class="historial-total" style="color:${totalEntregar>=0?'var(--green-dark)':'var(--red-dark)'}">$${totalEntregar.toFixed(2)}</span>
+      </div>
+      <div class="historial-meta" style="margin-bottom:8px">Efectivo que debe entregar hoy</div>
+      <div class="liquidacion-row"><span>💧 Ventas al contado</span><span>$${d.ventasContado.toFixed(2)}</span></div>
+      <div class="liquidacion-row"><span>💰 Pagos cobrados en efectivo</span><span>$${d.pagosEfectivo.toFixed(2)}</span></div>
+      <div class="liquidacion-row"><span>➖ Gastos de la ruta</span><span>-$${d.gastos.toFixed(2)}</span></div>
+      ${otrasLineas.join('')}
+    </div>`;
+  }).join('');
+  document.getElementById('liquidacionTotalValor').textContent='$'+totalGeneral.toFixed(2);
 }
 
 async function registrarGasto(){
