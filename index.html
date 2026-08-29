@@ -1377,7 +1377,7 @@ function setStatusPagos(t,m){_setStatus('status-pagos',t,m);}
 function setStatusGastos(t,m){_setStatus('status-gastos',t,m);}
 function _setStatus(id,t,m){ const el=document.getElementById(id); el.className='status '+t; el.textContent=m; }
 
-function resetGpsBadge(){ document.getElementById('gpsBadge').className='gps-badge wait'; document.getElementById('gpsBadgeText').textContent='Obteniendo ubicación GPS...'; document.getElementById('m-gps').textContent='-'; }
+function resetGpsBadge(){ document.getElementById('gpsBadge').className='gps-badge wait'; document.getElementById('gpsBadgeText').textContent=navigator.onLine?'Obteniendo ubicación GPS...':'Obteniendo ubicación GPS (sin internet, puede tardar más)...'; document.getElementById('m-gps').textContent='-'; }
 function capturarGPS(){
   return new Promise(resolve=>{
     if(!navigator.geolocation){resolve(null);return;}
@@ -1386,6 +1386,19 @@ function capturarGPS(){
       if(resuelto)return; resuelto=true;
       resolve(pos?{lat:pos.coords.latitude,lng:pos.coords.longitude,acc:Math.round(pos.coords.accuracy)}:null);
     };
+    /* [FIX] Sin internet, el primer intento "rápido" (enableHighAccuracy:false) depende de
+       WiFi/torres de celular y siempre va a fallar — se salta directo al GPS satelital puro,
+       y se le da más tiempo (25s en vez de 8s) porque un GPS "en frío" sin ayuda de internet
+       (A-GPS) tarda más en agarrar señal la primera vez. */
+    if(!navigator.onLine){
+      navigator.geolocation.getCurrentPosition(
+        pos=>terminar(pos),
+        ()=>terminar(null),
+        {enableHighAccuracy:true,timeout:25000,maximumAge:0}
+      );
+      setTimeout(()=>terminar(null),27000);
+      return;
+    }
     navigator.geolocation.getCurrentPosition(
       pos=>terminar(pos),
       ()=>{
