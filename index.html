@@ -1775,7 +1775,21 @@ function _buildLiquidacionPDF(doc){
     const totalEntregar=d.ventasContado+d.pagosEfectivo-d.gastos;
     totalGeneral+=totalEntregar;
     const extras=(d.ventasOtras>0?1:0)+(d.pagosOtros>0?1:0);
-    nuevaPaginaSiNecesita(14+18+extras*6+6);
+
+    /* [NEW] Mismos datos del bloque "Total a entregar — paso a paso" que ya se ve en
+       pantalla, calculados igual que en renderLiquidacion(). */
+    const totalRuta=d.ventasContado+d.ventasCredito+d.ventasTransferencia+d.ventasCheque+d.ventasOtras;
+    const totalPagosAsesor=d.pagosEfectivo+d.pagosTransferencia+d.pagosCheque+d.pagosOtros;
+    const totalIngresos=totalRuta+totalPagosAsesor;
+    const creditos=d.ventasCredito;
+    const transferencias=d.ventasTransferencia+d.pagosTransferencia;
+    const cheques=d.ventasCheque+d.pagosCheque;
+    const sinClasificar=d.ventasOtras+d.pagosOtros;
+    const filasPasos=[['(Ruta) Ventas totales',totalRuta,false],['+ Pagos',totalPagosAsesor,false],['= Total de Ingresos',totalIngresos,true],['− Créditos',creditos,false],['− Gastos',d.gastos,false],['− Transferencias',transferencias,false],['− Cheques',cheques,false]];
+    if(sinClasificar>0)filasPasos.push(['− Sin clasificar',sinClasificar,false]);
+
+    const altoBloque=14+18+extras*6+6+8+filasPasos.length*5.5+8+6;
+    nuevaPaginaSiNecesita(altoBloque);
 
     doc.setFillColor(240,245,248);doc.roundedRect(margin,y,pageW-margin*2,10,2,2,'F');
     doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(26,58,92);
@@ -1801,7 +1815,30 @@ function _buildLiquidacionPDF(doc){
       doc.text('Pagos transf./cheque (no efectivo)',margin+4,y+4);
       doc.text(`$${d.pagosOtros.toFixed(2)}`,pageW-margin-4,y+4,{align:'right'});y+=6;
     }
+
+    /* [NEW] Caja gris "TOTAL A ENTREGAR — PASO A PASO", igual formato que el mensaje de WhatsApp */
+    y+=3;
+    const altoCajaPasos=6+filasPasos.length*5.5+7;
+    doc.setDrawColor(210,218,226);doc.setFillColor(248,250,252);
+    doc.roundedRect(margin,y,pageW-margin*2,altoCajaPasos,2,2,'FD');
     y+=6;
+    doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(15,124,56);
+    doc.text('TOTAL A ENTREGAR — PASO A PASO',margin+4,y);
+    y+=6;
+    filasPasos.forEach(([lbl,val,negrita])=>{
+      doc.setFont('helvetica',negrita?'bold':'normal');doc.setFontSize(8.5);doc.setTextColor(negrita?26:80,negrita?58:100,negrita?92:120);
+      doc.text(lbl,margin+4,y);
+      doc.text(`$${val.toFixed(2)}`,pageW-margin-4,y,{align:'right'});
+      y+=5.5;
+    });
+    y+=1;
+    doc.setDrawColor(200,210,220);doc.line(margin+4,y,pageW-margin-4,y);
+    y+=5;
+    doc.setFont('helvetica','bold');doc.setFontSize(9.5);
+    if(totalEntregar>=0)doc.setTextColor(15,124,56); else doc.setTextColor(169,50,38);
+    doc.text('Total a Entregar',margin+4,y);
+    doc.text(`$${totalEntregar.toFixed(2)}`,pageW-margin-4,y,{align:'right'});
+    y+=10;
   });
 
   nuevaPaginaSiNecesita(14);
