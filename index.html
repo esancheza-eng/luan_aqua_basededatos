@@ -194,6 +194,8 @@ gap: 10px; margin-bottom: 1rem; flex-wrap: wrap;
 .liquidacion-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); padding: 3px 0; }
 .liquidacion-row.merma { opacity: 0.65; }
 .liquidacion-row span:last-child { font-weight: 600; color: var(--text); }
+.liquidacion-pasos { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; margin-top: 10px; }
+.liquidacion-pasos-title { font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--green-dark); margin-bottom: 6px; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
 .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
@@ -737,10 +739,6 @@ body { padding: 1rem 0.75rem 3rem; }
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
         Descargar PDF del pedido
       </button>
-      <button class="btn btn-resumen-dia" id="btnResumenDia" onclick="abrirResumenDia()" style="margin-top:10px">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-        Ver Resumen del Día
-      </button>
       <div class="drive-progress" id="driveProgress">
         <div class="progress-label"><span id="progressText">Subiendo PDF a Drive...</span><span id="progressPct">0%</span></div>
         <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progressFill"></div></div>
@@ -833,6 +831,10 @@ body { padding: 1rem 0.75rem 3rem; }
         </button>
       </div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:1rem;line-height:1.5">Efectivo que cada asesor de ruta debe entregar hoy: ventas al contado + pagos cobrados en efectivo, menos los gastos que hizo con esa misma caja. Los cobros por transferencia o cheque no se piden en efectivo, así que se muestran aparte solo como referencia.</div>
+      <button class="btn btn-resumen-dia" id="btnResumenDia" onclick="abrirResumenDia()" style="margin-bottom:1rem">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Ver Resumen del Día
+      </button>
       <div class="liquidacion-total-bar">
         <span class="liquidacion-total-label">💵 Total efectivo a entregar hoy (todas las rutas)</span>
         <span class="liquidacion-total-value" id="liquidacionTotalValor">$0.00</span>
@@ -1658,14 +1660,25 @@ function actualizarCierreCajaAuto(){
 function _calcularLiquidacion(){
   let hist=[]; try{hist=JSON.parse(sessionStorage.getItem('aqualuan-historial')||'[]');}catch{}
   const porAsesor={};
-  const getAsesor=nombre=>{ if(!porAsesor[nombre])porAsesor[nombre]={ventasContado:0,ventasOtras:0,pagosEfectivo:0,pagosOtros:0,gastos:0}; return porAsesor[nombre]; };
+  const getAsesor=nombre=>{ if(!porAsesor[nombre])porAsesor[nombre]={
+    ventasContado:0,ventasCredito:0,ventasTransferencia:0,ventasCheque:0,ventasOtras:0,
+    pagosEfectivo:0,pagosTransferencia:0,pagosCheque:0,pagosOtros:0,
+    gastos:0
+  }; return porAsesor[nombre]; };
   hist.forEach(p=>{
     const d=getAsesor(p.empleado||'Sin asignar'); const tot=parseFloat(p.total||0);
-    if(p.formapago==='Contado') d.ventasContado+=tot; else d.ventasOtras+=tot;
+    if(p.formapago==='Contado') d.ventasContado+=tot;
+    else if(p.formapago==='Crédito') d.ventasCredito+=tot;
+    else if(p.formapago==='Transferencia') d.ventasTransferencia+=tot;
+    else if(p.formapago==='Cheque') d.ventasCheque+=tot;
+    else d.ventasOtras+=tot; // [NEW] resguardo por si llega un formapago fuera de las 4 opciones conocidas
   });
   listaPagos.forEach(p=>{
     const d=getAsesor(p.empleado||'Sin asignar');
-    if(p.forma==='Efectivo') d.pagosEfectivo+=p.monto; else d.pagosOtros+=p.monto;
+    if(p.forma==='Efectivo') d.pagosEfectivo+=p.monto;
+    else if(p.forma==='Transferencia') d.pagosTransferencia+=p.monto;
+    else if(p.forma==='Cheque') d.pagosCheque+=p.monto;
+    else d.pagosOtros+=p.monto; // [NEW] resguardo por si llega una forma fuera de las 3 conocidas
   });
   listaGastos.forEach(g=>{ getAsesor(g.empleado||'Sin asignar').gastos+=g.monto; });
   return porAsesor;
@@ -1694,6 +1707,31 @@ function renderLiquidacion(){
     const otrasLineas=[];
     if(d.ventasOtras>0)otrasLineas.push(`<div class="liquidacion-row merma"><span>🏦 Ventas crédito/transf./cheque (no efectivo)</span><span>$${d.ventasOtras.toFixed(2)}</span></div>`);
     if(d.pagosOtros>0)otrasLineas.push(`<div class="liquidacion-row merma"><span>🏦 Pagos transf./cheque (no efectivo)</span><span>$${d.pagosOtros.toFixed(2)}</span></div>`);
+
+    /* [NEW] "Total a entregar — paso a paso": misma cuenta que arriba, pero mostrada
+       como resta (igual al formato que ya se envía por WhatsApp), en vez de suma
+       directa. Matemáticamente da exactamente el mismo resultado. */
+    const totalRuta=d.ventasContado+d.ventasCredito+d.ventasTransferencia+d.ventasCheque+d.ventasOtras;
+    const totalPagosAsesor=d.pagosEfectivo+d.pagosTransferencia+d.pagosCheque+d.pagosOtros;
+    const totalIngresos=totalRuta+totalPagosAsesor;
+    const creditos=d.ventasCredito;
+    const transferencias=d.ventasTransferencia+d.pagosTransferencia;
+    const cheques=d.ventasCheque+d.pagosCheque;
+    const sinClasificar=d.ventasOtras+d.pagosOtros;
+    const pasoAPaso=`
+      <div class="liquidacion-pasos">
+        <div class="liquidacion-pasos-title">📱 Total a entregar — paso a paso</div>
+        <div class="liquidacion-row"><span>${escHTML(nombre)}</span><span>$${totalRuta.toFixed(2)}</span></div>
+        <div class="liquidacion-row"><span>+ Pagos</span><span>$${totalPagosAsesor.toFixed(2)}</span></div>
+        <div class="liquidacion-row" style="font-weight:700"><span>= Total de Ingresos</span><span>$${totalIngresos.toFixed(2)}</span></div>
+        <div class="liquidacion-row"><span>− Créditos</span><span>$${creditos.toFixed(2)}</span></div>
+        <div class="liquidacion-row"><span>− Gastos</span><span>$${d.gastos.toFixed(2)}</span></div>
+        <div class="liquidacion-row"><span>− Transferencias</span><span>$${transferencias.toFixed(2)}</span></div>
+        <div class="liquidacion-row"><span>− Cheques</span><span>$${cheques.toFixed(2)}</span></div>
+        ${sinClasificar>0?`<div class="liquidacion-row"><span>− Sin clasificar</span><span>$${sinClasificar.toFixed(2)}</span></div>`:''}
+        <div class="liquidacion-row" style="font-weight:700;border-top:1px solid var(--border);margin-top:4px;padding-top:6px"><span>Total a Entregar</span><span style="color:${totalEntregar>=0?'var(--green-dark)':'var(--red-dark)'}">$${totalEntregar.toFixed(2)}</span></div>
+      </div>`;
+
     return `<div class="historial-card">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:2px">
         <span class="historial-cliente">👷 ${escHTML(nombre)}</span>
@@ -1704,6 +1742,7 @@ function renderLiquidacion(){
       <div class="liquidacion-row"><span>💰 Pagos cobrados en efectivo</span><span>$${d.pagosEfectivo.toFixed(2)}</span></div>
       <div class="liquidacion-row"><span>➖ Gastos de la ruta</span><span>-$${d.gastos.toFixed(2)}</span></div>
       ${otrasLineas.join('')}
+      ${pasoAPaso}
     </div>`;
   }).join('');
   document.getElementById('liquidacionTotalValor').textContent='$'+totalGeneral.toFixed(2);
