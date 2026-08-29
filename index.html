@@ -1093,7 +1093,14 @@ async function doLogin(){
     aplicarUsuario();
   }catch(err){
     console.error(err);
-    mostrarErrorLogin('Usuario o contraseña incorrectos.');
+    /* [FIX] Antes siempre decía "Usuario o contraseña incorrectos" sin importar la causa
+       real — confundía al asesor cuando el verdadero problema era no tener internet
+       (Firebase no puede verificar login sin conexión). Ahora distingue ese caso. */
+    if(err.code==='auth/network-request-failed'||!navigator.onLine){
+      mostrarErrorLogin('Sin conexión a internet. El primer ingreso a la app necesita internet para verificar tu usuario.');
+    } else {
+      mostrarErrorLogin('Usuario o contraseña incorrectos.');
+    }
   }
   finally{ btnLogin.disabled=false; btnLogin.innerHTML='<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 8h7M10 5l3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 3H4a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg> Ingresar'; }
 }
@@ -1387,16 +1394,17 @@ function capturarGPS(){
       resolve(pos?{lat:pos.coords.latitude,lng:pos.coords.longitude,acc:Math.round(pos.coords.accuracy)}:null);
     };
     /* [FIX] Sin internet, el primer intento "rápido" (enableHighAccuracy:false) depende de
-       WiFi/torres de celular y siempre va a fallar — se salta directo al GPS satelital puro,
-       y se le da más tiempo (25s en vez de 8s) porque un GPS "en frío" sin ayuda de internet
-       (A-GPS) tarda más en agarrar señal la primera vez. */
+       WiFi/torres de celular y siempre va a fallar — se salta directo al GPS satelital puro.
+       Se probó en campo (a cielo abierto) que 25s no siempre alcanza para un GPS "en frío"
+       sin ayuda de internet (A-GPS), así que se sube a 45s. No afecta el guardado del
+       pedido porque este proceso corre en paralelo, sin bloquear el botón Guardar. */
     if(!navigator.onLine){
       navigator.geolocation.getCurrentPosition(
         pos=>terminar(pos),
         ()=>terminar(null),
-        {enableHighAccuracy:true,timeout:25000,maximumAge:0}
+        {enableHighAccuracy:true,timeout:45000,maximumAge:0}
       );
-      setTimeout(()=>terminar(null),27000);
+      setTimeout(()=>terminar(null),47000);
       return;
     }
     navigator.geolocation.getCurrentPosition(
