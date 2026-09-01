@@ -1612,13 +1612,17 @@ async function registrarPago(){
   if(!cliente){setStatusPagos('error','Ingresa el nombre del cliente.');return;}
   if(!validarMonto(monto)){setStatusPagos('error','Ingresa un monto válido mayor a $0.');return;}
   if(!esValorSeguro(forma,LISTAS_BLANCAS.pagoForma)){setStatusPagos('error','Selecciona la forma de pago.');return;}
-  try{
-    // [NEW] Escribe directo a Firestore — el listener en tiempo real actualiza la lista sola,
-    // en este celular y en cualquier otro donde el mismo asesor tenga sesión abierta.
-    await db.collection('pagos').add({
+  /* [FIX] Igual que confirmarEnvio(): sin internet, la promesa de Firestore .add() NO se
+     resuelve hasta que vuelve la señal — un await normal aquí se queda colgado para
+     siempre y el asesor ve que "no guarda" aunque Firestore sí lo esté encolando local. */
+  const modoOffline=!navigator.onLine;
+  let _errorRealPago=null;
+  const escrituraPago = db.collection('pagos').add({
       empleado, fecha, cliente, monto, forma, notas,
       creadoPor:usuarioActual?.uid||null, creadoEn:firebase.firestore.FieldValue.serverTimestamp()
-    });
+    }).catch(err=>{ console.warn('Error real al guardar el pago:',err); _errorRealPago=err; return null; });
+
+  const _confirmarPagoOk=()=>{
     // [FIX] Solo se limpia 'pago-empleado' si es un <select> real (admin). Si es un asesor
     // con la ruta bloqueada, ese campo es un <input type="hidden"> y limpiarlo dejaba el
     // valor en "" aunque el div visual seguía mostrando el nombre — el siguiente guardado
@@ -1627,10 +1631,21 @@ async function registrarPago(){
     if(elPagoEmpleado && elPagoEmpleado.tagName==='SELECT') elPagoEmpleado.value='';
     document.getElementById('pago-forma').value='';
     ['pago-cliente','pago-monto','pago-notas'].forEach(id=>document.getElementById(id).value='');
-    setStatusPagos('success',`✓ Pago de $${monto.toFixed(2)} registrado para ${escHTML(cliente)}.`);
-  }catch(err){
-    console.error(err);
-    setStatusPagos('error', navigator.onLine ? 'No se pudo registrar el pago.' : '📥 Sin internet — se guardó localmente y se sincroniza solo al volver la señal.');
+    setStatusPagos(modoOffline?'warning':'success', modoOffline?`📥 Sin internet — pago de $${monto.toFixed(2)} guardado, se sincroniza solo al volver la señal.`:`✓ Pago de $${monto.toFixed(2)} registrado para ${escHTML(cliente)}.`);
+  };
+
+  if(modoOffline){
+    // Ya sabemos que no hay internet: no se espera nada de red, se confirma al instante.
+    _confirmarPagoOk();
+  }else{
+    // Hay señal según el navegador, pero por si acaso (justo al perder conexión) se pone
+    // un tope de 4s en vez de esperar indefinidamente.
+    await Promise.race([ escrituraPago, new Promise(res=>setTimeout(res,4000)) ]);
+    if(_errorRealPago){
+      setStatusPagos('error','No se pudo registrar el pago.');
+    }else{
+      _confirmarPagoOk();
+    }
   }
 }
 async function eliminarPago(id){
@@ -1642,10 +1657,10 @@ function badgeForma(f){ const m={'Efectivo':'efectivo','Transferencia':'transfer
 function renderPagos(){
   const lista=document.getElementById('pagosLista'),empty=document.getElementById('pagosEmptyMsg'),items=document.getElementById('pagosItems');
   if(listaPagos.length===0){lista.classList.add('empty');empty.style.display='block';}else{lista.classList.remove('empty');empty.style.display='none';}
-  items.innerHTML=listaPagos.map(p=>`<div class="pago-item"><div><div style="font-size:13px;font-weight:600;color:var(--navy)">${escHTML(p.cliente)}</div><div style="font-size:11px;color:var(--muted)">${escHTML((p.empleado||'').replace('RUTA ','R.'))} · ${escHTML(p.hora||'')}</div></div><div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHTML(p.notas||'-')}</div><div style="text-align:center">${badgeForma(p.forma)}</div><span class="pago-monto">$${escHTML(p.monto.toFixed(2))}</span><button class="btn-remove" onclick="eliminarPago('${escHTML(p.id)}')">&times;</button></div>`).join('');
+  items.innerHTML=listaPagos.map(p=>`<div class="pago-item"><div><div style="font-size:13px;font-weight:600;color:var(--navy)">${escHTML(p.cliente)}</div><div style="font-size:11px;color:var(--muted)">${escHTML((p.empleado||'').replace('RUTA ','R.'))} · ${escHTML(p.hora||'')}</div></div><div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHTML(p.notas||'-')}</div><div style="text-align:center">${badgeForma(p.forma)}</div><span class="pago-monto">$${(parseFloat(p.monto)||0).toFixed(2)}</span><button class="btn-remove" onclick="eliminarPago('${escHTML(p.id)}')">&times;</button></div>`).join('');
 }
 function actualizarResumenPagos(){
-  const t=listaPagos.reduce((s,p)=>s+p.monto,0);
+  const t=listaPagos.reduce((s,p)=>s+(parseFloat(p.monto)||0),0);
   document.getElementById('pago-total-dia').textContent='$'+t.toFixed(2);
   document.getElementById('pago-count-dia').textContent=`${listaPagos.length} pago${listaPagos.length!==1?'s':''} registrado${listaPagos.length!==1?'s':''}`;
 }
@@ -1660,8 +1675,8 @@ function actualizarCierreCajaAuto(){
   const barras=document.querySelectorAll('.js-cierreCajaAutoBar');
   if(!barras.length) return; // por si ninguna vista está en el DOM todavía
   let hist=[]; try{hist=JSON.parse(sessionStorage.getItem('aqualuan-historial')||'[]');}catch{}
-  const totalPagos=listaPagos.reduce((s,p)=>s+p.monto,0);
-  const totalGastos=listaGastos.reduce((s,g)=>s+g.monto,0);
+  const totalPagos=listaPagos.reduce((s,p)=>s+(parseFloat(p.monto)||0),0);
+  const totalGastos=listaGastos.reduce((s,g)=>s+(parseFloat(g.monto)||0),0);
   const totalVentasContado=hist.filter(p=>p.formapago==='Contado').reduce((s,p)=>s+(Number(p.total)||0),0);
   const cierre=totalPagos+totalVentasContado-totalGastos;
   const colorFondo=cierre>=0?'var(--teal-dark)':'#7a2020';
@@ -1696,12 +1711,12 @@ function _calcularLiquidacion(){
   });
   listaPagos.forEach(p=>{
     const d=getAsesor(p.empleado||'Sin asignar');
-    if(p.forma==='Efectivo') d.pagosEfectivo+=p.monto;
-    else if(p.forma==='Transferencia') d.pagosTransferencia+=p.monto;
-    else if(p.forma==='Cheque') d.pagosCheque+=p.monto;
-    else d.pagosOtros+=p.monto; // [NEW] resguardo por si llega una forma fuera de las 3 conocidas
+    if(p.forma==='Efectivo') d.pagosEfectivo+=(parseFloat(p.monto)||0);
+    else if(p.forma==='Transferencia') d.pagosTransferencia+=(parseFloat(p.monto)||0);
+    else if(p.forma==='Cheque') d.pagosCheque+=(parseFloat(p.monto)||0);
+    else d.pagosOtros+=(parseFloat(p.monto)||0); // [NEW] resguardo por si llega una forma fuera de las 3 conocidas
   });
-  listaGastos.forEach(g=>{ getAsesor(g.empleado||'Sin asignar').gastos+=g.monto; });
+  listaGastos.forEach(g=>{ getAsesor(g.empleado||'Sin asignar').gastos+=(parseFloat(g.monto)||0); });
   return porAsesor;
 }
 
@@ -1891,11 +1906,16 @@ async function registrarGasto(){
   if(!categoria){setStatusGastos('error','Selecciona la categoría del gasto.');return;}
   if(!validarMonto(monto)){setStatusGastos('error','Ingresa un monto válido mayor a $0.');return;}
   if(!desc){setStatusGastos('error','Describe el gasto.');return;}
-  try{
-    await db.collection('gastos').add({
+  /* [FIX] Mismo problema y misma solución que en registrarPago(): sin internet, un await
+     directo sobre .add() se queda colgado hasta que vuelve la señal. */
+  const modoOfflineGasto=!navigator.onLine;
+  let _errorRealGasto=null;
+  const escrituraGasto = db.collection('gastos').add({
       empleado, fecha, categoria, monto, desc, ref,
       creadoPor:usuarioActual?.uid||null, creadoEn:firebase.firestore.FieldValue.serverTimestamp()
-    });
+    }).catch(err=>{ console.warn('Error real al guardar el gasto:',err); _errorRealGasto=err; return null; });
+
+  const _confirmarGastoOk=()=>{
     // [FIX] Mismo caso que en registrarPago(): solo limpiar 'gasto-empleado' si es un
     // <select> real (admin). Para el asesor con ruta bloqueada es un input oculto, y
     // limpiarlo rompía el siguiente guardado con "Selecciona el responsable."
@@ -1903,10 +1923,18 @@ async function registrarGasto(){
     if(elGastoEmpleado && elGastoEmpleado.tagName==='SELECT') elGastoEmpleado.value='';
     document.getElementById('gasto-categoria').value='';
     ['gasto-monto','gasto-desc','gasto-ref'].forEach(id=>document.getElementById(id).value='');
-    setStatusGastos('success',`✓ Gasto de $${monto.toFixed(2)} registrado — ${escHTML(desc)}.`);
-  }catch(err){
-    console.error(err);
-    setStatusGastos('error', navigator.onLine ? 'No se pudo registrar el gasto.' : '📥 Sin internet — se guardó localmente y se sincroniza solo al volver la señal.');
+    setStatusGastos(modoOfflineGasto?'warning':'success', modoOfflineGasto?`📥 Sin internet — gasto de $${monto.toFixed(2)} guardado, se sincroniza solo al volver la señal.`:`✓ Gasto de $${monto.toFixed(2)} registrado — ${escHTML(desc)}.`);
+  };
+
+  if(modoOfflineGasto){
+    _confirmarGastoOk();
+  }else{
+    await Promise.race([ escrituraGasto, new Promise(res=>setTimeout(res,4000)) ]);
+    if(_errorRealGasto){
+      setStatusGastos('error','No se pudo registrar el gasto.');
+    }else{
+      _confirmarGastoOk();
+    }
   }
 }
 async function eliminarGasto(id){
@@ -1918,10 +1946,10 @@ function categoriaBadge(cat){ const c=escHTML(String(cat).slice(0,20)); return`<
 function renderGastos(){
   const lista=document.getElementById('gastosLista'),empty=document.getElementById('gastosEmptyMsg'),items=document.getElementById('gastosItems');
   if(listaGastos.length===0){lista.classList.add('empty');empty.style.display='block';}else{lista.classList.remove('empty');empty.style.display='none';}
-  items.innerHTML=listaGastos.map(g=>`<div class="gasto-item"><div><div style="font-size:13px;font-weight:600;color:var(--navy)">${escHTML(g.desc)}</div><div style="font-size:11px;color:var(--muted)">${escHTML((g.empleado||'').replace('RUTA ','R.'))} · ${escHTML(g.hora||'')}${g.ref?' · '+escHTML(g.ref):''}</div></div><div style="text-align:center">${categoriaBadge(g.categoria)}</div><div style="font-size:11px;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHTML(g.empleado?.split(':')[1]?.trim()||g.empleado||'')}</div><span class="gasto-monto">$${escHTML(g.monto.toFixed(2))}</span><button class="btn-remove" onclick="eliminarGasto('${escHTML(g.id)}')">&times;</button></div>`).join('');
+  items.innerHTML=listaGastos.map(g=>`<div class="gasto-item"><div><div style="font-size:13px;font-weight:600;color:var(--navy)">${escHTML(g.desc)}</div><div style="font-size:11px;color:var(--muted)">${escHTML((g.empleado||'').replace('RUTA ','R.'))} · ${escHTML(g.hora||'')}${g.ref?' · '+escHTML(g.ref):''}</div></div><div style="text-align:center">${categoriaBadge(g.categoria)}</div><div style="font-size:11px;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHTML(g.empleado?.split(':')[1]?.trim()||g.empleado||'')}</div><span class="gasto-monto">$${(parseFloat(g.monto)||0).toFixed(2)}</span><button class="btn-remove" onclick="eliminarGasto('${escHTML(g.id)}')">&times;</button></div>`).join('');
 }
 function actualizarResumenGastos(){
-  const t=listaGastos.reduce((s,g)=>s+g.monto,0);
+  const t=listaGastos.reduce((s,g)=>s+(parseFloat(g.monto)||0),0);
   document.getElementById('gasto-total-dia').textContent='$'+t.toFixed(2);
   document.getElementById('gasto-count-dia').textContent=`${listaGastos.length} gasto${listaGastos.length!==1?'s':''} registrado${listaGastos.length!==1?'s':''}`;
 }
@@ -2244,8 +2272,8 @@ function _renderResumenDiaContenido(){
 
   /* [ELIMINADO] Los cuadros de Ingresos/Egresos/Total en caja se quitaron de aquí — esa
      información ya vive en la pestaña Liquid., calculada por asesor y con más detalle. */
-  const totalIngresos=listaPagos.reduce((s,p)=>s+p.monto,0);
-  const totalEgresos=listaGastos.reduce((s,g)=>s+g.monto,0);
+  const totalIngresos=listaPagos.reduce((s,p)=>s+(parseFloat(p.monto)||0),0);
+  const totalEgresos=listaGastos.reduce((s,g)=>s+(parseFloat(g.monto)||0),0);
   const netoCaja=totalIngresos-totalEgresos;
   const cajaHtml='';
 
