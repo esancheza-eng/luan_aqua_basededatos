@@ -2042,7 +2042,6 @@ function _buildTicketHTML(d){
     }
     return row;
   }).join('');
-  const gpsHtml=d.gps?`<div class="t-line"></div><div class="t-center t-bold">UBICACION GPS</div><div class="t-small t-center">${d.gps.lat.toFixed(6)}, ${d.gps.lng.toFixed(6)}</div><div class="t-small t-center">Precision: &plusmn;${d.gps.acc}m</div>`:'';
   return `<div class="t-center"><img src="logo-luanaqua.png" class="t-logo" alt="Aqua Luan"></div>
   <div class="t-center t-small t-bold" style="letter-spacing:0.5px">SISTEMA DE PEDIDOS</div>
   <div class="t-line"></div>
@@ -2059,7 +2058,6 @@ function _buildTicketHTML(d){
   <table class="t-tbl">${productosHtml}</table>
   <div class="t-line"></div>
   <table class="t-tbl"><tr class="t-total"><td>TOTAL</td><td class="t-r">$${d.total}</td></tr></table>
-  ${gpsHtml}
   <div class="t-line"></div>
   <div class="t-center t-small" style="margin-top:14px">Firma asesor: ____________</div>
   <div class="t-center t-small" style="margin-top:10px">Firma cliente: ____________</div>
@@ -2070,19 +2068,19 @@ function _abrirVentanaTicket(contenido){
   v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><base href="${location.href}"><title>Ticket — Luan Aqua</title><style>
   @page{size:48mm auto;margin:0;}
   *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:'Courier New',monospace;width:46mm;padding:1mm;color:#000;font-size:9px;line-height:1.4;font-weight:700;}
+  body{font-family:'Courier New',monospace;width:46mm;padding:1mm;color:#000;font-size:11px;line-height:1.45;font-weight:700;}
   .t-center{text-align:center;}
   .t-logo{width:40mm;max-width:100%;display:inline-block;margin-bottom:2px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-  .t-small{font-size:8px;font-weight:700;}
+  .t-small{font-size:10px;font-weight:700;}
   .t-bold{font-weight:700;}
   .t-line{border-top:1px dashed #000;margin:3px 0;}
   .t-tbl{width:100%;border-collapse:collapse;}
   .t-tbl td{padding:0;vertical-align:top;font-weight:700;}
   .t-tbl td.t-r{text-align:right;white-space:nowrap;width:1%;}
   .t-prod{font-weight:700;padding-top:2px !important;word-break:break-word;}
-  .t-regalo{font-size:8px;font-weight:700;font-style:italic;padding-left:4px !important;}
-  .t-total td{font-size:11px;font-weight:700;padding-top:2px !important;}
-  .t-pago-val{font-size:12px !important;}
+  .t-regalo{font-size:10px;font-weight:700;font-style:italic;padding-left:4px !important;}
+  .t-total td{font-size:14px;font-weight:700;padding-top:2px !important;}
+  .t-pago-val{font-size:14px !important;}
   </style></head><body>${contenido}<script>window.onload=function(){window.print();}<\/script></body></html>`);
   v.document.close();
 }
