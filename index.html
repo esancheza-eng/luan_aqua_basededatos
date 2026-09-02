@@ -1655,6 +1655,7 @@ async function registrarPago(){
   }
 }
 async function eliminarPago(id){
+  if(!usuarioActual||!usuarioActual.esAdmin){alert('Solo el administrador puede eliminar pagos.');return;}
   if(!confirm('¿Eliminar este pago?')) return;
   try{ await db.collection('pagos').doc(id).delete(); }
   catch(err){ console.error(err); alert('No se pudo eliminar el pago.'); }
@@ -1663,7 +1664,8 @@ function badgeForma(f){ const m={'Efectivo':'efectivo','Transferencia':'transfer
 function renderPagos(){
   const lista=document.getElementById('pagosLista'),empty=document.getElementById('pagosEmptyMsg'),items=document.getElementById('pagosItems');
   if(listaPagos.length===0){lista.classList.add('empty');empty.style.display='block';}else{lista.classList.remove('empty');empty.style.display='none';}
-  items.innerHTML=listaPagos.map(p=>`<div class="pago-item"><div><div style="font-size:13px;font-weight:600;color:var(--navy)">${escHTML(p.cliente)}</div><div style="font-size:11px;color:var(--muted)">${escHTML((p.empleado||'').replace('RUTA ','R.'))} · ${escHTML(p.hora||'')}</div></div><div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHTML(p.notas||'-')}</div><div style="text-align:center">${badgeForma(p.forma)}</div><span class="pago-monto">$${(parseFloat(p.monto)||0).toFixed(2)}</span><button class="btn-remove" onclick="eliminarPago('${escHTML(p.id)}')">&times;</button></div>`).join('');
+  const puedeEliminar=usuarioActual&&usuarioActual.esAdmin; /* [NEW] solo el administrador puede eliminar pagos */
+  items.innerHTML=listaPagos.map(p=>`<div class="pago-item"><div><div style="font-size:13px;font-weight:600;color:var(--navy)">${escHTML(p.cliente)}</div><div style="font-size:11px;color:var(--muted)">${escHTML((p.empleado||'').replace('RUTA ','R.'))} · ${escHTML(p.hora||'')}</div></div><div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHTML(p.notas||'-')}</div><div style="text-align:center">${badgeForma(p.forma)}</div><span class="pago-monto">$${(parseFloat(p.monto)||0).toFixed(2)}</span>${puedeEliminar?`<button class="btn-remove" onclick="eliminarPago('${escHTML(p.id)}')">&times;</button>`:'<span></span>'}</div>`).join('');
 }
 function actualizarResumenPagos(){
   const t=listaPagos.reduce((s,p)=>s+(parseFloat(p.monto)||0),0);
@@ -1944,6 +1946,7 @@ async function registrarGasto(){
   }
 }
 async function eliminarGasto(id){
+  if(!usuarioActual||!usuarioActual.esAdmin){alert('Solo el administrador puede eliminar gastos.');return;}
   if(!confirm('¿Eliminar este gasto?')) return;
   try{ await db.collection('gastos').doc(id).delete(); }
   catch(err){ console.error(err); alert('No se pudo eliminar el gasto.'); }
@@ -1952,7 +1955,8 @@ function categoriaBadge(cat){ const c=escHTML(String(cat).slice(0,20)); return`<
 function renderGastos(){
   const lista=document.getElementById('gastosLista'),empty=document.getElementById('gastosEmptyMsg'),items=document.getElementById('gastosItems');
   if(listaGastos.length===0){lista.classList.add('empty');empty.style.display='block';}else{lista.classList.remove('empty');empty.style.display='none';}
-  items.innerHTML=listaGastos.map(g=>`<div class="gasto-item"><div><div style="font-size:13px;font-weight:600;color:var(--navy)">${escHTML(g.desc)}</div><div style="font-size:11px;color:var(--muted)">${escHTML((g.empleado||'').replace('RUTA ','R.'))} · ${escHTML(g.hora||'')}${g.ref?' · '+escHTML(g.ref):''}</div></div><div style="text-align:center">${categoriaBadge(g.categoria)}</div><div style="font-size:11px;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHTML(g.empleado?.split(':')[1]?.trim()||g.empleado||'')}</div><span class="gasto-monto">$${(parseFloat(g.monto)||0).toFixed(2)}</span><button class="btn-remove" onclick="eliminarGasto('${escHTML(g.id)}')">&times;</button></div>`).join('');
+  const puedeEliminar=usuarioActual&&usuarioActual.esAdmin; /* [NEW] solo el administrador puede eliminar gastos */
+  items.innerHTML=listaGastos.map(g=>`<div class="gasto-item"><div><div style="font-size:13px;font-weight:600;color:var(--navy)">${escHTML(g.desc)}</div><div style="font-size:11px;color:var(--muted)">${escHTML((g.empleado||'').replace('RUTA ','R.'))} · ${escHTML(g.hora||'')}${g.ref?' · '+escHTML(g.ref):''}</div></div><div style="text-align:center">${categoriaBadge(g.categoria)}</div><div style="font-size:11px;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHTML(g.empleado?.split(':')[1]?.trim()||g.empleado||'')}</div><span class="gasto-monto">$${(parseFloat(g.monto)||0).toFixed(2)}</span>${puedeEliminar?`<button class="btn-remove" onclick="eliminarGasto('${escHTML(g.id)}')">&times;</button>`:'<span></span>'}</div>`).join('');
 }
 function actualizarResumenGastos(){
   const t=listaGastos.reduce((s,g)=>s+(parseFloat(g.monto)||0),0);
