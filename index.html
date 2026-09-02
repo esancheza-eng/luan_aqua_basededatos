@@ -1993,7 +1993,7 @@ function _buildPDF(doc,d){
     doc.setFont('helvetica','bold');doc.setTextColor(10,124,110);doc.text(`$${p.subtotal.toFixed(2)}`,pageW-margin-2,y+5,{align:'right'});y+=7;
     if(p.regalias&&p.regalias.length){
       doc.setFont('helvetica','italic');doc.setFontSize(8);doc.setTextColor(10,124,110);
-      p.regalias.forEach(r=>{ doc.text(`+ Regalo: ${r.nombre} x${r.cantidad}`,margin+6,y+4); y+=5; });
+      p.regalias.forEach(r=>{ doc.text(`+ Promo: ${r.nombre} x${r.cantidad}`,margin+6,y+4); y+=5; });
     }
   });
   y+=4;doc.setFillColor(26,58,92);doc.roundedRect(margin,y,pageW-margin*2,12,3,3,'F');
@@ -2034,7 +2034,7 @@ function _buildTicketHTML(d){
     let row=`<tr><td colspan="2" class="t-prod">${escHTML(p.nombre)}</td></tr>
     <tr><td>${p.cantidad} x $${p.precio.toFixed(2)}</td><td class="t-r">$${p.subtotal.toFixed(2)}</td></tr>`;
     if(p.regalias&&p.regalias.length){
-      row+=p.regalias.map(r=>`<tr><td colspan="2" class="t-regalo">+ Regalo: ${escHTML(r.nombre)} x${r.cantidad}</td></tr>`).join('');
+      row+=p.regalias.map(r=>`<tr><td colspan="2" class="t-regalo">+ Promo: ${escHTML(r.nombre)} x${r.cantidad}</td></tr>`).join('');
     }
     return row;
   }).join('');
@@ -2044,7 +2044,7 @@ function _buildTicketHTML(d){
   <div class="t-line"></div>
   <table class="t-tbl"><tr><td>Pedido:</td><td class="t-r">${fechaStr}</td></tr>
   <tr><td>Ruta:</td><td class="t-r">${escHTML(d.empleado||'-')}</td></tr>
-  <tr><td>Pago:</td><td class="t-r">${escHTML(d.formapago||'-')}</td></tr></table>
+  <tr><td>Pago:</td><td class="t-r t-pago-val">${escHTML(d.formapago||'-')}</td></tr></table>
   <div class="t-line"></div>
   <div class="t-bold">CLIENTE: ${escHTML(d.nombre||'-')}</div>
   ${d.telefono?`<div class="t-small">Tel: ${escHTML(d.telefono)}</div>`:''}
@@ -2078,6 +2078,7 @@ function _abrirVentanaTicket(contenido){
   .t-prod{font-weight:700;padding-top:2px !important;word-break:break-word;}
   .t-regalo{font-size:8px;font-weight:700;font-style:italic;padding-left:4px !important;}
   .t-total td{font-size:11px;font-weight:700;padding-top:2px !important;}
+  .t-pago-val{font-size:12px !important;}
   </style></head><body>${contenido}<script>window.onload=function(){window.print();}<\/script></body></html>`);
   v.document.close();
 }
