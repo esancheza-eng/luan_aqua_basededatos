@@ -2066,17 +2066,17 @@ function _abrirVentanaTicket(contenido){
   v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><base href="${location.href}"><title>Ticket — Luan Aqua</title><style>
   @page{size:48mm auto;margin:0;}
   *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:'Courier New',monospace;width:46mm;padding:1mm;color:#000;font-size:9px;line-height:1.4;}
+  body{font-family:'Courier New',monospace;width:46mm;padding:1mm;color:#000;font-size:9px;line-height:1.4;font-weight:700;}
   .t-center{text-align:center;}
   .t-logo{width:40mm;max-width:100%;display:inline-block;margin-bottom:2px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-  .t-small{font-size:8px;}
+  .t-small{font-size:8px;font-weight:700;}
   .t-bold{font-weight:700;}
   .t-line{border-top:1px dashed #000;margin:3px 0;}
   .t-tbl{width:100%;border-collapse:collapse;}
-  .t-tbl td{padding:0;vertical-align:top;}
+  .t-tbl td{padding:0;vertical-align:top;font-weight:700;}
   .t-tbl td.t-r{text-align:right;white-space:nowrap;width:1%;}
   .t-prod{font-weight:700;padding-top:2px !important;word-break:break-word;}
-  .t-regalo{font-size:8px;font-style:italic;padding-left:4px !important;}
+  .t-regalo{font-size:8px;font-weight:700;font-style:italic;padding-left:4px !important;}
   .t-total td{font-size:11px;font-weight:700;padding-top:2px !important;}
   </style></head><body>${contenido}<script>window.onload=function(){window.print();}<\/script></body></html>`);
   v.document.close();
