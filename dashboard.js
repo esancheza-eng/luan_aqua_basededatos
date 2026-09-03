@@ -2448,12 +2448,27 @@ function _valorColumna(filaNormalizada, aliases){
   }
   return '';
 }
+/* [FIX] Cuando la columna Fecha en el Excel está formateada como fecha nativa (no como
+   texto), SheetJS la entrega como un número de serie (ej. 46267) en vez de "AAAA-MM-DD".
+   Eso hacía que "Último pedido" mostrara ese número crudo y "Días sin compra" diera NaN.
+   Esto detecta ese caso (puro número, sin guiones) y lo convierte a fecha real. */
+function _normalizarFechaImportada(valor){
+  const s = String(valor||'').trim();
+  if (!s) return '';
+  if (/^\d+$/.test(s)) { // solo dígitos -> probable número de serie de Excel
+    try {
+      const d = XLSX.SSF.parse_date_code(Number(s));
+      if (d && d.y) { const pad = n => String(n).padStart(2,'0'); return `${d.y}-${pad(d.m)}-${pad(d.d)}`; }
+    } catch(e) { /* si falla, se usa el valor tal cual más abajo */ }
+  }
+  return s;
+}
 function agruparYPrevisualizarImportacion(filas){
   const grupos = {};
   filas.forEach(f => {
     const filaNorm = {};
     Object.keys(f).forEach(k => { filaNorm[_normEncabezado(k)] = f[k]; });
-    const fecha = _valorColumna(filaNorm, ['Fecha']);
+    const fecha = _normalizarFechaImportada(_valorColumna(filaNorm, ['Fecha']));
     const asesor = _matchAsesorCanonico(_valorColumna(filaNorm, ['Asesor']));
     const cliente = _valorColumna(filaNorm, ['Cliente']);
     if (!fecha || !cliente) return;
