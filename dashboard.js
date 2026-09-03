@@ -1125,7 +1125,7 @@ function exportarClientePDF() {
   }).join('');
 
   const v = window.open('', '_blank', 'width=800,height=900');
-  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Detalle de Clientes — Luan Aqua</title>
+  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Detalle de Clientes — Aqua Luan</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
@@ -1150,7 +1150,7 @@ function exportarClientePDF() {
     @media print{body{padding:12px;} thead{display:table-header-group;}}
   </style></head><body>
   <div class="print-header">
-    <h1>🔍 Detalle de Clientes — Luan Aqua</h1>
+    <h1>🔍 Detalle de Clientes — Aqua Luan</h1>
     <p>${clientesSeleccionados.length} cliente(s) · Asesor: ${asesorLabel} · Fecha: ${fecha} · Generado: ${new Date().toLocaleString('es-EC')}</p>
   </div>
   ${bloquesHtml}
@@ -1395,7 +1395,7 @@ function _imprimirClientesPDF(clientesArr) {
     </div>`;
   }).join('<hr>');
   const v = window.open('', '_blank', 'width=800,height=900');
-  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Clientes — Luan Aqua</title>
+  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Clientes — Aqua Luan</title>
   <style>
     body{font-family:Arial,sans-serif;color:#1a3a5c;padding:24px}
     h2{font-family:Georgia,serif;font-size:20px;margin-bottom:2px}
@@ -1768,7 +1768,7 @@ function imprimirCierre() {
   const fecha  = document.getElementById('cierreFechaBadge').textContent;
   const cuerpo = document.getElementById('cierreBody').innerHTML;
   const v = window.open('','_blank','width=800,height=900');
-  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Cierre del Día — Luan Aqua — ${fecha}</title>
+  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Cierre del Día — Aqua Luan — ${fecha}</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
@@ -1808,7 +1808,7 @@ function imprimirCierre() {
     .btn-cerrar-cierre,.btn-print-cierre{display:none!important;}
     @media print{body{padding:16px;} .cierre-asesor-block{page-break-inside:avoid;}}
   </style></head><body>
-  <div class="print-header"><h1>📅 Cierre del Día — Luan Aqua</h1><p>Fecha: ${fecha} · Generado: ${new Date().toLocaleString('es-EC')}</p></div>
+  <div class="print-header"><h1>📅 Cierre del Día — Aqua Luan</h1><p>Fecha: ${fecha} · Generado: ${new Date().toLocaleString('es-EC')}</p></div>
   ${cuerpo}
   <script>window.onload=function(){window.print();}<\/script>
   </body></html>`);
@@ -1832,7 +1832,7 @@ function exportarPagosPDF() {
     <td style="text-align:right">$${(parseFloat(r['TOTAL PEDIDO ($)'])||0).toFixed(2)}</td>
   </tr>`).join('');
   const v = window.open('', '_blank', 'width=900,height=900');
-  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Pagos Registrados — Luan Aqua — ${fecha}</title>
+  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Pagos Registrados — Aqua Luan — ${fecha}</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
@@ -1852,7 +1852,7 @@ function exportarPagosPDF() {
     @media print{body{padding:12px;} thead{display:table-header-group;}}
   </style></head><body>
   <div class="print-header">
-    <h1>💰 Pagos Registrados — Luan Aqua</h1>
+    <h1>💰 Pagos Registrados — Aqua Luan</h1>
     <p>Fecha: ${fecha} · ${datos.length} pago(s) · Generado: ${new Date().toLocaleString('es-EC')}</p>
   </div>
   <div class="resumen-forma">${resumenForma}</div>
@@ -1884,7 +1884,7 @@ function exportarGastosPDF() {
     </tr>`;
   }).join('');
   const v = window.open('', '_blank', 'width=900,height=900');
-  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Gastos Registrados — Luan Aqua — ${fecha}</title>
+  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Gastos Registrados — Aqua Luan — ${fecha}</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
@@ -1903,7 +1903,7 @@ function exportarGastosPDF() {
     @media print{body{padding:12px;} thead{display:table-header-group;}}
   </style></head><body>
   <div class="print-header">
-    <h1>📉 Gastos Registrados — Luan Aqua</h1>
+    <h1>📉 Gastos Registrados — Aqua Luan</h1>
     <p>Fecha: ${fecha} · ${datos.length} gasto(s) · Generado: ${new Date().toLocaleString('es-EC')}</p>
   </div>
   <table>
@@ -1943,7 +1943,7 @@ function exportarDetallePDF() {
   }).join('');
 
   const v = window.open('', '_blank', 'width=1000,height=900');
-  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Detalle de Pedidos — Luan Aqua — ${fecha}</title>
+  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Detalle de Pedidos — Aqua Luan — ${fecha}</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
@@ -1961,7 +1961,7 @@ function exportarDetallePDF() {
     @media print{body{padding:12px;} thead{display:table-header-group;}}
   </style></head><body>
   <div class="print-header">
-    <h1>📋 Detalle de Pedidos — Luan Aqua</h1>
+    <h1>📋 Detalle de Pedidos — Aqua Luan</h1>
     <p>Fecha: ${fecha} · Asesor: ${asesorLabel} · ${datos.length} línea(s) · Generado: ${new Date().toLocaleString('es-EC')}</p>
   </div>
   <table>
