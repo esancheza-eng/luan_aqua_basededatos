@@ -64,6 +64,7 @@ let leafletLoaded = false;
 let mapMarkers = [];
 let mapPolylines = [];
 let pedidosDetalleActuales = [];
+let _pedidosTablaFiltrados = []; // [NEW] subconjunto de pedidosDetalleActuales tras aplicar el filtro de Pago, solo para la tabla de Detalle de Pedidos y su export a PDF
 
 /* [NEW] Editar Pedido — identidad del admin actual (para el historial de cambios) */
 let ADMIN_ACTUAL = { uid: null, nombre: 'Admin' };
@@ -459,8 +460,10 @@ function renderDashboard() {
   `;
   renderCharts(pedidos, pedidosConTotal);
   pedidosDetalleActuales = pedidos;
-  renderTabla(pedidos);
-  renderResumenPorCliente(pedidos); // [NEW]
+  _pedidosTablaFiltrados = _filtrarPorPagoChecklist(pedidos); // [NEW]
+  renderFiltroPagoDropdown(pedidos); // [NEW] opciones del checklist -- siempre sobre el set completo, para no perder checkboxes de formas de pago ocultas
+  renderTabla(_pedidosTablaFiltrados);
+  renderResumenPorCliente(_pedidosTablaFiltrados); // [NEW]
   poblarClienteSelect(pedidos);
   renderPagosGastosDetalle(pagos, gastos); // [NEW]
   document.getElementById('chartsGrid').style.display = 'grid';
@@ -599,6 +602,57 @@ function renderGPS(pedidos) {
     </a>
   `).join('');
 }
+
+/* [NEW] Filtro tipo checklist para "Pago" en Detalle de Pedidos.
+   Se guarda como un Set de formas de pago DESMARCADAS (ocultas) -- vacío significa
+   "sin filtro, mostrar todo". Así, cualquier forma de pago nueva que aparezca
+   (ej. al importar datos) se muestra por defecto, sin tener que "agregarla" al filtro. */
+let _pagoFiltroExcluidos = new Set();
+function _opcionesPagoDisponibles(pedidos) {
+  const set = new Set();
+  pedidos.forEach(r => { set.add(r['FORMA DE PAGO'] || 'Sin especificar'); });
+  return [...set].sort((a,b) => a.localeCompare(b,'es'));
+}
+function _filtrarPorPagoChecklist(pedidos) {
+  if (_pagoFiltroExcluidos.size === 0) return pedidos;
+  return pedidos.filter(r => !_pagoFiltroExcluidos.has(r['FORMA DE PAGO'] || 'Sin especificar'));
+}
+function renderFiltroPagoDropdown(pedidosSinFiltrarPago) {
+  const cont = document.getElementById('filtroPagoOpciones');
+  if (!cont) return;
+  const opciones = _opcionesPagoDisponibles(pedidosSinFiltrarPago);
+  cont.innerHTML = opciones.length ? opciones.map(o => `
+    <label class="filtro-pago-item">
+      <input type="checkbox" ${_pagoFiltroExcluidos.has(o) ? '' : 'checked'} onchange="toggleFiltroPago('${escHTML(o).replace(/'/g,"\\'")}', this.checked)">
+      ${escHTML(o)}
+    </label>
+  `).join('') : '<div style="font-size:12px;color:var(--muted);padding:6px 8px">No hay pedidos en este período</div>';
+  const contador = document.getElementById('filtroPagoContador');
+  if (contador) {
+    if (_pagoFiltroExcluidos.size > 0) { contador.textContent = `(${opciones.length - _pagoFiltroExcluidos.size}/${opciones.length})`; contador.style.display = 'inline'; }
+    else { contador.style.display = 'none'; }
+  }
+}
+function toggleFiltroPago(valor, marcado) {
+  if (marcado) _pagoFiltroExcluidos.delete(valor); else _pagoFiltroExcluidos.add(valor);
+  renderDashboard();
+}
+function marcarTodosFiltroPago(marcarTodo) {
+  if (marcarTodo) { _pagoFiltroExcluidos.clear(); }
+  else { _opcionesPagoDisponibles(pedidosDetalleActuales || []).forEach(o => _pagoFiltroExcluidos.add(o)); }
+  renderDashboard();
+}
+function toggleDropdownPago(ev) {
+  if (ev) ev.stopPropagation();
+  const dd = document.getElementById('dropdownPago');
+  if (dd) dd.classList.toggle('open');
+}
+document.addEventListener('click', (ev) => {
+  const dd = document.getElementById('dropdownPago');
+  if (dd && dd.classList.contains('open') && !dd.contains(ev.target) && ev.target.closest('.filtro-pago-wrap') === null) {
+    dd.classList.remove('open');
+  }
+});
 
 function renderTabla(pedidos) {
   const tbody = document.getElementById('tablaPedidos');
@@ -1839,7 +1893,7 @@ function exportarGastosPDF() {
 }
 
 function exportarDetallePDF() {
-  const datos = pedidosDetalleActuales;
+  const datos = _pedidosTablaFiltrados; // [NEW] exporta lo mismo que se ve en pantalla (respeta el filtro de Pago)
   if (!datos.length) { alert('No hay datos para exportar. Aplica los filtros primero.'); return; }
   const fecha = document.getElementById('filtroFecha').value || 'Todos los registros';
   const asesorSel = document.getElementById('filtroAsesor') ? document.getElementById('filtroAsesor').value : '';
