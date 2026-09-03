@@ -255,6 +255,7 @@ function detenerListenerRolesHistorial(){ if(_unsubRolesHist){_unsubRolesHist();
 function iniciar() {
   const hoy = fechaHoy();
   document.getElementById('filtroFecha').value = hoy;
+  document.getElementById('filtroFechaHasta').value = hoy; // [NEW] por defecto, mismo día en "desde" y "hasta"
   iniciarListenersDashboard(); // [NEW] tiempo real — reemplaza el polling cada 60s
   _iniciarListenerAsesoresDash(); // [NEW] filtro de asesor real, en vivo
   _iniciarListenerProductosDash(); // [NEW] catálogo de productos para el modal Editar Pedido
@@ -412,13 +413,23 @@ async function cargarDatos(mostrarSpinner = true) {
 /* ════════════════════════════════════════
    FILTROS DASHBOARD
 ════════════════════════════════════════ */
-function filtrarHoy() { document.getElementById('filtroFecha').value = fechaHoy(); renderDashboard(); }
-function limpiarFiltro() { document.getElementById('filtroFecha').value = ''; if (document.getElementById('filtroAsesor')) document.getElementById('filtroAsesor').value = ''; renderDashboard(); }
+function filtrarHoy() { const hoy = fechaHoy(); document.getElementById('filtroFecha').value = hoy; document.getElementById('filtroFechaHasta').value = hoy; renderDashboard(); }
+function limpiarFiltro() { document.getElementById('filtroFecha').value = ''; document.getElementById('filtroFechaHasta').value = ''; if (document.getElementById('filtroAsesor')) document.getElementById('filtroAsesor').value = ''; renderDashboard(); }
+/* [NEW] Texto legible del rango de fecha actualmente filtrado, para usar en encabezados de PDF */
+function _textoRangoFecha() {
+  const desde = document.getElementById('filtroFecha').value;
+  const hasta = document.getElementById('filtroFechaHasta').value;
+  if (!desde && !hasta) return 'Todos los registros';
+  if (desde && hasta && desde !== hasta) return `${desde} a ${hasta}`;
+  return desde || hasta;
+}
 function getDatosFiltrados() {
-  const filtro = document.getElementById('filtroFecha').value;
+  const desde = document.getElementById('filtroFecha').value;
+  const hasta = document.getElementById('filtroFechaHasta').value;
   const asesorSel = document.getElementById('filtroAsesor') ? document.getElementById('filtroAsesor').value : '';
   let datos = todosLosDatos;
-  if (filtro) datos = datos.filter(r => { const fecha = r['FECHA'] || r['fecha'] || ''; return String(fecha).includes(filtro); });
+  if (desde) datos = datos.filter(r => String(r['FECHA'] || r['fecha'] || '') >= desde);
+  if (hasta) datos = datos.filter(r => String(r['FECHA'] || r['fecha'] || '') <= hasta);
   if (asesorSel) datos = datos.filter(r => (r['ASESOR / RUTA']||'') === asesorSel);
   return datos;
 }
@@ -426,9 +437,11 @@ function getDatosFiltrados() {
    por Asesor" siempre pueda mostrar todas las tarjetas, sin importar qué asesor esté
    seleccionado arriba en el filtro general del dashboard. */
 function getDatosSoloFecha() {
-  const filtro = document.getElementById('filtroFecha').value;
+  const desde = document.getElementById('filtroFecha').value;
+  const hasta = document.getElementById('filtroFechaHasta').value;
   let datos = todosLosDatos;
-  if (filtro) datos = datos.filter(r => { const fecha = r['FECHA'] || r['fecha'] || ''; return String(fecha).includes(filtro); });
+  if (desde) datos = datos.filter(r => String(r['FECHA'] || r['fecha'] || '') >= desde);
+  if (hasta) datos = datos.filter(r => String(r['FECHA'] || r['fecha'] || '') <= hasta);
   return datos;
 }
 
@@ -1062,7 +1075,7 @@ function exportarClientePDF() {
   const items = pedidosDetalleActuales.filter(r => clientesSeleccionados.includes(r['CLIENTE']));
   if (!items.length) { alert('No hay pedidos para estos clientes en el filtro actual.'); return; }
 
-  const fecha = document.getElementById('filtroFecha').value || 'Todos los registros';
+  const fecha = _textoRangoFecha();
   const asesorSel = document.getElementById('filtroAsesor') ? document.getElementById('filtroAsesor').value : '';
   const asesorLabel = asesorSel.split(':')[1]?.trim() || 'Todos';
 
@@ -1793,7 +1806,7 @@ function imprimirCierre() {
 function exportarPagosPDF() {
   const datos = pagosDetalleActuales || [];
   if (!datos.length) { alert('No hay pagos para exportar. Aplica los filtros primero.'); return; }
-  const fecha = document.getElementById('filtroFecha').value || 'Todos los registros';
+  const fecha = _textoRangoFecha();
   const total = datos.reduce((s,r) => s + (parseFloat(r['TOTAL PEDIDO ($)'])||0), 0);
   const porForma = {};
   datos.forEach(r => { const f = r['FORMA DE PAGO'] || 'Sin especificar'; porForma[f] = (porForma[f]||0) + (parseFloat(r['TOTAL PEDIDO ($)'])||0); });
@@ -1846,7 +1859,7 @@ function exportarPagosPDF() {
 function exportarGastosPDF() {
   const datos = gastosDetalleActuales || [];
   if (!datos.length) { alert('No hay gastos para exportar. Aplica los filtros primero.'); return; }
-  const fecha = document.getElementById('filtroFecha').value || 'Todos los registros';
+  const fecha = _textoRangoFecha();
   const total = datos.reduce((s,r) => s + Math.abs(parseFloat(r['TOTAL PEDIDO ($)'])||0), 0);
   const filas = datos.map(r => {
     const desc = r['NOTAS'] || r['CLIENTE'] || r['DIRECCIÓN'] || '-';
@@ -1895,7 +1908,7 @@ function exportarGastosPDF() {
 function exportarDetallePDF() {
   const datos = _pedidosTablaFiltrados; // [NEW] exporta lo mismo que se ve en pantalla (respeta el filtro de Pago)
   if (!datos.length) { alert('No hay datos para exportar. Aplica los filtros primero.'); return; }
-  const fecha = document.getElementById('filtroFecha').value || 'Todos los registros';
+  const fecha = _textoRangoFecha();
   const asesorSel = document.getElementById('filtroAsesor') ? document.getElementById('filtroAsesor').value : '';
   const asesorLabel = asesorSel.split(':')[1]?.trim() || 'Todos';
 
