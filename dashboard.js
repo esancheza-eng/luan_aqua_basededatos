@@ -924,7 +924,11 @@ function renderRutasDia(fecha, asesorFiltro) {
   const diagBox=document.getElementById('gpsDiagBox'), diagContent=document.getElementById('gpsDiagContent');
   let datos=todosLosDatos;
   if(fecha) datos=datos.filter(r=>{ const f=String(r['FECHA']||''); return f.startsWith(fecha)||f.includes(fecha); });
-  if(asesorFiltro) datos=datos.filter(r=>(r['ASESOR / RUTA']||'')===asesorFiltro);
+  /* [FIX] Antes comparaba con === exacto: si el campo empleado del pedido tenía
+     alguna diferencia de mayúsculas/minúsculas o espacios respecto al valor del
+     desplegable (ej. "RUTA 4: WILSON" guardado vs "RUTA 4: Wilson" del filtro),
+     no encontraba ningún registro aunque sí existieran pedidos de ese asesor ese día. */
+  if(asesorFiltro) datos=datos.filter(r=>(r['ASESOR / RUTA']||'').trim().toLowerCase()===asesorFiltro.trim().toLowerCase());
   const sampleKeys=datos.length>0?Object.keys(datos[0]):[];
   const latKey=sampleKeys.find(k=>/latitud/i.test(k))||'LATITUD';
   const lngKey=sampleKeys.find(k=>/longitud/i.test(k))||'LONGITUD';
@@ -997,7 +1001,7 @@ function centrarMapa() {
   const fecha=document.getElementById('rutasFecha').value, asesor=document.getElementById('rutasAsesor').value;
   let datos=todosLosDatos;
   if(fecha) datos=datos.filter(r=>String(r['FECHA']||'').startsWith(fecha));
-  if(asesor) datos=datos.filter(r=>(r['ASESOR / RUTA']||'')===asesor);
+  if(asesor) datos=datos.filter(r=>(r['ASESOR / RUTA']||'').trim().toLowerCase()===asesor.trim().toLowerCase()); // [FIX] mismo ajuste que renderRutasDia
   const sampleKeys=datos.length>0?Object.keys(datos[0]):[];
   const latKey=sampleKeys.find(k=>/latitud/i.test(k))||'LATITUD';
   const lngKey=sampleKeys.find(k=>/longitud/i.test(k))||'LONGITUD';
