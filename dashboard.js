@@ -382,7 +382,20 @@ function iniciarListenersDashboard() {
   if (_unsubPagosAll) _unsubPagosAll();
   if (_unsubGastosAll) _unsubGastosAll();
   document.getElementById('kpiGrid').innerHTML = '<div class="loading"><div class="spinner"></div><span>Cargando datos...</span></div>';
-  _unsubPedidosAll = db.collection('pedidos').onSnapshot(snap => {
+  /* [FIX] Antes esto traía TODA la colección completa (todos los pedidos/pagos/gastos
+     de toda la historia), sin importar el filtro de fecha elegido arriba -- por eso el
+     Dashboard se ponía cada vez más lento a medida que se acumulaban más registros con
+     el tiempo. Ahora arma la consulta según el rango Desde/Hasta seleccionado, así solo
+     se descarga y procesa lo que realmente hace falta mostrar. El botón "Todo" sigue
+     funcionando igual: al dejar ambos campos vacíos, no se agrega ningún .where() de
+     fecha y se trae el histórico completo, como antes (esperable que tarde más, porque
+     ahí sí se está pidiendo todo a propósito). */
+  const desde = document.getElementById('filtroFecha').value;
+  const hasta = document.getElementById('filtroFechaHasta').value;
+  let qPedidos = db.collection('pedidos'), qPagos = db.collection('pagos'), qGastos = db.collection('gastos');
+  if (desde) { qPedidos = qPedidos.where('fecha','>=',desde); qPagos = qPagos.where('fecha','>=',desde); qGastos = qGastos.where('fecha','>=',desde); }
+  if (hasta) { qPedidos = qPedidos.where('fecha','<=',hasta); qPagos = qPagos.where('fecha','<=',hasta); qGastos = qGastos.where('fecha','<=',hasta); }
+  _unsubPedidosAll = qPedidos.onSnapshot(snap => {
     /* [FIX] Se quitó el orderBy('creadoEn','desc') del lado de Firestore — ese ordenamiento
        EXCLUÍA por completo cualquier pedido que aún no tuviera confirmado su creadoEn en el
        servidor (típico de pedidos guardados offline mientras terminan de sincronizar),
@@ -393,8 +406,8 @@ function iniciarListenersDashboard() {
       .sort((a,b) => (b.creadoEn?.toMillis?.() || 0) - (a.creadoEn?.toMillis?.() || 0));
     _recalcularTodosLosDatos();
   }, err => { console.error('listener pedidos:', err); document.getElementById('kpiGrid').innerHTML = '<div class="loading"><span>⚠️ Error al cargar datos: '+err.message+'</span></div>'; }); /* [FIX] _id agregado — antes no se guardaba el id del documento, y sin él no era posible editar un pedido puntual */
-  _unsubPagosAll   = db.collection('pagos').onSnapshot(snap => { _pagosRaw = snap.docs.map(d => ({ _id: d.id, ...d.data() })); _recalcularTodosLosDatos(); }, err => console.error('listener pagos:', err)); /* [NEW] _id agregado para poder editar/eliminar */
-  _unsubGastosAll  = db.collection('gastos').onSnapshot(snap => { _gastosRaw = snap.docs.map(d => ({ _id: d.id, ...d.data() })); _recalcularTodosLosDatos(); }, err => console.error('listener gastos:', err)); /* [NEW] _id agregado para poder editar/eliminar */
+  _unsubPagosAll   = qPagos.onSnapshot(snap => { _pagosRaw = snap.docs.map(d => ({ _id: d.id, ...d.data() })); _recalcularTodosLosDatos(); }, err => console.error('listener pagos:', err)); /* [NEW] _id agregado para poder editar/eliminar */
+  _unsubGastosAll  = qGastos.onSnapshot(snap => { _gastosRaw = snap.docs.map(d => ({ _id: d.id, ...d.data() })); _recalcularTodosLosDatos(); }, err => console.error('listener gastos:', err)); /* [NEW] _id agregado para poder editar/eliminar */
 }
 function detenerListenersDashboard() {
   if (_unsubPedidosAll) { _unsubPedidosAll(); _unsubPedidosAll = null; }
@@ -413,8 +426,8 @@ async function cargarDatos(mostrarSpinner = true) {
 /* ════════════════════════════════════════
    FILTROS DASHBOARD
 ════════════════════════════════════════ */
-function filtrarHoy() { const hoy = fechaHoy(); document.getElementById('filtroFecha').value = hoy; document.getElementById('filtroFechaHasta').value = hoy; renderDashboard(); }
-function limpiarFiltro() { document.getElementById('filtroFecha').value = ''; document.getElementById('filtroFechaHasta').value = ''; if (document.getElementById('filtroAsesor')) document.getElementById('filtroAsesor').value = ''; renderDashboard(); }
+function filtrarHoy() { const hoy = fechaHoy(); document.getElementById('filtroFecha').value = hoy; document.getElementById('filtroFechaHasta').value = hoy; iniciarListenersDashboard(); }
+function limpiarFiltro() { document.getElementById('filtroFecha').value = ''; document.getElementById('filtroFechaHasta').value = ''; if (document.getElementById('filtroAsesor')) document.getElementById('filtroAsesor').value = ''; iniciarListenersDashboard(); }
 /* [NEW] Texto legible del rango de fecha actualmente filtrado, para usar en encabezados de PDF */
 function _textoRangoFecha() {
   const desde = document.getElementById('filtroFecha').value;
