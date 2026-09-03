@@ -2514,6 +2514,28 @@ async function confirmarImportacionMasiva(){
   } catch(err) { console.error(err); alert('❌ Error al importar: ' + err.message); }
   finally { if (btn) { btn.disabled = false; btn.textContent = '⬆ Confirmar e importar'; } }
 }
+/* [NEW] Elimina TODOS los pedidos que fueron cargados mediante "Importar Datos"
+   (quedan marcados con importado:true al crearse, específicamente para esto).
+   No toca pedidos hechos por asesores desde la app -- solo los que vinieron de
+   Excel/CSV, así se puede limpiar una prueba antes de reimportar el archivo bueno. */
+async function eliminarPedidosImportados(){
+  if (!confirm('¿Eliminar TODOS los pedidos marcados como "importados"? Esta acción no se puede deshacer y no afecta a los pedidos hechos por los asesores desde la app.')) return;
+  const btn = document.getElementById('btnEliminarImportados');
+  if (btn) { btn.disabled = true; btn.textContent = 'Eliminando...'; }
+  try {
+    const snap = await db.collection('pedidos').where('importado', '==', true).get();
+    if (snap.empty) { alert('No hay pedidos marcados como importados para eliminar.'); return; }
+    let lote = db.batch(); let contador = 0;
+    for (const doc of snap.docs) {
+      lote.delete(doc.ref);
+      contador++;
+      if (contador % 400 === 0) { await lote.commit(); lote = db.batch(); } // límite de Firestore: 500 operaciones por lote
+    }
+    await lote.commit();
+    mostrarToastEdicion(`✅ ${snap.size} pedido(s) importado(s) eliminado(s).`);
+  } catch(err) { console.error(err); alert('❌ Error al eliminar: ' + err.message); }
+  finally { if (btn) { btn.disabled = false; btn.textContent = '🗑️ Eliminar todos los pedidos importados'; } }
+}
 
 /* [NEW] Notificación flotante simple, reutilizable */
 function mostrarToastEdicion(msg){
