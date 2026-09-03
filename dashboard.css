@@ -159,6 +159,26 @@ cursor: pointer; transition: background 0.2s;
 .btn-filter:hover { background: var(--teal-dark); }
 .btn-hoy { background: var(--navy); }
 .btn-hoy:hover { background: #0f2a45; }
+/* [NEW] Dropdown tipo checklist para el filtro de "Pago" en Detalle de Pedidos */
+.filtro-pago-wrap { position: relative; display: inline-block; }
+.filtro-pago-dropdown {
+  display: none; position: absolute; top: calc(100% + 6px); left: 0; z-index: 50;
+  background: var(--surface); border: 1.5px solid var(--border); border-radius: 10px;
+  box-shadow: var(--shadow-lg); padding: 8px; min-width: 180px;
+}
+.filtro-pago-dropdown.open { display: block; }
+.filtro-pago-item {
+  display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px;
+  font-size: 12px; font-weight: 600; color: var(--text); cursor: pointer;
+}
+.filtro-pago-item:hover { background: var(--surface2); }
+.filtro-pago-item input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--teal); cursor: pointer; }
+.filtro-pago-actions { display: flex; gap: 6px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); }
+.filtro-pago-actions button {
+  flex: 1; background: var(--surface2); border: none; border-radius: 6px; padding: 5px;
+  font-size: 10px; font-weight: 700; color: var(--text); cursor: pointer;
+}
+.filtro-pago-actions button:hover { background: var(--border); }
 .last-update { margin-left: auto; font-size: 11px; color: var(--muted); font-weight: 500; }
 .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 1.25rem; }
 .kpi-card {
