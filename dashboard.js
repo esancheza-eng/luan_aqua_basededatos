@@ -2432,18 +2432,36 @@ function procesarArchivoImportado(){
   };
   reader.readAsArrayBuffer(file);
 }
+/* [FIX] Antes esto solo reconocía encabezados con capitalización exacta ('Fecha' o
+   'fecha'), así que un Excel con encabezados en MAYÚSCULAS ('FECHA') o con espacios
+   ('FORMA DE PAGO') no coincidía con nada y todas las filas se descartaban -- por eso
+   no aparecía ningún pedido al importar. Ahora normaliza encabezados (mayúsculas, sin
+   tildes, sin espacios) antes de buscarlos, así que funciona sin importar cómo estén
+   escritos en el archivo. */
+function _normEncabezado(s){
+  return String(s||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9]/g,'');
+}
+function _valorColumna(filaNormalizada, aliases){
+  for (const alias of aliases){
+    const v = filaNormalizada[_normEncabezado(alias)];
+    if (v !== undefined && v !== null && String(v).trim() !== '') return String(v).trim();
+  }
+  return '';
+}
 function agruparYPrevisualizarImportacion(filas){
   const grupos = {};
   filas.forEach(f => {
-    const fecha = String(f['Fecha']||f['fecha']||'').trim();
-    const asesor = _matchAsesorCanonico(String(f['Asesor']||f['asesor']||'').trim());
-    const cliente = String(f['Cliente']||f['cliente']||'').trim();
+    const filaNorm = {};
+    Object.keys(f).forEach(k => { filaNorm[_normEncabezado(k)] = f[k]; });
+    const fecha = _valorColumna(filaNorm, ['Fecha']);
+    const asesor = _matchAsesorCanonico(_valorColumna(filaNorm, ['Asesor']));
+    const cliente = _valorColumna(filaNorm, ['Cliente']);
     if (!fecha || !cliente) return;
     const key = `${cliente}|${fecha}|${asesor}`;
-    if (!grupos[key]) grupos[key] = { fecha, empleado: asesor, cliente, telefono: String(f['Telefono']||f['telefono']||''), direccion: String(f['Direccion']||f['direccion']||''), formapago: String(f['FormaPago']||f['formapago']||'Contado'), notas: String(f['Notas']||f['notas']||''), productos: [] };
-    const cantidad = parseFloat(f['Cantidad']||f['cantidad']) || 0;
-    const precio = parseFloat(f['Precio']||f['precio']) || 0;
-    grupos[key].productos.push({ nombre: String(f['Producto']||f['producto']||'').trim(), cantidad, precio, subtotal: +(cantidad*precio).toFixed(2), regalias: [] });
+    if (!grupos[key]) grupos[key] = { fecha, empleado: asesor, cliente, telefono: _valorColumna(filaNorm, ['Telefono']), direccion: _valorColumna(filaNorm, ['Direccion']), formapago: _valorColumna(filaNorm, ['FormaPago','Forma de Pago']) || 'Contado', notas: _valorColumna(filaNorm, ['Notas']), productos: [] };
+    const cantidad = parseFloat(_valorColumna(filaNorm, ['Cantidad'])) || 0;
+    const precio = parseFloat(_valorColumna(filaNorm, ['Precio'])) || 0;
+    grupos[key].productos.push({ nombre: _valorColumna(filaNorm, ['Producto']), cantidad, precio, subtotal: +(cantidad*precio).toFixed(2), regalias: [] });
   });
   _pedidosParaImportar = Object.values(grupos).map(p => ({ ...p, total: +p.productos.reduce((s,pr) => s+pr.subtotal, 0).toFixed(2) }));
   renderPreviewImportacion();
