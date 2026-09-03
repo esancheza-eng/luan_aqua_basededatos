@@ -2604,6 +2604,42 @@ async function eliminarPedidosImportados(){
   finally { if (btn) { btn.disabled = false; btn.textContent = '🗑️ Eliminar todos los pedidos importados'; } }
 }
 
+/* [NEW] Borra POR COMPLETO las colecciones Pedidos, Pagos, Gastos, Historial de cambios
+   y Pedidos eliminados -- de prueba y reales, no solo los marcados importado:true.
+   NO toca Usuarios ni Productos (catálogo). Doble confirmación: primero un confirm(),
+   luego hay que escribir la frase exacta "BORRAR TODO" -- para una acción tan destructiva
+   como esta, un solo clic de confirm() es demasiado fácil de apretar sin querer. */
+async function _borrarColeccionCompleta(nombreColeccion){
+  const snap = await db.collection(nombreColeccion).get();
+  let lote = db.batch(); let contador = 0;
+  for (const doc of snap.docs) {
+    lote.delete(doc.ref);
+    contador++;
+    if (contador % 400 === 0) { await lote.commit(); lote = db.batch(); }
+  }
+  if (contador % 400 !== 0 || contador === 0) await lote.commit();
+  return contador;
+}
+async function reiniciarDatosDesdeCero(){
+  if (ROL_ACTUAL !== 'admin') { alert('Solo el administrador puede hacer esto.'); return; }
+  if (!confirm('⚠️ Esto va a BORRAR TODOS los Pedidos, Pagos, Gastos, Historial de cambios, Pedidos eliminados e Inventario -- de prueba Y reales. Los Usuarios y el Catálogo de Productos NO se tocan. Esta acción NO se puede deshacer.\n\n¿Continuar?')) return;
+  const frase = prompt('Para confirmar, escribe exactamente: BORRAR TODO');
+  if (frase !== 'BORRAR TODO') { alert('Texto incorrecto. No se borró nada.'); return; }
+  const btn = document.getElementById('btnReiniciarTodo');
+  if (btn) { btn.disabled = true; btn.textContent = 'Borrando...'; }
+  try {
+    const resultados = {};
+    resultados.pedidos = await _borrarColeccionCompleta('pedidos');
+    resultados.pagos = await _borrarColeccionCompleta('pagos');
+    resultados.gastos = await _borrarColeccionCompleta('gastos');
+    resultados.historialCambios = await _borrarColeccionCompleta('historialCambios');
+    resultados.pedidosEliminados = await _borrarColeccionCompleta('pedidosEliminados');
+    resultados.inventario = await _borrarColeccionCompleta('inventarioMovimientos');
+    alert(`✅ Reinicio completo:\n- Pedidos: ${resultados.pedidos}\n- Pagos: ${resultados.pagos}\n- Gastos: ${resultados.gastos}\n- Historial de cambios: ${resultados.historialCambios}\n- Pedidos eliminados: ${resultados.pedidosEliminados}\n- Inventario: ${resultados.inventario}\n\nListo para cargar datos nuevos.`);
+  } catch(err) { console.error(err); alert('❌ Error durante el reinicio: ' + err.message + '\nRevisa qué colecciones ya se borraron antes de reintentar.'); }
+  finally { if (btn) { btn.disabled = false; btn.textContent = '☢️ Reiniciar toda la información'; } }
+}
+
 /* [NEW] Notificación flotante simple, reutilizable */
 function mostrarToastEdicion(msg){
   let t = document.getElementById('toastEdicion');
