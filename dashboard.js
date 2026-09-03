@@ -278,6 +278,8 @@ function aplicarRestriccionesRol(){
     const el = document.getElementById(id);
     if (el) el.style.display = esSecretaria ? 'none' : '';
   });
+  const btnReiniciarTop = document.getElementById('btnReiniciarTodoTop'); // [NEW]
+  if (btnReiniciarTop) btnReiniciarTop.style.display = esSecretaria ? 'none' : '';
   if (esSecretaria) {
     // Si por alguna razón queda una de esas secciones activa, regresa a Resumen General
     const seccionActivaOculta = ['eliminados','inventario','roles','importar','usuarios','pedidosweb'].some(s => {
@@ -2626,7 +2628,9 @@ async function reiniciarDatosDesdeCero(){
   const frase = prompt('Para confirmar, escribe exactamente: BORRAR TODO');
   if (frase !== 'BORRAR TODO') { alert('Texto incorrecto. No se borró nada.'); return; }
   const btn = document.getElementById('btnReiniciarTodo');
+  const btnTop = document.getElementById('btnReiniciarTodoTop'); // [NEW]
   if (btn) { btn.disabled = true; btn.textContent = 'Borrando...'; }
+  if (btnTop) { btnTop.disabled = true; btnTop.textContent = 'Borrando...'; } // [NEW]
   try {
     const resultados = {};
     resultados.pedidos = await _borrarColeccionCompleta('pedidos');
@@ -2637,7 +2641,10 @@ async function reiniciarDatosDesdeCero(){
     resultados.inventario = await _borrarColeccionCompleta('inventarioMovimientos');
     alert(`✅ Reinicio completo:\n- Pedidos: ${resultados.pedidos}\n- Pagos: ${resultados.pagos}\n- Gastos: ${resultados.gastos}\n- Historial de cambios: ${resultados.historialCambios}\n- Pedidos eliminados: ${resultados.pedidosEliminados}\n- Inventario: ${resultados.inventario}\n\nListo para cargar datos nuevos.`);
   } catch(err) { console.error(err); alert('❌ Error durante el reinicio: ' + err.message + '\nRevisa qué colecciones ya se borraron antes de reintentar.'); }
-  finally { if (btn) { btn.disabled = false; btn.textContent = '☢️ Reiniciar toda la información'; } }
+  finally {
+    if (btn) { btn.disabled = false; btn.textContent = '☢️ Reiniciar toda la información'; }
+    if (btnTop) { btnTop.disabled = false; btnTop.textContent = '☢️ Borrar toda la data'; } // [NEW]
+  }
 }
 
 /* [NEW] Notificación flotante simple, reutilizable */
