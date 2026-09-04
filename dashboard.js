@@ -2239,7 +2239,7 @@ async function eliminarPedidoCompleto(pedidoId){
 
   const clienteNombre = p.cliente || 'Sin nombre';
   const totalPedido = p.total != null ? `$${parseFloat(p.total).toFixed(2)}` : '$0.00';
-  const confirmado = confirm(`¿Eliminar por completo el pedido de "${clienteNombre}" (${totalPedido})?\n\nEsta acción lo saca del dashboard y de la app de asesores. Queda respaldado en el historial de eliminados, pero ya no aparecerá en ningún reporte activo.`);
+  const confirmado = confirm(`¿Eliminar por completo el pedido de "${clienteNombre}" (${totalPedido})?\n\nEsta acción lo saca del dashboard y de la app de asesores, y también revierte cualquier movimiento de inventario generado automáticamente por esta venta. Queda respaldado en el historial de eliminados, pero ya no aparecerá en ningún reporte activo.`);
   if(!confirmado) return;
 
   try{
@@ -2254,12 +2254,28 @@ async function eliminarPedidoCompleto(pedidoId){
       eliminadoEn: firebase.firestore.FieldValue.serverTimestamp()
     });
 
-    // 2) Recién ahora se borra el documento original de "pedidos"
+    // 2) [NEW] Borra también los movimientos de inventario que esta venta
+    // generó automáticamente (búsqueda por pedidoId, que sí es un campo
+    // confiable en inventarioMovimientos — a diferencia de pagos, que no
+    // guarda pedidoId y por eso no se puede vincular con certeza).
+    try{
+      const movInv = await db.collection('inventarioMovimientos').where('pedidoId','==',pedidoId).get();
+      if(!movInv.empty){
+        const loteInv = db.batch();
+        movInv.forEach(docMov => loteInv.delete(docMov.ref));
+        await loteInv.commit();
+      }
+    }catch(errInv){
+      console.warn('No se pudieron borrar los movimientos de inventario asociados:', errInv);
+      // No bloquea el resto del proceso — el pedido igual se elimina.
+    }
+
+    // 3) Recién ahora se borra el documento original de "pedidos"
     await db.collection('pedidos').doc(pedidoId).delete();
 
     // El listener en tiempo real ya activo quita el pedido de la tabla, KPIs,
     // Resumen por Cliente y Cuadre de Caja automáticamente — sin recargar.
-    mostrarToastEdicion('🗑 Pedido eliminado y respaldado correctamente.');
+    mostrarToastEdicion('🗑 Pedido eliminado, respaldado y su inventario revertido correctamente.');
   }catch(err){
     console.error(err);
     alert('❌ Ocurrió un error al eliminar el pedido: ' + err.message);
