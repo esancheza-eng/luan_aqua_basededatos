@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!--
   ╔══════════════════════════════════════════════════════════════════════╗
-  ║  LUAN AQUA — Sistema de Pedidos (Firebase Edition — Fase 1)         ║
+  ║  AQUA LUAN — Sistema de Pedidos (Firebase Edition — Fase 1)         ║
   ║  Login: Firebase Authentication (correo/contraseña)                 ║
   ║  Usuarios: Firestore, colección "usuarios"                          ║
   ║  Pedidos/Pagos/Gastos: siguen en Google Sheets por ahora (Fase 2)   ║
   ╚══════════════════════════════════════════════════════════════════════╝
 -->
-<title>Luan Aqua v3.0 — Sistema de Pedidos Empresarial</title>
+<title>Aqua Luan v3.0 — Sistema de Pedidos Empresarial</title>
 <link rel="icon" type="image/png" href="logo-luanaqua.png">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
@@ -562,7 +562,7 @@ body { padding: 1rem 0.75rem 3rem; }
 <div class="login-overlay" id="loginOverlay">
   <div class="login-box">
     <div class="login-logo" style="flex-direction:column">
-      <img src="logo-luanaqua.png" alt="Luan Aqua" style="height:64px;width:auto;display:block;margin:0 auto 10px">
+      <img src="logo-luanaqua.png" alt="Aqua Luan" style="height:64px;width:auto;display:block;margin:0 auto 10px">
       <div style="text-align:center">
         <div class="login-sub">Sistema de Pedidos</div>
       </div>
@@ -598,7 +598,7 @@ body { padding: 1rem 0.75rem 3rem; }
 
   <div class="header">
     <div class="logo-wrap">
-      <img class="logo-icon" src="logo-luanaqua.png" alt="Luan Aqua" style="height:40px;width:auto;display:block">
+      <img class="logo-icon" src="logo-luanaqua.png" alt="Aqua Luan" style="height:40px;width:auto;display:block">
       <div class="logo-text">
         <div class="logo-sub" id="logoSub">Registro de Pedidos</div>
       </div>
@@ -852,7 +852,7 @@ body { padding: 1rem 0.75rem 3rem; }
     </div>
   </div>
 
-  <div class="footer"><a href="https://www.elhyai.com" target="_blank" rel="noopener noreferrer">www.elhyai.com &nbsp;|&nbsp; Luan Aqua</a></div>
+  <div class="footer"><a href="https://www.elhyai.com" target="_blank" rel="noopener noreferrer">www.elhyai.com &nbsp;|&nbsp; Aqua Luan</a></div>
 </div>
 
 <!-- MODAL RESUMEN DEL DÍA -->
@@ -1932,7 +1932,7 @@ function _buildLiquidacionPDF(doc){
   doc.text(`$${totalGeneral.toFixed(2)}`,pageW-margin-4,y+9.5,{align:'right'});
 
   doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(160,180,200);
-  doc.text('www.elhyai.com | Luan Aqua — Sistema de Pedidos',pageW/2,287,{align:'center'});
+  doc.text('www.elhyai.com | Aqua Luan — Sistema de Pedidos',pageW/2,287,{align:'center'});
 }
 
 function descargarPDFLiquidacion(){
@@ -2061,7 +2061,7 @@ function _buildPDF(doc,d){
   doc.line(margin,y,margin+60,y);doc.line(pageW-margin-60,y,pageW-margin,y);
   doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(140,160,180);
   doc.text('Firma del asesor',margin+30,y+5,{align:'center'});doc.text('Firma del cliente',pageW-margin-30,y+5,{align:'center'});
-  doc.setFontSize(7);doc.setTextColor(160,180,200);doc.text('www.elhyai.com | Luan Aqua — Sistema de Pedidos',pageW/2,287,{align:'center'});
+  doc.setFontSize(7);doc.setTextColor(160,180,200);doc.text('www.elhyai.com | Aqua Luan — Sistema de Pedidos',pageW/2,287,{align:'center'});
 }
 
 /* [NEW] Ticket angosto (48mm) para impresoras térmicas de recibo, ej. MPR-200.
@@ -2163,7 +2163,7 @@ function _buildTicketHTML(d){
 }
 function _abrirVentanaTicket(contenido){
   const v=window.open('','_blank','width=380,height=700');
-  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><base href="${location.href}"><title>Ticket — Luan Aqua</title><style>
+  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><base href="${location.href}"><title>Ticket — Aqua Luan</title><style>
   @page{size:48mm auto;margin:0;}
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:'Courier New',monospace;width:46mm;padding:1mm;color:#000;font-size:11px;line-height:1.45;font-weight:700;}
@@ -2271,9 +2271,10 @@ function toggleHistorialDetalle(idx){
 function descargarPDFDesde(idx){ let hist=[]; try{hist=JSON.parse(sessionStorage.getItem('aqualuan-historial')||'[]');}catch{} if(idx<0||idx>=hist.length)return; const r=hist[idx]; const{jsPDF}=window.jspdf; const doc=new jsPDF({unit:'mm',format:'a4'}); _buildPDF(doc,r); const ns=r.nombre.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-_]/g,'').replace(/\s+/g,'_').slice(0,60); const fs=(r.fecha||'sin-fecha').replace(/[^0-9\-]/g,''); doc.save(`Pedido_${ns}_${fs}.pdf`); }
 function enviarWhatsappDesde(idx){ let hist=[]; try{hist=JSON.parse(sessionStorage.getItem('aqualuan-historial')||'[]');}catch{} if(idx<0||idx>=hist.length)return; window.open(`https://wa.me/${WHATSAPP_secretaria}?text=${_construirMsgWA(hist[idx])}`,'_blank','noopener,noreferrer'); }
 /* [NEW] Resumen impreso de TODOS los pedidos del asesor en el día (sesión actual),
-   en un solo documento — mismo estilo visual que el PDF individual, pero con una
-   tabla que lista cliente por cliente y el total general acumulado al final.
-   Reemplaza al viejo botón "Limpiar", que ya no cumplía ninguna función real. */
+   en un solo documento — mismo estilo visual que el PDF individual, con una fila
+   por CADA PRODUCTO vendido (Cliente, Producto, Cant., Precio, Subtotal), agrupado
+   por cliente, y el total general acumulado al final. Reemplaza al viejo botón
+   "Limpiar", que ya no cumplía ninguna función real. */
 function _buildResumenDiaPDF(doc, hist){
   const pageW=210,pageH=297,margin=18;
   const logoH=16,logoW=logoH*LOGO_LUANAQUA_RATIO;
@@ -2296,22 +2297,40 @@ function _buildResumenDiaPDF(doc, hist){
     y+=30;
     doc.setFillColor(26,58,92);doc.rect(margin,y,pageW-margin*2,8,'F');
     doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(255,255,255);
-    doc.text('CLIENTE',margin+3,y+5.5);doc.text('PRODUCTOS',80,y+5.5);doc.text('PAGO',155,y+5.5,{align:'center'});doc.text('TOTAL',pageW-margin-2,y+5.5,{align:'right'});
+    doc.text('CLIENTE / PRODUCTO',margin+3,y+5.5);doc.text('CANT.',122,y+5.5,{align:'center'});doc.text('PRECIO',144,y+5.5,{align:'right'});doc.text('SUBTOTAL',pageW-margin-2,y+5.5,{align:'right'});
     return y+8;
   }
 
   let y = dibujarEncabezado();
-  hist.forEach((r,idx)=>{
-    const prodTxt = (r.productos||[]).map(p=>`${p.nombre} x${p.cantidad}`).join(', ');
-    const lineasProd = doc.splitTextToSize(prodTxt, 68);
-    const alturaFila = Math.max(7, lineasProd.length*4.5);
-    if(y + alturaFila > pageH-40){ doc.addPage(); y = dibujarEncabezado(); }
-    if(idx%2===0){doc.setFillColor(240,245,248);doc.rect(margin,y,pageW-margin*2,alturaFila,'F');}
-    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(26,58,92);doc.text(r.nombre||'-',margin+3,y+5);
-    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(60,80,100);doc.text(lineasProd,80,y+5);
-    doc.setFontSize(8);doc.text(r.formapago||'-',155,y+5,{align:'center'});
+  let filaIdx = 0;
+  hist.forEach((r)=>{
+    // Fila del cliente (encabezado del grupo) — nombre, forma de pago y total del pedido
+    if(y + 7 > pageH-40){ doc.addPage(); y = dibujarEncabezado(); }
+    doc.setFillColor(230,244,242);doc.rect(margin,y,pageW-margin*2,7,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(10,124,110);
+    doc.text(`👤 ${r.nombre||'-'}`,margin+3,y+5);
+    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(60,80,100);doc.text(r.formapago||'-',144,y+5,{align:'right'});
     doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(10,124,110);doc.text(`$${parseFloat(r.total||0).toFixed(2)}`,pageW-margin-2,y+5,{align:'right'});
-    y += alturaFila;
+    y+=7;
+    // Una fila por cada producto de este pedido
+    (r.productos||[]).forEach(p=>{
+      if(y + 6 > pageH-40){ doc.addPage(); y = dibujarEncabezado(); }
+      if(filaIdx%2===0){doc.setFillColor(240,245,248);doc.rect(margin,y,pageW-margin*2,6,'F');}
+      doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(26,58,92);
+      doc.text(`   ${p.nombre}`,margin+3,y+4.3);
+      doc.text(String(p.cantidad),122,y+4.3,{align:'center'});
+      doc.text(`$${p.precio.toFixed(2)}`,144,y+4.3,{align:'right'});
+      doc.setFont('helvetica','bold');doc.setTextColor(10,124,110);doc.text(`$${p.subtotal.toFixed(2)}`,pageW-margin-2,y+4.3,{align:'right'});
+      y+=6; filaIdx++;
+      if(p.regalias&&p.regalias.length){
+        p.regalias.forEach(reg=>{
+          if(y + 5 > pageH-40){ doc.addPage(); y = dibujarEncabezado(); }
+          doc.setFont('helvetica','italic');doc.setFontSize(7.5);doc.setTextColor(10,124,110);
+          doc.text(`   + Promo: ${reg.nombre} x${reg.cantidad}`,margin+6,y+3.8); y+=5;
+        });
+      }
+    });
+    y+=2;
   });
 
   if(y > pageH-50){ doc.addPage(); y = dibujarEncabezado(); }
@@ -2323,7 +2342,7 @@ function _buildResumenDiaPDF(doc, hist){
   doc.line(margin,y,margin+60,y);doc.line(pageW-margin-60,y,pageW-margin,y);
   doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(140,160,180);
   doc.text('Firma del asesor',margin+30,y+5,{align:'center'});doc.text('Firma de recepción',pageW-margin-30,y+5,{align:'center'});
-  doc.setFontSize(7);doc.setTextColor(160,180,200);doc.text('www.elhyai.com | Luan Aqua — Sistema de Pedidos',pageW/2,287,{align:'center'});
+  doc.setFontSize(7);doc.setTextColor(160,180,200);doc.text('www.elhyai.com | Aqua Luan — Sistema de Pedidos',pageW/2,287,{align:'center'});
 }
 function imprimirResumenDia(){
   let hist=[]; try{hist=JSON.parse(sessionStorage.getItem('aqualuan-historial')||'[]');}catch{}
@@ -2551,7 +2570,7 @@ function cerrarResumenModal(){ document.getElementById('resumenModalOverlay').cl
 function imprimirResumen(){
   const contenido=document.getElementById('resumenModal').innerHTML;
   const v=window.open('','_blank','width=700,height=900');
-  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Resumen del Día — Luan Aqua</title><link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'DM Sans',sans-serif;color:#1a3a5c;padding:24px;background:#fff;}.resumen-modal-handle,.btn-cerrar-resumen,.btn-imprimir-resumen,.btn-wa-resumen{display:none!important;}.resumen-print-logo{display:block;width:44mm;max-width:60%;height:auto;margin:0 auto 14px;}.resumen-dia-title{font-family:'DM Serif Display',serif;font-size:22px;margin-bottom:4px;}.resumen-dia-sub{font-size:12px;color:#888;margin-bottom:20px;}.asesor-resumen-block{border:1.5px solid #ddd;border-radius:10px;overflow:hidden;margin-bottom:16px;}.asesor-resumen-header{background:#1a3a5c;padding:10px 14px;display:flex;justify-content:space-between;}.asesor-resumen-nombre{font-size:13px;font-weight:700;color:#fff;display:flex;gap:8px;align-items:center;}.asesor-resumen-total{font-family:'DM Serif Display',serif;font-size:1.2rem;color:#4ec9a0;}.asesor-meta-row{display:flex;gap:16px;padding:10px 14px;background:#e6f4f2;border-bottom:1px solid #ddd;flex-wrap:wrap;}.asesor-meta-label{font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#0a7c6e;display:block;}.asesor-meta-value{font-size:14px;font-weight:700;color:#1a3a5c;}.productos-resumen-table{width:100%;border-collapse:collapse;font-size:12px;}.productos-resumen-table th{background:#f0f5f8;padding:7px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#666;border-bottom:1px solid #ddd;}.productos-resumen-table th:last-child,.productos-resumen-table th:nth-child(2){text-align:right;}.productos-resumen-table td{padding:8px 12px;border-bottom:1px solid #eee;}.productos-resumen-table td:last-child,.productos-resumen-table td:nth-child(2){text-align:right;}.productos-resumen-table tr:nth-child(even) td{background:#f9f9f9;}.resumen-total-general{background:#1a3a5c;border-radius:10px;padding:14px 18px;margin-top:16px;display:flex;justify-content:space-between;align-items:center;}.resumen-total-general-label{font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.6);}.resumen-total-general-value{font-family:'DM Serif Display',serif;font-size:1.6rem;color:#4ec9a0;}.print-footer{margin-top:20px;text-align:center;font-size:11px;color:#aaa;}.formas-pago-resumen{padding:10px 14px;background:#f0f5f8;border-bottom:1px solid #ddd;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}.forma-pago-tag{display:flex;align-items:center;gap:5px;background:#fff;border:1px solid #ddd;border-radius:100px;padding:4px 10px;font-size:11px;font-weight:700;color:#1a3a5c;}.forma-pago-tag-valor{color:#0a7c6e;margin-left:2px;}.formas-pago-label{font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#888;}</style></head><body><img src="${LOGO_LUANAQUA_B64}" class="resumen-print-logo" alt="Aqua Luan">${contenido}<div class="print-footer">www.elhyai.com | Luan Aqua — Sistema de Pedidos</div><script>window.onload=function(){window.print();}<\/script></body></html>`);
+  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Resumen del Día — Aqua Luan</title><link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'DM Sans',sans-serif;color:#1a3a5c;padding:24px;background:#fff;}.resumen-modal-handle,.btn-cerrar-resumen,.btn-imprimir-resumen,.btn-wa-resumen{display:none!important;}.resumen-print-logo{display:block;width:44mm;max-width:60%;height:auto;margin:0 auto 14px;}.resumen-dia-title{font-family:'DM Serif Display',serif;font-size:22px;margin-bottom:4px;}.resumen-dia-sub{font-size:12px;color:#888;margin-bottom:20px;}.asesor-resumen-block{border:1.5px solid #ddd;border-radius:10px;overflow:hidden;margin-bottom:16px;}.asesor-resumen-header{background:#1a3a5c;padding:10px 14px;display:flex;justify-content:space-between;}.asesor-resumen-nombre{font-size:13px;font-weight:700;color:#fff;display:flex;gap:8px;align-items:center;}.asesor-resumen-total{font-family:'DM Serif Display',serif;font-size:1.2rem;color:#4ec9a0;}.asesor-meta-row{display:flex;gap:16px;padding:10px 14px;background:#e6f4f2;border-bottom:1px solid #ddd;flex-wrap:wrap;}.asesor-meta-label{font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#0a7c6e;display:block;}.asesor-meta-value{font-size:14px;font-weight:700;color:#1a3a5c;}.productos-resumen-table{width:100%;border-collapse:collapse;font-size:12px;}.productos-resumen-table th{background:#f0f5f8;padding:7px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#666;border-bottom:1px solid #ddd;}.productos-resumen-table th:last-child,.productos-resumen-table th:nth-child(2){text-align:right;}.productos-resumen-table td{padding:8px 12px;border-bottom:1px solid #eee;}.productos-resumen-table td:last-child,.productos-resumen-table td:nth-child(2){text-align:right;}.productos-resumen-table tr:nth-child(even) td{background:#f9f9f9;}.resumen-total-general{background:#1a3a5c;border-radius:10px;padding:14px 18px;margin-top:16px;display:flex;justify-content:space-between;align-items:center;}.resumen-total-general-label{font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.6);}.resumen-total-general-value{font-family:'DM Serif Display',serif;font-size:1.6rem;color:#4ec9a0;}.print-footer{margin-top:20px;text-align:center;font-size:11px;color:#aaa;}.formas-pago-resumen{padding:10px 14px;background:#f0f5f8;border-bottom:1px solid #ddd;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}.forma-pago-tag{display:flex;align-items:center;gap:5px;background:#fff;border:1px solid #ddd;border-radius:100px;padding:4px 10px;font-size:11px;font-weight:700;color:#1a3a5c;}.forma-pago-tag-valor{color:#0a7c6e;margin-left:2px;}.formas-pago-label{font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#888;}</style></head><body><img src="${LOGO_LUANAQUA_B64}" class="resumen-print-logo" alt="Aqua Luan">${contenido}<div class="print-footer">www.elhyai.com | Aqua Luan — Sistema de Pedidos</div><script>window.onload=function(){window.print();}<\/script></body></html>`);
   v.document.close();
 }
 document.getElementById('resumenModalOverlay').addEventListener('click',function(e){ if(e.target===this)cerrarResumenModal(); });
@@ -2560,7 +2579,7 @@ function enviarResumenWhatsapp(){
   if(!_resumenDiaData){alert('Primero genera el resumen del día.');return;}
   const{porAsesor,totalGeneral,formasPagoGlobal,hoy,totalPedidos,totalIngresos,totalEgresos,netoCaja}=_resumenDiaData;
   const iF={'Contado':'💵','Crédito':'📋','Transferencia':'🏦','Cheque':'📝','Sin especificar':'❓'};
-  let msg=`📊 *RESUMEN DEL DÍA — LUAN AQUA*%0A📅 ${encodeURIComponent(hoy)}%0A📦 Total pedidos: ${totalPedidos}%0A%0A`;
+  let msg=`📊 *RESUMEN DEL DÍA — AQUA LUAN*%0A📅 ${encodeURIComponent(hoy)}%0A📦 Total pedidos: ${totalPedidos}%0A%0A`;
   Object.entries(porAsesor).forEach(([asesor,datos])=>{
     const n=asesor.includes(':')?asesor.split(':')[1].trim():asesor;
     const cl=[...datos.clientes].filter(Boolean).length;
@@ -2577,7 +2596,7 @@ function enviarResumenWhatsapp(){
   if((totalIngresos||0)>0||(totalEgresos||0)>0){
     msg+=`%0A🧮 *CUADRE DE CAJA*%0A🟢 Ingresos (pagos): $${(totalIngresos||0).toFixed(2)}%0A🔴 Egresos (gastos): $${(totalEgresos||0).toFixed(2)}%0A💼 *Total en caja: $${(netoCaja||0).toFixed(2)}*%0A`;
   }
-  msg+=`%0A_Enviado desde Luan Aqua — ElhyAi Consultores_`;
+  msg+=`%0A_Enviado desde Aqua Luan — ElhyAi Consultores_`;
   window.open(`https://wa.me/${WHATSAPP_secretaria}?text=${msg}`,'_blank','noopener,noreferrer');
 }
 
