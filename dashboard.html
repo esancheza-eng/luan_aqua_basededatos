@@ -93,6 +93,7 @@
             <button class="dash-nav-item" data-section="importar" id="navImportar" onclick="switchSeccionDash('importar')">📤 Importar Datos</button>
             <button class="dash-nav-item" data-section="usuarios" id="navUsuarios" onclick="switchSeccionDash('usuarios'); poblarSelectEliminarSecretaria();">👩‍💼 Crear Usuarios</button>
             <button class="dash-nav-item" data-section="pedidosweb" id="navPedidosWeb" onclick="switchSeccionDash('pedidosweb')">🌐 Pedidos Web</button>
+            <button class="dash-nav-item" data-section="auditoria" id="navAuditoria" onclick="switchSeccionDash('auditoria')">🕵️ Auditoría</button>
           </nav>
           <div class="dash-content">
         <div class="dash-section active" id="seccion-resumen">
@@ -326,6 +327,22 @@
           </div>
           <div style="font-size:11px;color:var(--muted);padding:0 1.25rem 12px">Estos pedidos llegaron desde la página web pública y todavía NO forman parte de las ventas reales — revísalos y apruébalos (asignando asesor y forma de pago) para que entren al sistema, o recházalos si son inválidos.</div>
           <div id="listaPedidosWeb" style="padding:0 1.25rem 1.25rem"></div>
+        </div>
+        </div>
+        <div class="dash-section" id="seccion-auditoria">
+        <!-- [NEW] Auditoría / Modificaciones — quién cambió o eliminó qué, cuándo, y el detalle antes/después -->
+        <div class="table-card">
+          <div class="table-header">
+            <div class="table-title">🕵️ Auditoría — Modificaciones y Eliminaciones</div>
+            <span class="last-update" id="auditoriaCount" style="margin-left:0">Cargando...</span>
+          </div>
+          <div style="font-size:11px;color:var(--muted);padding:0 1.25rem 12px">Registro de quién hizo cada cambio o eliminación, con fecha y hora exactas. Solo visible para el administrador.</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Fecha</th><th>Hora</th><th>Usuario</th><th>Tipo</th><th>Acción</th><th>Detalle</th></tr></thead>
+              <tbody id="auditoriaTbody"></tbody>
+            </table>
+          </div>
         </div>
         </div>
           </div>
