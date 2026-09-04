@@ -88,7 +88,7 @@ let editandoPedidoActual = null;
    TABS
 ════════════════════════════════════════ */
 /* [NEW] Menú lateral del panel administrativo — cambia entre secciones sin mezclarlas */
-let _yaCargado = { eliminados:false, inventario:false, roles:false, pedidosweb:false }; // [NEW] carga perezosa
+let _yaCargado = { eliminados:false, inventario:false, roles:false, pedidosweb:false, auditoria:false }; // [NEW] carga perezosa
 function switchSeccionDash(sec){
   document.querySelectorAll('.dash-section').forEach(el => el.classList.toggle('active', el.id === 'seccion-'+sec));
   document.querySelectorAll('.dash-nav-item').forEach(el => el.classList.toggle('active', el.dataset.section === sec));
@@ -101,6 +101,7 @@ function switchSeccionDash(sec){
     if (sec === 'inventario') { _iniciarListenerInventario(); _yaCargado.inventario = true; }
     if (sec === 'roles') { _iniciarListenerRolesHistorial(); _yaCargado.roles = true; }
     if (sec === 'pedidosweb') { _iniciarListenerPedidosWeb(); _yaCargado.pedidosweb = true; }
+    if (sec === 'auditoria') { _iniciarListenerAuditoria(); _yaCargado.auditoria = true; }
   }
 }
 function switchTab(tab) {
@@ -216,6 +217,7 @@ function cerrarSesion() {
   detenerListenerInventario(); // [NEW]
   detenerListenerRolesHistorial(); // [NEW]
   detenerListenerPedidosWeb(); // [NEW]
+  detenerListenerAuditoria(); // [NEW]
   auth.signOut(); // la limpieza del overlay ocurre en onAuthStateChanged, más abajo
 }
 
@@ -244,7 +246,8 @@ auth.onAuthStateChanged(async (user)=>{
     detenerListenerInventario(); // [NEW]
     detenerListenerRolesHistorial(); // [NEW]
     detenerListenerPedidosWeb(); // [NEW]
-    _yaCargado = { eliminados:false, inventario:false, roles:false, pedidosweb:false }; // [NEW] resetea la carga perezosa al salir
+    detenerListenerAuditoria(); // [NEW]
+    _yaCargado = { eliminados:false, inventario:false, roles:false, pedidosweb:false, auditoria:false }; // [NEW] resetea la carga perezosa al salir
     document.getElementById('loginOverlay').classList.remove('hidden');
     document.getElementById('loginUser').value = '';
     document.getElementById('loginPass').value = '';
@@ -298,6 +301,42 @@ function _iniciarListenerEliminados(){
   }, err => console.error('listener eliminados:', err));
 }
 function detenerListenerEliminados(){ if(_unsubEliminados){_unsubEliminados();_unsubEliminados=null;} }
+
+/* [NEW] Auditoría — quién modificó/eliminó qué, cuándo, y el detalle antes/después.
+   Limitado a los 300 registros más recientes por la misma razón que Eliminados/Roles:
+   es una lista pura de lectura, sin ningún total acumulado que dependa del historial completo. */
+let _unsubAuditoria=null;
+function _iniciarListenerAuditoria(){
+  if(_unsubAuditoria){_unsubAuditoria();_unsubAuditoria=null;}
+  _unsubAuditoria = db.collection('historialCambios').orderBy('creadoEn','desc').limit(300).onSnapshot(snap => {
+    const registros = snap.docs.map(d => d.data());
+    const tbody = document.getElementById('auditoriaTbody');
+    const count = document.getElementById('auditoriaCount');
+    if (count) count.textContent = `${registros.length} registro${registros.length!==1?'s':''}`;
+    if (!tbody) return;
+    const badgeAccion = (a) => {
+      const color = a==='eliminación' ? '#b71c1c' : (a==='edición' ? '#8a6d00' : '#0a7c6e');
+      const fondo = a==='eliminación' ? '#fee2e2' : (a==='edición' ? '#fff3cd' : '#e6f4f2');
+      return `<span style="display:inline-block;padding:2px 8px;border-radius:100px;font-size:10px;font-weight:700;background:${fondo};color:${color}">${a||'-'}</span>`;
+    };
+    // [NEW] Para las ediciones de pedidos (que se guardan un registro por CAMPO
+    // cambiado), arma el detalle como "campo: antes → después" en vez de mostrar
+    // los campos internos crudos.
+    const detalleDe = (r) => {
+      if (r.campo) return `<b>${r.campo}:</b> "${(r.valorAnterior||'').toString().slice(0,40)}" → "${(r.valorNuevo||'').toString().slice(0,40)}"`;
+      return r.detalle || '-';
+    };
+    tbody.innerHTML = registros.length ? registros.map(r => `<tr>
+        <td style="font-size:12px;white-space:nowrap">${r.fecha||'-'}</td>
+        <td style="font-size:12px;white-space:nowrap">${r.hora||'-'}</td>
+        <td style="font-size:12px;font-weight:600">${r.usuarioAdmin||'-'}</td>
+        <td style="font-size:12px;text-transform:capitalize">${r.tipo||'-'}</td>
+        <td>${badgeAccion(r.accion)}</td>
+        <td style="font-size:12px;color:var(--muted)">${detalleDe(r)}</td>
+      </tr>`).join('') : '<tr><td colspan="6"><div class="empty-state"><div class="icon">🕵️</div>Sin registros de auditoría aún</div></td></tr>';
+  }, err => console.error('listener auditoría:', err));
+}
+function detenerListenerAuditoria(){ if(_unsubAuditoria){_unsubAuditoria();_unsubAuditoria=null;} }
 
 /* [NEW] Inventario — entradas y salidas, en vivo */
 let _unsubInventario=null, _movimientosInvRaw=[];
@@ -358,7 +397,7 @@ function iniciar() {
 /* [NEW] Oculta las secciones y botones que son solo para Admin cuando entra Secretaria */
 function aplicarRestriccionesRol(){
   const esSecretaria = ROL_ACTUAL === 'secretaria';
-  ['navEliminados','navInventario','navRoles','navImportar','navUsuarios','navPedidosWeb'].forEach(id => {
+  ['navEliminados','navInventario','navRoles','navImportar','navUsuarios','navPedidosWeb','navAuditoria'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = esSecretaria ? 'none' : '';
   });
@@ -2284,6 +2323,7 @@ async function guardarEdicionPedido(){
       cambios.forEach(c => {
         const ref = db.collection('historialCambios').doc();
         lote.set(ref, {
+          tipo: 'pedido', accion: 'edición', registroId: editandoPedidoActual._id, // [NEW] campos genéricos para la pestaña de Auditoría
           pedidoId: editandoPedidoActual._id,
           usuarioAdmin: ADMIN_ACTUAL.nombre || ADMIN_ACTUAL.uid || 'admin',
           fecha: fechaHoy(),
@@ -2317,6 +2357,21 @@ async function guardarEdicionPedido(){
    hace falta, el pedido completo sigue existiendo ahí — nunca se
    pierde información, solo se saca de la vista operativa.
 ════════════════════════════════════════════════════════════ */
+/* [NEW] Helper genérico de auditoría — un solo registro por acción, reutilizable
+   para pedidos, pagos, gastos, usuarios, etc. Queda visible en la nueva pestaña
+   "Auditoría" del Dashboard: quién, qué tipo de registro, qué acción, cuándo
+   (fecha/hora exacta) y el detalle de qué cambió. */
+async function _registrarAuditoria(tipo, accion, registroId, detalle){
+  try{
+    await db.collection('historialCambios').add({
+      tipo, accion, registroId: registroId || null, detalle: detalle || '',
+      usuarioAdmin: ADMIN_ACTUAL.nombre || ADMIN_ACTUAL.uid || 'admin',
+      fecha: fechaHoy(),
+      hora: new Date().toLocaleTimeString('es-EC'),
+      creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  }catch(err){ console.warn('No se pudo registrar en auditoría:', err); } // nunca bloquea la acción principal
+}
 async function eliminarPedidoCompleto(pedidoId){
   const p = _pedidosRaw.find(x => x._id === pedidoId);
   if(!p){ alert('No se encontró el pedido — puede que ya se haya eliminado.'); return; }
@@ -2337,6 +2392,10 @@ async function eliminarPedidoCompleto(pedidoId){
       horaEliminacion: new Date().toLocaleTimeString('es-EC'),
       eliminadoEn: firebase.firestore.FieldValue.serverTimestamp()
     });
+
+    // [NEW] Registro de auditoría de esta eliminación
+    await _registrarAuditoria('pedido', 'eliminación', pedidoId,
+      `Pedido de "${clienteNombre}" (${totalPedido}) eliminado — respaldado en Pedidos Eliminados.`);
 
     // 2) [NEW] Borra también los movimientos de inventario que esta venta
     // generó automáticamente (búsqueda por pedidoId, que sí es un campo
@@ -2946,13 +3005,36 @@ async function crearSecretariaReal(){
     btn.disabled = false; btn.textContent = '✅ Crear Secretaria';
   }
 }
+/* [NEW] Llama a una Cloud Function enviando el token de sesión a mano (mismo patrón
+   ya usado en index.html para eliminar asesores/resetear contraseñas). */
+async function _llamarFuncion(nombre, datos){
+  const cu = auth.currentUser;
+  if(!cu) throw new Error('No hay sesión activa. Vuelve a iniciar sesión.');
+  const token = await cu.getIdToken(true);
+  const url = `https://us-central1-luan-aqua.cloudfunctions.net/${nombre}`;
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    body: JSON.stringify({ data: datos })
+  });
+  const rawText = await resp.text();
+  let json;
+  try{ json = JSON.parse(rawText); }catch{ json = {}; }
+  if(!resp.ok){ throw new Error((json.error && json.error.message) || json.error || 'Error al llamar la función.'); }
+  return json.result !== undefined ? json.result : json;
+}
 async function eliminarSecretariaSeleccionada(){
   const uid = document.getElementById('sec-eliminar-select').value;
   if(!uid){ alert('Selecciona una cuenta de la lista.'); return; }
-  if(!confirm('¿Quitar el acceso de esta Secretaria? Ya no podrá iniciar sesión.')) return;
+  if(!confirm('¿Quitar el acceso de esta Secretaria? Ya no podrá iniciar sesión, y el usuario quedará libre para volver a crearse si hace falta.')) return;
   try{
-    await db.collection('usuarios').doc(uid).delete();
-    mostrarToastEdicion('✓ Acceso de Secretaria revocado.');
+    // [FIX] Antes solo se borraba el perfil de Firestore y la cuenta de Firebase
+    // Auth quedaba huérfana (con el mismo usuario/correo "ocupado" para siempre).
+    // Ahora reutiliza la Cloud Function eliminarAsesorCompleto, que borra las DOS
+    // cosas — funciona igual para secretaria que para asesor (solo exige que la
+    // cuenta objetivo no sea admin).
+    await _llamarFuncion('eliminarAsesorCompleto', { uid });
+    mostrarToastEdicion('✓ Acceso de Secretaria revocado por completo. El usuario queda libre para volver a crearse.');
     poblarSelectEliminarSecretaria();
-  }catch(err){ console.error(err); alert('No se pudo eliminar. Revisa la consola del navegador.'); }
+  }catch(err){ console.error(err); alert('No se pudo eliminar: ' + (err.message || 'error desconocido')); }
 }
