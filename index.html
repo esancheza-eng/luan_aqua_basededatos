@@ -267,6 +267,14 @@ cursor: pointer; display: flex; align-items: center; justify-content: center;
 transition: background 0.15s; line-height: 1;
 }
 .btn-remove:hover { background: #fca5a5; }
+/* [NEW] Botón pequeño de imprimir comprobante, en Pagos y Gastos */
+.btn-imprimir-mini {
+width: 28px; height: 28px; border-radius: 50%; border: none;
+background: #e6f4f2; color: #0a7c6e; font-size: 13px;
+cursor: pointer; display: flex; align-items: center; justify-content: center;
+transition: background 0.15s; line-height: 1;
+}
+.btn-imprimir-mini:hover { background: #c8e8e2; }
 .producto-bloque:nth-child(even) .lista-item { background: var(--surface2); }
 .regalia-row {
   display: flex; align-items: center; gap: 8px;
@@ -459,8 +467,8 @@ body { padding: 1rem 0.75rem 3rem; }
 .add-row { grid-template-columns: 1fr 1fr; }
 .add-row .btn-add { grid-column: 1 / -1; width: 100%; }
 .lista-header, .lista-item { grid-template-columns: 1fr 48px 68px 68px 28px; font-size: 12px; }
-.pagos-header, .pago-item { grid-template-columns: 1fr 80px 70px 64px 28px; font-size: 12px; }
-.gastos-header, .gasto-item { grid-template-columns: 1fr 90px 70px 64px 28px; font-size: 12px; }
+.pagos-header, .pago-item { grid-template-columns: 1fr 80px 70px 64px 28px 28px; font-size: 12px; }
+.gastos-header, .gasto-item { grid-template-columns: 1fr 90px 70px 64px 28px 28px; font-size: 12px; }
 .modal-btns { grid-template-columns: 1fr; }
 .resumen-grid { grid-template-columns: 1fr; }
 .tab-btn { font-size: 11px; }
@@ -764,6 +772,10 @@ body { padding: 1rem 0.75rem 3rem; }
         <span class="resumen-total-general-label" id="pago-count-dia">0 pagos registrados</span>
         <span class="resumen-total-general-value" id="pago-total-dia">$0.00</span>
       </div>
+      <button class="btn blue" style="margin-top:10px" onclick="imprimirReportePagos()">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6V2h8v4M3 6h10v5H3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M4 11h8v3H4z" stroke="currentColor" stroke-width="1.5"/></svg>
+        Imprimir reporte de pagos del día
+      </button>
     </div>
     <div class="card">
       <div class="section-title blue">Registrar pago recibido</div>
@@ -781,7 +793,7 @@ body { padding: 1rem 0.75rem 3rem; }
     <div class="card"><button class="btn blue" onclick="registrarPago()"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1.5" y="4" width="13" height="9" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M1.5 7h13" stroke="currentColor" stroke-width="1.5"/><path d="M5 10.5h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Registrar pago</button><div class="status" id="status-pagos"></div></div>
     <div class="card">
       <div class="section-title blue">Pagos registrados hoy</div>
-      <div class="reg-lista empty" id="pagosLista"><div class="pagos-header"><span>Cliente</span><span>Asesor</span><span style="text-align:center">Forma</span><span style="text-align:right">Monto</span><span></span></div><div id="pagosItems"></div></div>
+      <div class="reg-lista empty" id="pagosLista"><div class="pagos-header"><span>Cliente</span><span>Asesor</span><span style="text-align:center">Forma</span><span style="text-align:right">Monto</span><span></span><span></span></div><div id="pagosItems"></div></div>
       <div id="pagosEmptyMsg" class="empty-msg">Aún no hay pagos registrados.</div>
     </div>
   </div>
@@ -794,6 +806,10 @@ body { padding: 1rem 0.75rem 3rem; }
         <span class="resumen-total-general-label" id="gasto-count-dia">0 gastos registrados</span>
         <span class="resumen-total-general-value" id="gasto-total-dia">$0.00</span>
       </div>
+      <button class="btn red" style="margin-top:10px" onclick="imprimirReporteGastos()">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6V2h8v4M3 6h10v5H3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M4 11h8v3H4z" stroke="currentColor" stroke-width="1.5"/></svg>
+        Imprimir reporte de gastos del día
+      </button>
     </div>
     <div class="card">
       <div class="section-title red">Registrar gasto</div>
@@ -812,7 +828,7 @@ body { padding: 1rem 0.75rem 3rem; }
     <div class="card"><button class="btn red" onclick="registrarGasto()"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v12M4 6l4-4 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Registrar gasto</button><div class="status" id="status-gastos"></div></div>
     <div class="card">
       <div class="section-title red">Gastos registrados hoy</div>
-      <div class="reg-lista empty" id="gastosLista"><div class="gastos-header"><span>Descripción</span><span>Categoría</span><span style="text-align:center">Responsable</span><span style="text-align:right">Monto</span><span></span></div><div id="gastosItems"></div></div>
+      <div class="reg-lista empty" id="gastosLista"><div class="gastos-header"><span>Descripción</span><span>Categoría</span><span style="text-align:center">Responsable</span><span style="text-align:right">Monto</span><span></span><span></span></div><div id="gastosItems"></div></div>
       <div id="gastosEmptyMsg" class="empty-msg">Aún no hay gastos registrados.</div>
     </div>
   </div>
@@ -1690,7 +1706,18 @@ async function registrarPago(){
 async function eliminarPago(id){
   if(!usuarioActual||!usuarioActual.esAdmin){alert('Solo el administrador puede eliminar pagos.');return;}
   if(!confirm('¿Eliminar este pago?')) return;
-  try{ await db.collection('pagos').doc(id).delete(); }
+  const p = listaPagos.find(x=>x.id===id);
+  try{
+    await db.collection('pagos').doc(id).delete();
+    // [NEW] Registro de auditoría — mismo helper que usa el Dashboard
+    db.collection('historialCambios').add({
+      tipo:'pago', accion:'eliminación', registroId:id,
+      detalle: p ? `Pago de "${p.cliente||'-'}" por $${(parseFloat(p.monto)||0).toFixed(2)} (${p.forma||'-'}) eliminado.` : 'Pago eliminado.',
+      usuarioAdmin: usuarioActual.nombre || usuarioActual.uid || 'admin',
+      fecha: _fechaLocalHoy(), hora: new Date().toLocaleTimeString('es-EC'),
+      creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(err=>console.warn('No se pudo registrar en auditoría:', err));
+  }
   catch(err){ console.error(err); alert('No se pudo eliminar el pago.'); }
 }
 function badgeForma(f){ const m={'Efectivo':'efectivo','Transferencia':'transfer','Datáfono':'datafono','Cheque':'cheque','Depósito':'deposito','Contado':'contado','Crédito':'credito'}; return`<span class="badge badge-${m[f]||'contado'}">${escHTML(f)}</span>`; }
@@ -1698,7 +1725,7 @@ function renderPagos(){
   const lista=document.getElementById('pagosLista'),empty=document.getElementById('pagosEmptyMsg'),items=document.getElementById('pagosItems');
   if(listaPagos.length===0){lista.classList.add('empty');empty.style.display='block';}else{lista.classList.remove('empty');empty.style.display='none';}
   const puedeEliminar=usuarioActual&&usuarioActual.esAdmin; /* [NEW] solo el administrador puede eliminar pagos */
-  items.innerHTML=listaPagos.map(p=>`<div class="pago-item"><div><div style="font-size:13px;font-weight:600;color:var(--navy)">${escHTML(p.cliente)}</div><div style="font-size:11px;color:var(--muted)">${escHTML((p.empleado||'').replace('RUTA ','R.'))} · ${escHTML(p.hora||'')}</div></div><div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHTML(p.notas||'-')}</div><div style="text-align:center">${badgeForma(p.forma)}</div><span class="pago-monto">$${(parseFloat(p.monto)||0).toFixed(2)}</span>${puedeEliminar?`<button class="btn-remove" onclick="eliminarPago('${escHTML(p.id)}')">&times;</button>`:'<span></span>'}</div>`).join('');
+  items.innerHTML=listaPagos.map(p=>`<div class="pago-item"><div><div style="font-size:13px;font-weight:600;color:var(--navy)">${escHTML(p.cliente)}</div><div style="font-size:11px;color:var(--muted)">${escHTML((p.empleado||'').replace('RUTA ','R.'))} · ${escHTML(p.hora||'')}</div></div><div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHTML(p.notas||'-')}</div><div style="text-align:center">${badgeForma(p.forma)}</div><span class="pago-monto">$${(parseFloat(p.monto)||0).toFixed(2)}</span><button class="btn-imprimir-mini" onclick="imprimirPago('${escHTML(p.id)}')" title="Imprimir comprobante">🖨️</button>${puedeEliminar?`<button class="btn-remove" onclick="eliminarPago('${escHTML(p.id)}')">&times;</button>`:'<span></span>'}</div>`).join('');
 }
 function actualizarResumenPagos(){
   const t=listaPagos.reduce((s,p)=>s+(parseFloat(p.monto)||0),0);
@@ -1987,15 +2014,170 @@ async function registrarGasto(){
 async function eliminarGasto(id){
   if(!usuarioActual||!usuarioActual.esAdmin){alert('Solo el administrador puede eliminar gastos.');return;}
   if(!confirm('¿Eliminar este gasto?')) return;
-  try{ await db.collection('gastos').doc(id).delete(); }
+  const g = listaGastos.find(x=>x.id===id);
+  try{
+    await db.collection('gastos').doc(id).delete();
+    // [NEW] Registro de auditoría — mismo helper que usa el Dashboard
+    db.collection('historialCambios').add({
+      tipo:'gasto', accion:'eliminación', registroId:id,
+      detalle: g ? `Gasto "${g.desc||'-'}" (${g.categoria||'-'}) por $${(parseFloat(g.monto)||0).toFixed(2)} eliminado.` : 'Gasto eliminado.',
+      usuarioAdmin: usuarioActual.nombre || usuarioActual.uid || 'admin',
+      fecha: _fechaLocalHoy(), hora: new Date().toLocaleTimeString('es-EC'),
+      creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(err=>console.warn('No se pudo registrar en auditoría:', err));
+  }
   catch(err){ console.error(err); alert('No se pudo eliminar el gasto.'); }
 }
 function categoriaBadge(cat){ const c=escHTML(String(cat).slice(0,20)); return`<span class="badge badge-contado" style="font-size:9px">${c.length>12?c.substring(0,12)+'…':c}</span>`; }
+/* [NEW] Comprobantes individuales de Pago y Gasto — mismo estilo visual del PDF
+   de pedidos, para que Pagos y Gastos también se puedan imprimir/descargar. */
+function _dibujarEncabezadoComprobante(doc, titulo){
+  const margin=18;
+  const logoH=16,logoW=logoH*LOGO_LUANAQUA_RATIO;
+  doc.addImage(LOGO_LUANAQUA_B64,'PNG',margin,8,logoW,logoH);
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(10,124,110);doc.text('SISTEMA DE PEDIDOS',margin,32);
+  doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(26,58,92);doc.text(titulo,210-margin,20,{align:'right'});
+  doc.setDrawColor(78,201,160);doc.setLineWidth(0.6);doc.line(margin,38,210-margin,38);
+  return 48;
+}
+function imprimirPago(id){
+  const p = listaPagos.find(x=>x.id===id);
+  if(!p){ alert('No se encontró ese pago.'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'mm',format:'a4'});
+  const margin=18;
+  let y = _dibujarEncabezadoComprobante(doc, 'COMPROBANTE DE PAGO');
+  doc.setFillColor(240,245,248);doc.roundedRect(margin,y,210-margin*2,34,3,3,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(10,124,110);
+  doc.text('CLIENTE',margin+4,y+7);doc.text('ASESOR / RUTA',110,y+7);
+  doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(26,58,92);
+  doc.text(p.cliente||'-',margin+4,y+15);doc.text(p.empleado||'-',110,y+15);
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(10,124,110);
+  doc.text('FORMA DE PAGO',margin+4,y+23);doc.text('FECHA / HORA',110,y+23);
+  doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(26,58,92);
+  doc.text(p.forma||'-',margin+4,y+31);doc.text(`${p.fecha||'-'} ${p.hora||''}`,110,y+31);
+  y+=42;
+  if(p.notas){ doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(10,124,110);doc.text('REFERENCIA / NOTAS',margin+4,y);
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(60,80,100);doc.text(doc.splitTextToSize(p.notas,170),margin+4,y+7); y+=18; }
+  doc.setFillColor(26,58,92);doc.roundedRect(margin,y,210-margin*2,14,3,3,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(200,220,240);doc.text('MONTO RECIBIDO',margin+4,y+9);
+  doc.setFontSize(15);doc.setTextColor(78,201,160);doc.text(`$${(parseFloat(p.monto)||0).toFixed(2)}`,210-margin-4,y+9.5,{align:'right'});
+  y+=30;doc.setDrawColor(180,200,220);doc.setLineWidth(0.4);doc.line(margin,y,margin+60,y);doc.line(210-margin-60,y,210-margin,y);
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(140,160,180);
+  doc.text('Firma asesor',margin+30,y+5,{align:'center'});doc.text('Firma cliente',210-margin-30,y+5,{align:'center'});
+  doc.setFontSize(7);doc.setTextColor(160,180,200);doc.text('www.elhyai.com | Aqua Luan — Sistema de Pedidos',210/2,287,{align:'center'});
+  doc.save(`Comprobante_Pago_${(p.cliente||'cliente').replace(/[^a-zA-Z0-9]/g,'_')}_${p.fecha||''}.pdf`);
+}
+function imprimirGasto(id){
+  const g = listaGastos.find(x=>x.id===id);
+  if(!g){ alert('No se encontró ese gasto.'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'mm',format:'a4'});
+  const margin=18;
+  let y = _dibujarEncabezadoComprobante(doc, 'COMPROBANTE DE GASTO');
+  doc.setFillColor(240,245,248);doc.roundedRect(margin,y,210-margin*2,34,3,3,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(10,124,110);
+  doc.text('RESPONSABLE',margin+4,y+7);doc.text('CATEGORÍA',110,y+7);
+  doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(26,58,92);
+  doc.text(g.empleado||'-',margin+4,y+15);doc.text(g.categoria||'-',110,y+15);
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(10,124,110);
+  doc.text('FECHA / HORA',margin+4,y+23);doc.text('COMPROBANTE / REF.',110,y+23);
+  doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(26,58,92);
+  doc.text(`${g.fecha||'-'} ${g.hora||''}`,margin+4,y+31);doc.text(g.ref||'-',110,y+31);
+  y+=42;
+  if(g.desc){ doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(10,124,110);doc.text('DESCRIPCIÓN',margin+4,y);
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(60,80,100);doc.text(doc.splitTextToSize(g.desc,170),margin+4,y+7); y+=18; }
+  doc.setFillColor(122,32,32);doc.roundedRect(margin,y,210-margin*2,14,3,3,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(240,210,210);doc.text('MONTO DEL GASTO',margin+4,y+9);
+  doc.setFontSize(15);doc.setTextColor(255,180,180);doc.text(`$${(parseFloat(g.monto)||0).toFixed(2)}`,210-margin-4,y+9.5,{align:'right'});
+  y+=30;doc.setDrawColor(180,200,220);doc.setLineWidth(0.4);doc.line(margin,y,margin+60,y);doc.line(210-margin-60,y,210-margin,y);
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(140,160,180);
+  doc.text('Firma asesor',margin+30,y+5,{align:'center'});doc.text('Firma recepción',210-margin-30,y+5,{align:'center'});
+  doc.setFontSize(7);doc.setTextColor(160,180,200);doc.text('www.elhyai.com | Aqua Luan — Sistema de Pedidos',210/2,287,{align:'center'});
+  doc.save(`Comprobante_Gasto_${(g.categoria||'gasto').replace(/[^a-zA-Z0-9]/g,'_')}_${g.fecha||''}.pdf`);
+}
+/* [NEW] Reporte del DÍA COMPLETO de Pagos o Gastos (todos juntos, no uno por uno).
+   Conecta con los botones "Imprimir reporte de pagos/gastos del día" que ya
+   estaban en el HTML, pero sin ninguna función detrás. */
+function imprimirReportePagos(){
+  if(!listaPagos.length){ alert('Aún no hay pagos registrados hoy.'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'mm',format:'a4'});
+  const margin=18, pageW=210, pageH=297;
+  const total = listaPagos.reduce((s,p)=>s+(parseFloat(p.monto)||0),0);
+  function encabezado(){
+    doc.addImage(LOGO_LUANAQUA_B64,'PNG',margin,8,16*LOGO_LUANAQUA_RATIO,16);
+    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(10,124,110);doc.text('SISTEMA DE PEDIDOS',margin,32);
+    doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(26,58,92);doc.text('REPORTE DE PAGOS DEL DÍA',pageW-margin,20,{align:'right'});
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(listaPagos[0]?.fecha||'-',pageW-margin,26,{align:'right'});
+    doc.setDrawColor(78,201,160);doc.setLineWidth(0.6);doc.line(margin,38,pageW-margin,38);
+    let y=46;
+    doc.setFillColor(26,58,92);doc.rect(margin,y,pageW-margin*2,8,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(255,255,255);
+    doc.text('CLIENTE',margin+3,y+5.5);doc.text('ASESOR',80,y+5.5);doc.text('FORMA',130,y+5.5,{align:'center'});doc.text('MONTO',pageW-margin-2,y+5.5,{align:'right'});
+    return y+8;
+  }
+  let y = encabezado();
+  listaPagos.forEach((p,idx)=>{
+    if(y+7>pageH-40){ doc.addPage(); y=encabezado(); }
+    if(idx%2===0){doc.setFillColor(240,245,248);doc.rect(margin,y,pageW-margin*2,7,'F');}
+    doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(26,58,92);
+    doc.text(p.cliente||'-',margin+3,y+5);doc.text((p.empleado||'-').replace('RUTA ','R.'),80,y+5);doc.text(p.forma||'-',130,y+5,{align:'center'});
+    doc.setFont('helvetica','bold');doc.setTextColor(10,124,110);doc.text(`$${(parseFloat(p.monto)||0).toFixed(2)}`,pageW-margin-2,y+5,{align:'right'});
+    y+=7;
+  });
+  if(y>pageH-50){ doc.addPage(); y=encabezado(); }
+  y+=6;doc.setFillColor(26,58,92);doc.roundedRect(margin,y,pageW-margin*2,12,3,3,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(200,220,240);doc.text('TOTAL DE PAGOS DEL DÍA',margin+4,y+8);
+  doc.setFontSize(13);doc.setTextColor(78,201,160);doc.text(`$${total.toFixed(2)}`,pageW-margin-4,y+8.5,{align:'right'});
+  y+=26;doc.setDrawColor(180,200,220);doc.setLineWidth(0.4);doc.line(margin,y,margin+60,y);doc.line(pageW-margin-60,y,pageW-margin,y);
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(140,160,180);
+  doc.text('Firma asesor',margin+30,y+5,{align:'center'});doc.text('Firma de recepción',pageW-margin-30,y+5,{align:'center'});
+  doc.setFontSize(7);doc.setTextColor(160,180,200);doc.text('www.elhyai.com | Aqua Luan — Sistema de Pedidos',pageW/2,287,{align:'center'});
+  doc.save(`Reporte_Pagos_${listaPagos[0]?.fecha||'hoy'}.pdf`);
+}
+function imprimirReporteGastos(){
+  if(!listaGastos.length){ alert('Aún no hay gastos registrados hoy.'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'mm',format:'a4'});
+  const margin=18, pageW=210, pageH=297;
+  const total = listaGastos.reduce((s,g)=>s+(parseFloat(g.monto)||0),0);
+  function encabezado(){
+    doc.addImage(LOGO_LUANAQUA_B64,'PNG',margin,8,16*LOGO_LUANAQUA_RATIO,16);
+    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(10,124,110);doc.text('SISTEMA DE PEDIDOS',margin,32);
+    doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(26,58,92);doc.text('REPORTE DE GASTOS DEL DÍA',pageW-margin,20,{align:'right'});
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(listaGastos[0]?.fecha||'-',pageW-margin,26,{align:'right'});
+    doc.setDrawColor(78,201,160);doc.setLineWidth(0.6);doc.line(margin,38,pageW-margin,38);
+    let y=46;
+    doc.setFillColor(122,32,32);doc.rect(margin,y,pageW-margin*2,8,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(255,255,255);
+    doc.text('DESCRIPCIÓN',margin+3,y+5.5);doc.text('CATEGORÍA',80,y+5.5);doc.text('RESPONSABLE',130,y+5.5,{align:'center'});doc.text('MONTO',pageW-margin-2,y+5.5,{align:'right'});
+    return y+8;
+  }
+  let y = encabezado();
+  listaGastos.forEach((g,idx)=>{
+    if(y+7>pageH-40){ doc.addPage(); y=encabezado(); }
+    if(idx%2===0){doc.setFillColor(250,240,240);doc.rect(margin,y,pageW-margin*2,7,'F');}
+    doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(26,58,92);
+    doc.text((g.desc||'-').slice(0,40),margin+3,y+5);doc.text(g.categoria||'-',80,y+5);doc.text((g.empleado||'-').replace('RUTA ','R.'),130,y+5,{align:'center'});
+    doc.setFont('helvetica','bold');doc.setTextColor(122,32,32);doc.text(`$${(parseFloat(g.monto)||0).toFixed(2)}`,pageW-margin-2,y+5,{align:'right'});
+    y+=7;
+  });
+  if(y>pageH-50){ doc.addPage(); y=encabezado(); }
+  y+=6;doc.setFillColor(122,32,32);doc.roundedRect(margin,y,pageW-margin*2,12,3,3,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(240,210,210);doc.text('TOTAL DE GASTOS DEL DÍA',margin+4,y+8);
+  doc.setFontSize(13);doc.setTextColor(255,180,180);doc.text(`$${total.toFixed(2)}`,pageW-margin-4,y+8.5,{align:'right'});
+  y+=26;doc.setDrawColor(180,200,220);doc.setLineWidth(0.4);doc.line(margin,y,margin+60,y);doc.line(pageW-margin-60,y,pageW-margin,y);
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(140,160,180);
+  doc.text('Firma asesor',margin+30,y+5,{align:'center'});doc.text('Firma de recepción',pageW-margin-30,y+5,{align:'center'});
+  doc.setFontSize(7);doc.setTextColor(160,180,200);doc.text('www.elhyai.com | Aqua Luan — Sistema de Pedidos',pageW/2,287,{align:'center'});
+  doc.save(`Reporte_Gastos_${listaGastos[0]?.fecha||'hoy'}.pdf`);
+}
 function renderGastos(){
   const lista=document.getElementById('gastosLista'),empty=document.getElementById('gastosEmptyMsg'),items=document.getElementById('gastosItems');
   if(listaGastos.length===0){lista.classList.add('empty');empty.style.display='block';}else{lista.classList.remove('empty');empty.style.display='none';}
   const puedeEliminar=usuarioActual&&usuarioActual.esAdmin; /* [NEW] solo el administrador puede eliminar gastos */
-  items.innerHTML=listaGastos.map(g=>`<div class="gasto-item"><div><div style="font-size:13px;font-weight:600;color:var(--navy)">${escHTML(g.desc)}</div><div style="font-size:11px;color:var(--muted)">${escHTML((g.empleado||'').replace('RUTA ','R.'))} · ${escHTML(g.hora||'')}${g.ref?' · '+escHTML(g.ref):''}</div></div><div style="text-align:center">${categoriaBadge(g.categoria)}</div><div style="font-size:11px;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHTML(g.empleado?.split(':')[1]?.trim()||g.empleado||'')}</div><span class="gasto-monto">$${(parseFloat(g.monto)||0).toFixed(2)}</span>${puedeEliminar?`<button class="btn-remove" onclick="eliminarGasto('${escHTML(g.id)}')">&times;</button>`:'<span></span>'}</div>`).join('');
+  items.innerHTML=listaGastos.map(g=>`<div class="gasto-item"><div><div style="font-size:13px;font-weight:600;color:var(--navy)">${escHTML(g.desc)}</div><div style="font-size:11px;color:var(--muted)">${escHTML((g.empleado||'').replace('RUTA ','R.'))} · ${escHTML(g.hora||'')}${g.ref?' · '+escHTML(g.ref):''}</div></div><div style="text-align:center">${categoriaBadge(g.categoria)}</div><div style="font-size:11px;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHTML(g.empleado?.split(':')[1]?.trim()||g.empleado||'')}</div><span class="gasto-monto">$${(parseFloat(g.monto)||0).toFixed(2)}</span><button class="btn-imprimir-mini" onclick="imprimirGasto('${escHTML(g.id)}')" title="Imprimir comprobante">🖨️</button>${puedeEliminar?`<button class="btn-remove" onclick="eliminarGasto('${escHTML(g.id)}')">&times;</button>`:'<span></span>'}</div>`).join('');
 }
 function actualizarResumenGastos(){
   const t=listaGastos.reduce((s,g)=>s+(parseFloat(g.monto)||0),0);
