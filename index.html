@@ -1230,7 +1230,7 @@ function _iniciarListenersDelDia(u){
   let qGastos=db.collection('gastos').where('fecha','==',hoy);
   if(!u.esAdmin){ qPedidos=qPedidos.where('empleado','==',u.ruta); qPagos=qPagos.where('empleado','==',u.ruta); qGastos=qGastos.where('empleado','==',u.ruta); }
   _unsubPedidosHoy=qPedidos.onSnapshot(snap=>{
-    const hist=snap.docs.map(d=>{ const r=d.data(); return {id:d.id,nombre:r.cliente,total:r.total,fecha:r.fecha,empleado:r.empleado,formapago:r.formapago,telefono:r.telefono,direccion:r.direccion,notas:r.notas,productos:r.productos||[],gps:r.gps||null,_ts:r.creadoEn?.toMillis?.()||0}; }).sort((a,b)=>b._ts-a._ts);
+    const hist=snap.docs.map(d=>{ const r=d.data(); return {id:d.id,nombre:r.cliente,total:r.total,fecha:r.fecha,empleado:r.empleado,formapago:r.formapago,telefono:r.telefono,direccion:r.direccion,notas:r.notas,productos:r.productos||[],gps:r.gps||null,hora:r.hora||_horaDeTimestamp(r.creadoEn),_ts:r.creadoEn?.toMillis?.()||0}; }).sort((a,b)=>b._ts-a._ts); // [NEW] recupera la hora real desde creadoEn para TODOS los pedidos de hoy, incluso los creados antes de este cambio
     sessionStorage.setItem('aqualuan-historial',JSON.stringify(hist));
     const contHist=document.getElementById('content-historial');
     if(contHist&&contHist.classList.contains('active'))cargarHistorial();
