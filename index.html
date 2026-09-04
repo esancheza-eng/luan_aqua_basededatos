@@ -1472,7 +1472,7 @@ async function abrirModal(){
   if(!nombre){setStatus('error','Ingresa el nombre del cliente.');return;}
   if(productos.length===0){setStatus('error','Agrega al menos un producto.');return;}
   const total=calcTotal();
-  dataPendiente={empleado,formapago,nombre,telefono,fecha,direccion,notas,productos:[...productos],total:total.toFixed(2),gps:null};
+  dataPendiente={empleado,formapago,nombre,telefono,fecha,direccion,notas,productos:[...productos],total:total.toFixed(2),gps:null,hora:new Date().toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit',hour12:true})}; // [NEW] hora exacta en que se genera la venta, para el ticket térmico
   const offline=!navigator.onLine;
   document.getElementById('modalOfflineNote').classList.toggle('show',offline);
   document.getElementById('modal-subtitle-text').textContent=offline?'Sin internet — se guardará localmente':'Revisa todos los datos antes de enviar a Google Drive';
@@ -2139,6 +2139,7 @@ function _buildTicketHTML(d){
   <div class="t-center t-small t-bold" style="letter-spacing:0.5px">SISTEMA DE PEDIDOS</div>
   <div class="t-line"></div>
   <table class="t-tbl"><tr><td>Pedido:</td><td class="t-r">${fechaStr}</td></tr>
+  ${d.hora?`<tr><td>Hora:</td><td class="t-r">${escHTML(d.hora)}</td></tr>`:''}
   <tr><td>Ruta:</td><td class="t-r">${escHTML(d.empleado||'-')}</td></tr>
   <tr><td>Pago:</td><td class="t-r t-pago-val">${escHTML(d.formapago||'-')}</td></tr></table>
   <div class="t-line"></div>
