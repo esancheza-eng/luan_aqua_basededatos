@@ -555,7 +555,7 @@ function renderDashboard() {
   const totalPagos  = pagos.reduce((s,r) => s + (parseFloat(r['TOTAL PEDIDO ($)'])||0), 0);
   const totalGastos = gastos.reduce((s,r) => s + Math.abs(parseFloat(r['TOTAL PEDIDO ($)'])||0), 0);
   const clientesUnicos = new Set(pedidos.map(r => r['CLIENTE'])).size;
-  const pedidosUnicos  = new Set(pedidos.map(r => `${r['CLIENTE']}-${r['FECHA']}-${r['ASESOR / RUTA']}`)).size;
+  const pedidosUnicos  = new Set(pedidos.map(r => r['_pedidoId'] || `${r['CLIENTE']}-${r['FECHA']}-${r['ASESOR / RUTA']}`)).size; // [FIX] usa el ID real del pedido cuando existe, para no fusionar 2 pedidos distintos del mismo cliente el mismo día
   const ventasPorAsesor = {};
   pedidosConTotal.forEach(r => { const a = r['ASESOR / RUTA'] || 'Sin asignar'; ventasPorAsesor[a] = (ventasPorAsesor[a]||0) + (parseFloat(r['TOTAL PEDIDO ($)'])||0); });
   const asesorTop = Object.entries(ventasPorAsesor).sort((a,b) => b[1]-a[1])[0];
@@ -855,7 +855,7 @@ function aplicarNotasFiltros() {
   if (asesor) datos = datos.filter(r => (r['ASESOR / RUTA']||'') === asesor);
   if (pago)   datos = datos.filter(r => (r['FORMA DE PAGO']||'') === pago);
   datosNotasFiltrados = datos;
-  const pedidosUnicos = new Set(datos.map(r=>`${r['CLIENTE']}-${r['FECHA']}-${r['ASESOR / RUTA']}`)).size;
+  const pedidosUnicos = new Set(datos.map(r=>r['_pedidoId'] || `${r['CLIENTE']}-${r['FECHA']}-${r['ASESOR / RUTA']}`)).size; // [FIX] usa el ID real del pedido cuando existe
   const totalVentas   = datos.filter(r=>r['TOTAL PEDIDO ($)']&&parseFloat(r['TOTAL PEDIDO ($)'])>0).reduce((s,r)=>s+(parseFloat(r['TOTAL PEDIDO ($)'])||0),0);
   const totalUnidades = datos.reduce((s,r)=>s+(parseFloat(r['CANTIDAD'])||0),0);
   document.getElementById('notasCount').textContent = datos.length;
@@ -883,7 +883,7 @@ function aplicarNotasFiltros() {
   const pedidosConTotal = datos.filter(r=>r['TOTAL PEDIDO ($)']&&parseFloat(r['TOTAL PEDIDO ($)'])>0);
   const totalReal = pedidosConTotal.reduce((s,r)=>s+(parseFloat(r['TOTAL PEDIDO ($)'])||0),0);
   const clientesUnicos2 = new Set(datos.map(r=>r['CLIENTE'])).size;
-  const pedidosUnicos2  = new Set(datos.map(r=>`${r['CLIENTE']}-${r['FECHA']}-${r['ASESOR / RUTA']}`)).size;
+  const pedidosUnicos2  = new Set(datos.map(r=>r['_pedidoId'] || `${r['CLIENTE']}-${r['FECHA']}-${r['ASESOR / RUTA']}`)).size; // [FIX] usa el ID real del pedido cuando existe
   const vpa = {};
   pedidosConTotal.forEach(r=>{ const a=r['ASESOR / RUTA']||'Sin asignar'; vpa[a]=(vpa[a]||0)+(parseFloat(r['TOTAL PEDIDO ($)'])||0); });
   const at = Object.entries(vpa).sort((a,b)=>b[1]-a[1])[0];
@@ -1558,7 +1558,7 @@ function renderReporteAsesorDetalle(){
   const totalCobrado = pagos.reduce((s,r) => s + (parseFloat(r['TOTAL PEDIDO ($)'])||0), 0);
   const totalGastos  = gastos.reduce((s,r) => s + Math.abs(parseFloat(r['TOTAL PEDIDO ($)'])||0), 0);
   const clientesUnicos = new Set(pedidos.map(r => r['CLIENTE'])).size;
-  const pedidosUnicos  = new Set(pedidos.map(r => `${r['CLIENTE']}-${r['FECHA']}`)).size;
+  const pedidosUnicos  = new Set(pedidos.map(r => r['_pedidoId'] || `${r['CLIENTE']}-${r['FECHA']}`)).size; // [FIX] usa el ID real del pedido cuando existe
 
   const porFormaVentas = {};
   pedidosConTotal.forEach(r => { const f = r['FORMA DE PAGO']||'Sin especificar'; porFormaVentas[f] = (porFormaVentas[f]||0) + (parseFloat(r['TOTAL PEDIDO ($)'])||0); });
