@@ -23,7 +23,14 @@ firebase.appCheck().activate(
 const auth = firebase.auth();
 const db   = firebase.firestore();
 const DOMINIO_LOGIN = '@luanaqua.app';
-function _emailDeUsuario(usuario){ return usuario.trim().toLowerCase().replace(/[^a-z0-9._-]/g,'') + DOMINIO_LOGIN; }
+function _emailDeUsuario(usuario){
+  const limpio = usuario.trim().toLowerCase().replace(/[^a-z0-9._-]/g,'');
+  // [NEW] Caso especial: la cuenta admin usa un correo REAL
+  // (elhychristian@gmail.com) en vez del dominio interno, para que
+  // "¿Olvidaste tu contraseña?" funcione de verdad si algún día hace falta.
+  if(limpio === 'admin') return 'elhychristian@gmail.com';
+  return limpio + DOMINIO_LOGIN;
+}
 /* [SECURITY FIX] Escapa cualquier dato que venga de un usuario (cliente, notas, dirección,
    producto, etc.) antes de insertarlo en innerHTML. Sin esto, un nombre de cliente como
    <img src=x onerror=...> se ejecuta como código en la sesión del admin que lo ve — se debe
@@ -129,6 +136,63 @@ async function doLogin() {
     console.error(err);
     document.getElementById('loginError').classList.add('show');
     document.getElementById('loginPass').focus();
+  }
+}
+
+/* [NEW] Cambiar la propia contraseña — no requiere Cloud Function ni
+   permisos de admin, cualquier usuario autenticado puede cambiar SU
+   PROPIA contraseña con el SDK de Firebase Auth, siempre que confirme
+   la contraseña actual (reautenticación). No usa correos reales porque
+   el login usa un dominio interno (@luanaqua.app) que nadie recibe. */
+async function cambiarMiPassword(){
+  const user = firebase.auth().currentUser;
+  if(!user){ alert('No hay sesión activa.'); return; }
+
+  const passActual = prompt('Por seguridad, ingresa tu contraseña ACTUAL:');
+  if(!passActual) return;
+
+  const passNueva = prompt('Ingresa tu NUEVA contraseña (mínimo 6 caracteres):');
+  if(!passNueva || passNueva.length < 6){ alert('La nueva contraseña debe tener al menos 6 caracteres.'); return; }
+
+  const passNuevaConfirmar = prompt('Confirma tu NUEVA contraseña:');
+  if(passNueva !== passNuevaConfirmar){ alert('Las contraseñas no coinciden. Inténtalo de nuevo.'); return; }
+
+  try{
+    const credencial = firebase.auth.EmailAuthProvider.credential(user.email, passActual);
+    await user.reauthenticateWithCredential(credencial);
+    await user.updatePassword(passNueva);
+    alert('✅ Contraseña actualizada correctamente. La próxima vez que inicies sesión, usa la nueva contraseña.');
+  }catch(err){
+    console.error(err);
+    let msg = 'No se pudo cambiar la contraseña.';
+    if(err.code === 'auth/wrong-password') msg = 'La contraseña actual que ingresaste es incorrecta.';
+    else if(err.code === 'auth/weak-password') msg = 'La nueva contraseña es muy débil.';
+    else if(err.code === 'auth/requires-recent-login') msg = 'Por seguridad, vuelve a iniciar sesión e inténtalo de nuevo.';
+    alert('❌ ' + msg);
+  }
+}
+
+/* [NEW] Recuperar contraseña del admin por correo real. Solo funciona
+   para "admin" (el único usuario con correo real configurado) — para
+   cualquier otro usuario, el dominio interno @luanaqua.app no existe
+   como bandeja real, así que este flujo no aplicaría para asesores. */
+async function olvidoPasswordAdmin(){
+  const userRaw = (document.getElementById('loginUser').value || '').trim();
+  if(!userRaw){
+    alert('Escribe tu usuario ("admin") en el campo de Usuario antes de pedir la recuperación.');
+    return;
+  }
+  const limpio = userRaw.toLowerCase().replace(/[^a-z0-9._-]/g,'');
+  if(limpio !== 'admin'){
+    alert('La recuperación por correo solo está disponible para la cuenta admin por ahora.');
+    return;
+  }
+  try{
+    await firebase.auth().sendPasswordResetEmail('elhychristian@gmail.com');
+    alert('✅ Se envió un correo de recuperación a elhychristian@gmail.com. Revisa tu bandeja (y spam) y sigue el enlace para crear una nueva contraseña.');
+  }catch(err){
+    console.error(err);
+    alert('❌ No se pudo enviar el correo de recuperación: ' + err.message);
   }
 }
 
