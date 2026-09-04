@@ -2127,6 +2127,10 @@ function _autocompletarPrecioProducto(){
 
 function _buildTicketHTML(d){
   const fechaStr=d.fecha?new Date(d.fecha+'T00:00:00').toLocaleDateString('es-EC',{day:'2-digit',month:'2-digit',year:'numeric'}):'-';
+  // [NEW] Si no viene la hora (pedidos ya existentes, guardada solo desde este cambio),
+  // se calcula desde creadoEn — el timestamp que Firestore ya guarda en TODO pedido
+  // desde el día uno, aunque hasta ahora no se mostrara en el ticket.
+  const horaTicket = d.hora || (d.creadoEn ? _horaDeTimestamp(d.creadoEn) : '');
   const productosHtml=(d.productos||[]).map(p=>{
     let row=`<tr><td colspan="2" class="t-prod">${escHTML(p.nombre)}</td></tr>
     <tr><td>${p.cantidad} x $${p.precio.toFixed(2)}</td><td class="t-r">$${p.subtotal.toFixed(2)}</td></tr>`;
@@ -2139,7 +2143,7 @@ function _buildTicketHTML(d){
   <div class="t-center t-small t-bold" style="letter-spacing:0.5px">SISTEMA DE PEDIDOS</div>
   <div class="t-line"></div>
   <table class="t-tbl"><tr><td>Pedido:</td><td class="t-r">${fechaStr}</td></tr>
-  ${d.hora?`<tr><td>Hora:</td><td class="t-r">${escHTML(d.hora)}</td></tr>`:''}
+  ${horaTicket?`<tr><td>Hora:</td><td class="t-r">${escHTML(horaTicket)}</td></tr>`:''}
   <tr><td>Ruta:</td><td class="t-r">${escHTML(d.empleado||'-')}</td></tr>
   <tr><td>Pago:</td><td class="t-r t-pago-val">${escHTML(d.formapago||'-')}</td></tr></table>
   <div class="t-line"></div>
