@@ -88,9 +88,20 @@ let editandoPedidoActual = null;
    TABS
 ════════════════════════════════════════ */
 /* [NEW] Menú lateral del panel administrativo — cambia entre secciones sin mezclarlas */
+let _yaCargado = { eliminados:false, inventario:false, roles:false, pedidosweb:false }; // [NEW] carga perezosa
 function switchSeccionDash(sec){
   document.querySelectorAll('.dash-section').forEach(el => el.classList.toggle('active', el.id === 'seccion-'+sec));
   document.querySelectorAll('.dash-nav-item').forEach(el => el.classList.toggle('active', el.dataset.section === sec));
+  // [NEW] Carga perezosa: estas 4 pestañas no tienen filtro de fecha (leen la
+  // colección completa), así que solo se conectan la PRIMERA vez que el admin
+  // realmente entra a verlas — no automáticamente al iniciar sesión. Una vez
+  // cargadas quedan en tiempo real mientras dure la sesión, sin recargar.
+  if (ROL_ACTUAL === 'admin' && !_yaCargado[sec]) {
+    if (sec === 'eliminados') { _iniciarListenerEliminados(); _yaCargado.eliminados = true; }
+    if (sec === 'inventario') { _iniciarListenerInventario(); _yaCargado.inventario = true; }
+    if (sec === 'roles') { _iniciarListenerRolesHistorial(); _yaCargado.roles = true; }
+    if (sec === 'pedidosweb') { _iniciarListenerPedidosWeb(); _yaCargado.pedidosweb = true; }
+  }
 }
 function switchTab(tab) {
   document.getElementById('viewDashboard').classList.toggle('active', tab === 'dashboard');
@@ -233,6 +244,7 @@ auth.onAuthStateChanged(async (user)=>{
     detenerListenerInventario(); // [NEW]
     detenerListenerRolesHistorial(); // [NEW]
     detenerListenerPedidosWeb(); // [NEW]
+    _yaCargado = { eliminados:false, inventario:false, roles:false, pedidosweb:false }; // [NEW] resetea la carga perezosa al salir
     document.getElementById('loginOverlay').classList.remove('hidden');
     document.getElementById('loginUser').value = '';
     document.getElementById('loginPass').value = '';
@@ -277,7 +289,9 @@ function detenerListenerProductosDash(){ if(_unsubProductosDash){_unsubProductos
 let _unsubEliminados=null, _eliminadosRaw=[];
 function _iniciarListenerEliminados(){
   if(_unsubEliminados){_unsubEliminados();_unsubEliminados=null;}
-  _unsubEliminados = db.collection('pedidosEliminados').onSnapshot(snap => {
+  // [NEW] Antes leía TODA la colección; la tabla solo muestra los recientes
+  // igual, así que ahora se limita también la lectura a Firestore (más rápido).
+  _unsubEliminados = db.collection('pedidosEliminados').orderBy('eliminadoEn','desc').limit(200).onSnapshot(snap => {
     _eliminadosRaw = snap.docs.map(d => ({ _id: d.id, ...d.data() }))
       .sort((a,b) => (b.eliminadoEn?.toMillis?.()||0) - (a.eliminadoEn?.toMillis?.()||0));
     renderTablaEliminados();
@@ -289,6 +303,10 @@ function detenerListenerEliminados(){ if(_unsubEliminados){_unsubEliminados();_u
 let _unsubInventario=null, _movimientosInvRaw=[];
 function _iniciarListenerInventario(){
   if(_unsubInventario){_unsubInventario();_unsubInventario=null;}
+  // [NOTA] A diferencia de Eliminados/Roles, aquí NO se limita la lectura:
+  // el "Stock Actual" se calcula sumando TODOS los movimientos históricos
+  // de cada producto, así que limitar a los últimos 200 dañaría ese cálculo
+  // para productos con más movimientos que eso. Se deja completo a propósito.
   _unsubInventario = db.collection('inventarioMovimientos').onSnapshot(snap => {
     _movimientosInvRaw = snap.docs.map(d => ({ _id: d.id, ...d.data() }))
       .sort((a,b) => (b.creadoEn?.toMillis?.()||0) - (a.creadoEn?.toMillis?.()||0));
@@ -301,7 +319,10 @@ function detenerListenerInventario(){ if(_unsubInventario){_unsubInventario();_u
 let _unsubRolesHist=null, _rolesConfig={};
 function _iniciarListenerRolesHistorial(){
   if(_unsubRolesHist){_unsubRolesHist();_unsubRolesHist=null;}
-  _unsubRolesHist = db.collection('rolesPago').onSnapshot(snap => {
+  // [NEW] Limitado a los 150 roles más recientes — la tabla ya solo
+  // mostraba 100, y a diferencia de Inventario esta lista no calcula
+  // ningún total acumulado, así que limitar aquí es seguro.
+  _unsubRolesHist = db.collection('rolesPago').orderBy('creadoEn','desc').limit(150).onSnapshot(snap => {
     const roles = snap.docs.map(d => d.data()).sort((a,b) => (b.creadoEn?.toMillis?.()||0) - (a.creadoEn?.toMillis?.()||0));
     const tbody = document.getElementById('tablaRolesHistorial');
     if (!tbody) return;
@@ -324,11 +345,10 @@ function iniciar() {
   _iniciarListenerAsesoresDash(); // [NEW] filtro de asesor real, en vivo
   _iniciarListenerProductosDash(); // [NEW] catálogo de productos para el modal Editar Pedido
   if (ROL_ACTUAL === 'admin') { // [NEW] Secretaria no tiene permiso de lectura en estas colecciones — ni falta que le hace, sus pestañas están ocultas
-    _iniciarListenerEliminados(); // [NEW] respaldo de pedidos eliminados
-    _iniciarListenerInventario(); // [NEW] entradas y salidas
-    _iniciarListenerRolesHistorial(); // [NEW] historial de roles de pago
-    _iniciarListenerPedidosWeb(); // [NEW] cola de pedidos de la página web
     poblarSelectEliminarSecretaria(); // [NEW]
+    // [NEW] _iniciarListenerEliminados/Inventario/RolesHistorial/PedidosWeb ya
+    // NO se llaman aquí — ahora cargan solo la primera vez que el admin entra
+    // a esa pestaña (ver switchSeccionDash), para que el login sea más rápido.
   }
   document.getElementById('invFecha').value = hoy; // [NEW]
   document.getElementById('rolesDesde').value = hoy; // [NEW]
