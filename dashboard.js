@@ -264,6 +264,7 @@ function _iniciarListenerAsesoresDash(){
     const rutas = snap.docs.map(d => d.data().ruta).filter(Boolean).sort();
     _asesoresCache = rutas; // [NEW] disponible para el <select> de Asesor dentro del modal Editar Pedido
     if (typeof renderReporteAsesores === 'function') renderReporteAsesores(); /* [FIX] antes solo se refrescaba cuando cambiaban los pedidos, no cuando llegaba la lista de asesores — se quedaba en "No hay asesores registrados" si este listener tardaba más en cargar */
+    if (typeof poblarClienteSelect === 'function') poblarClienteSelect(todosLosDatos); // [FIX] mismo problema en "Consultar por Cliente": el filtro de asesores se quedaba vacío (solo "Todos los asesores") si esta lista llegaba después que los pedidos
     const sel = document.getElementById('filtroAsesor');
     if (!sel) return;
     const valorActual = sel.value;
