@@ -1113,6 +1113,15 @@ async function doLogin(){
       return;
     }
     const perfil=perfilDoc.data();
+    // [NEW] Bloquea el acceso a esta app (registro de ventas) para la cuenta
+    // de Secretaria — su acceso es de solo lectura y vive en el Dashboard,
+    // no aquí. Antes se colaba como si fuera asesor y veía el campo de
+    // Ruta/Asesor bloqueado y vacío, porque no tiene ninguna ruta asignada.
+    if(perfil.esSecretaria === true){
+      await auth.signOut();
+      mostrarErrorLogin('Esta app es para asesores de ruta. Tu cuenta de Secretaria tiene acceso de consulta desde el Dashboard administrativo — pide el enlace al administrador.');
+      return;
+    }
     document.getElementById('loginPass').value='';
     usuarioActual={ uid:cred.user.uid, nombre:perfil.nombre, rol:perfil.rol||(perfil.esAdmin?'ADMIN':'OPERADOR'), ruta:perfil.ruta||null, esAdmin:!!perfil.esAdmin };
     document.getElementById('loginOverlay').style.display='none';
@@ -1179,6 +1188,13 @@ auth.onAuthStateChanged(async (user)=>{
       const perfilDoc=await db.collection('usuarios').doc(user.uid).get();
       if(!perfilDoc.exists){ await auth.signOut(); return; }
       const perfil=perfilDoc.data();
+      // [NEW] Mismo bloqueo que en doLogin — si la sesión de una Secretaria
+      // se restaura sola (recarga de página), también se cierra aquí.
+      if(perfil.esSecretaria === true){
+        await auth.signOut();
+        mostrarErrorLogin('Esta app es para asesores de ruta. Tu cuenta de Secretaria tiene acceso de consulta desde el Dashboard administrativo — pide el enlace al administrador.');
+        return;
+      }
       usuarioActual={ uid:user.uid, nombre:perfil.nombre, rol:perfil.rol||(perfil.esAdmin?'ADMIN':'OPERADOR'), ruta:perfil.ruta||null, esAdmin:!!perfil.esAdmin };
       document.getElementById('loginOverlay').style.display='none';
       aplicarUsuario();
