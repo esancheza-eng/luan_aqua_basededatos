@@ -1017,7 +1017,11 @@ db.enablePersistence({synchronizeTabs:true}).catch(err=>{ console.warn('Persiste
 const DOMINIO_LOGIN = '@luanaqua.app'; // el "usuario" corto se convierte a este correo interno para Firebase Auth
 
 function _emailDeUsuario(usuario){
-  return usuario.trim().toLowerCase().replace(/[^a-z0-9._-]/g,'') + DOMINIO_LOGIN;
+  const limpio = usuario.trim().toLowerCase().replace(/[^a-z0-9._-]/g,'');
+  // [NEW] Caso especial: la cuenta admin usa un correo REAL (elhychristian@gmail.com)
+  // en vez del dominio interno, para que la recuperación de contraseña funcione.
+  if(limpio === 'admin') return 'elhychristian@gmail.com';
+  return limpio + DOMINIO_LOGIN;
 }
 /* [FIX] Fecha LOCAL (no UTC) — con .toISOString() en Ecuador (UTC-5), después de
    cierta hora de la tarde ya es "mañana" en UTC, aunque localmente siga siendo hoy.
