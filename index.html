@@ -581,6 +581,9 @@ body { padding: 1rem 0.75rem 3rem; }
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 8h7M10 5l3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 3H4a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
       Ingresar
     </button>
+    <div style="text-align:center;margin-top:10px">
+      <a href="#" onclick="olvidoPasswordAdmin();return false;" style="font-size:12px;color:var(--muted,#888);text-decoration:underline;cursor:pointer">¿Olvidaste tu contraseña?</a>
+    </div>
   </div>
 </div>
 
@@ -1119,6 +1122,30 @@ function cerrarSesion(){
 }
 
 function mostrarErrorLogin(msg){ const el=document.getElementById('loginError'); el.textContent=msg; el.classList.add('show'); }
+
+/* [NEW] Recuperar contraseña del admin por correo real. Solo funciona
+   para "admin" (el único usuario con correo real configurado) — para
+   cualquier otro usuario, el dominio interno @luanaqua.app no existe
+   como bandeja real, así que este flujo no aplicaría para asesores. */
+async function olvidoPasswordAdmin(){
+  const userRaw = (document.getElementById('loginUser').value || '').trim();
+  if(!userRaw){
+    alert('Escribe tu usuario ("admin") en el campo de Usuario antes de pedir la recuperación.');
+    return;
+  }
+  const limpio = userRaw.toLowerCase().replace(/[^a-z0-9._-]/g,'');
+  if(limpio !== 'admin'){
+    alert('La recuperación por correo solo está disponible para la cuenta admin por ahora.');
+    return;
+  }
+  try{
+    await auth.sendPasswordResetEmail('elhychristian@gmail.com');
+    alert('✅ Se envió un correo de recuperación a elhychristian@gmail.com. Revisa tu bandeja (y spam) y sigue el enlace para crear una nueva contraseña.');
+  }catch(err){
+    console.error(err);
+    alert('❌ No se pudo enviar el correo de recuperación: ' + err.message);
+  }
+}
 
 function restaurarSelectsCompletos(){
   document.getElementById('wrap-empleado').innerHTML=`<select id="empleado" required><option value="">Cargando...</option></select>`;
