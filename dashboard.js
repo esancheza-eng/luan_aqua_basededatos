@@ -104,6 +104,17 @@ function switchSeccionDash(sec){
     if (sec === 'auditoria') { _iniciarListenerAuditoria(); _yaCargado.auditoria = true; }
   }
 }
+/* [NEW] Accesos directos "Pagos" y "Gastos" del menú lateral — llevan a la
+   pestaña "Cuadre de Caja" (que ya tiene toda esta información, con editar,
+   eliminar y exportar a PDF) y hacen scroll directo al bloque correspondiente,
+   para no duplicar esa lógica en una pestaña aparte. */
+function irASeccionCaja(bloque){
+  switchSeccionDash('caja');
+  setTimeout(() => {
+    const el = document.getElementById(bloque === 'pagos' ? 'bloquePagosCaja' : 'bloqueGastosCaja');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 50); // pequeña espera para que la sección ya esté visible antes de hacer scroll
+}
 function switchTab(tab) {
   document.getElementById('viewDashboard').classList.toggle('active', tab === 'dashboard');
   document.getElementById('viewRutas').classList.toggle('active', tab === 'rutas');
