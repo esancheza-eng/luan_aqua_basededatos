@@ -651,7 +651,13 @@ function _recalcularTodosLosDatos() {
   }));
   todosLosDatos = filas;
   renderDashboard();
-  if (typeof renderLiquidacionDash === 'function') renderLiquidacionDash(); // [NEW]
+  // [FIX] Antes esto llamaba a renderLiquidacionDash() SIN CONDICIÓN, en cada
+  // cambio de cualquier pedido/pago/gasto de todo el sistema — con varios
+  // asesores trabajando en tiempo real, eso significaba recalcular y redibujar
+  // esa sección constantemente durante todo el día, aunque nadie la estuviera
+  // viendo. Ahora solo se actualiza si esa pestaña está realmente abierta.
+  const seccionLiquidacionVisible = document.getElementById('seccion-liquidacionDash')?.classList.contains('active');
+  if (seccionLiquidacionVisible && typeof renderLiquidacionDash === 'function') renderLiquidacionDash();
   document.getElementById('lastUpdate').textContent = 'Actualizado: ' + new Date().toLocaleTimeString('es-EC', { hour:'2-digit', minute:'2-digit' });
 }
 function iniciarListenersDashboard() {
