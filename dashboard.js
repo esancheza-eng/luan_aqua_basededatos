@@ -103,6 +103,7 @@ function switchSeccionDash(sec){
     if (sec === 'pedidosweb') { _iniciarListenerPedidosWeb(); _yaCargado.pedidosweb = true; }
     if (sec === 'auditoria') { _iniciarListenerAuditoria(); _yaCargado.auditoria = true; }
   }
+  if (sec === 'liquidacionDash' && typeof renderLiquidacionDash === 'function') renderLiquidacionDash(); // [NEW] siempre refresca al entrar, ya usa datos que el Dashboard ya tiene cargados
 }
 function switchTab(tab) {
   document.getElementById('viewDashboard').classList.toggle('active', tab === 'dashboard');
@@ -339,6 +340,157 @@ function _iniciarListenerAuditoria(){
 }
 function detenerListenerAuditoria(){ if(_unsubAuditoria){_unsubAuditoria();_unsubAuditoria=null;} }
 
+/* [NEW] Liquidación de Efectivo por Asesor — versión Dashboard de la misma pantalla
+   que ya existe en la app de ventas (index.html), pero usando los datos que el
+   Dashboard ya tiene cargados (_pedidosRaw/_pagosRaw/_gastosRaw), respetando el
+   filtro de fecha/asesor activo arriba, en vez de depender de la sesión del día
+   de un asesor en particular. Misma fórmula exacta, para que el número coincida
+   siempre con lo que ve el asesor en su propia app. */
+function _calcularLiquidacionDash(){
+  const porAsesor = {};
+  const getAsesor = nombre => { if(!porAsesor[nombre]) porAsesor[nombre] = {
+    ventasContado:0, ventasCredito:0, ventasTransferencia:0, ventasCheque:0, ventasOtras:0,
+    pagosEfectivo:0, pagosTransferencia:0, pagosCheque:0, pagosOtros:0,
+    gastos:0
+  }; return porAsesor[nombre]; };
+  _pedidosRaw.forEach(p=>{
+    const d = getAsesor(p.empleado || 'Sin asignar'); const tot = parseFloat(p.total||0);
+    if(p.formapago==='Contado') d.ventasContado+=tot;
+    else if(p.formapago==='Crédito') d.ventasCredito+=tot;
+    else if(p.formapago==='Transferencia') d.ventasTransferencia+=tot;
+    else if(p.formapago==='Cheque') d.ventasCheque+=tot;
+    else d.ventasOtras+=tot;
+  });
+  _pagosRaw.forEach(p=>{
+    const d = getAsesor(p.empleado || 'Sin asignar');
+    if(p.forma==='Efectivo') d.pagosEfectivo+=(parseFloat(p.monto)||0);
+    else if(p.forma==='Transferencia') d.pagosTransferencia+=(parseFloat(p.monto)||0);
+    else if(p.forma==='Cheque') d.pagosCheque+=(parseFloat(p.monto)||0);
+    else d.pagosOtros+=(parseFloat(p.monto)||0);
+  });
+  _gastosRaw.forEach(g=>{ getAsesor(g.empleado || 'Sin asignar').gastos += (parseFloat(g.monto)||0); });
+  return porAsesor;
+}
+function renderLiquidacionDash(){
+  const cont = document.getElementById('liquidacionDashLista');
+  const emptyMsg = document.getElementById('liquidacionDashEmptyMsg');
+  if(!cont) return;
+  const porAsesor = _calcularLiquidacionDash();
+  const asesores = Object.keys(porAsesor).sort((a,b)=>a.localeCompare(b,'es'));
+  if(!asesores.length){
+    cont.innerHTML='';
+    if(emptyMsg) emptyMsg.style.display='block';
+    document.getElementById('liquidacionDashTotalValor').textContent='$0.00';
+    return;
+  }
+  if(emptyMsg) emptyMsg.style.display='none';
+  let totalGeneral = 0;
+  cont.innerHTML = asesores.map(nombre=>{
+    const d = porAsesor[nombre];
+    const totalEntregar = d.ventasContado + d.pagosEfectivo - d.gastos;
+    totalGeneral += totalEntregar;
+    const totalRuta = d.ventasContado+d.ventasCredito+d.ventasTransferencia+d.ventasCheque+d.ventasOtras;
+    const totalPagosAsesor = d.pagosEfectivo+d.pagosTransferencia+d.pagosCheque+d.pagosOtros;
+    const totalIngresos = totalRuta+totalPagosAsesor;
+    const creditos = d.ventasCredito;
+    const transferencias = d.ventasTransferencia+d.pagosTransferencia;
+    const cheques = d.ventasCheque+d.pagosCheque;
+    const sinClasificar = d.ventasOtras+d.pagosOtros;
+    return `<div class="table-card" style="margin-bottom:12px">
+      <div style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;background:var(--surface2)">
+        <span style="font-weight:800;color:var(--navy)">${escHTML(nombre)}</span>
+        <span style="font-weight:800;font-size:16px;color:${totalEntregar>=0?'#0f7c38':'#a93226'}">$${totalEntregar.toFixed(2)}</span>
+      </div>
+      <div style="padding:10px 16px;font-size:13px">
+        <div style="display:flex;justify-content:space-between;padding:3px 0"><span>Ventas al contado</span><b>$${d.ventasContado.toFixed(2)}</b></div>
+        <div style="display:flex;justify-content:space-between;padding:3px 0"><span>Pagos cobrados en efectivo</span><b>$${d.pagosEfectivo.toFixed(2)}</b></div>
+        <div style="display:flex;justify-content:space-between;padding:3px 0"><span>Gastos de la ruta</span><b>-$${d.gastos.toFixed(2)}</b></div>
+      </div>
+      <div style="margin:0 16px 14px;padding:10px 12px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;font-size:12.5px">
+        <div style="font-weight:800;color:#0f7c38;margin-bottom:6px;text-transform:uppercase;font-size:10px;letter-spacing:0.05em">Total a entregar — paso a paso</div>
+        <div style="display:flex;justify-content:space-between;padding:2px 0"><span>${escHTML(nombre)}</span><span>$${totalRuta.toFixed(2)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:2px 0"><span>+ Pagos</span><span>$${totalPagosAsesor.toFixed(2)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:700"><span>= Total de Ingresos</span><span>$${totalIngresos.toFixed(2)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:2px 0"><span>− Créditos</span><span>$${creditos.toFixed(2)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:2px 0"><span>− Gastos</span><span>$${d.gastos.toFixed(2)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:2px 0"><span>− Transferencias</span><span>$${transferencias.toFixed(2)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:2px 0"><span>− Cheques</span><span>$${cheques.toFixed(2)}</span></div>
+        ${sinClasificar>0?`<div style="display:flex;justify-content:space-between;padding:2px 0"><span>− Sin clasificar</span><span>$${sinClasificar.toFixed(2)}</span></div>`:''}
+        <div style="display:flex;justify-content:space-between;padding-top:6px;margin-top:4px;border-top:1px solid var(--border);font-weight:800"><span>Total a Entregar</span><span style="color:${totalEntregar>=0?'#0f7c38':'#a93226'}">$${totalEntregar.toFixed(2)}</span></div>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('liquidacionDashTotalValor').textContent = '$'+totalGeneral.toFixed(2);
+}
+function imprimirLiquidacionDash(){
+  const porAsesor = _calcularLiquidacionDash();
+  const asesores = Object.keys(porAsesor).sort((a,b)=>a.localeCompare(b,'es'));
+  const fecha = _textoRangoFecha();
+  let totalGeneral = 0;
+  const bloques = asesores.map(nombre=>{
+    const d = porAsesor[nombre];
+    const totalEntregar = d.ventasContado + d.pagosEfectivo - d.gastos;
+    totalGeneral += totalEntregar;
+    const totalRuta = d.ventasContado+d.ventasCredito+d.ventasTransferencia+d.ventasCheque+d.ventasOtras;
+    const totalPagosAsesor = d.pagosEfectivo+d.pagosTransferencia+d.pagosCheque+d.pagosOtros;
+    const totalIngresos = totalRuta+totalPagosAsesor;
+    const creditos = d.ventasCredito;
+    const transferencias = d.ventasTransferencia+d.pagosTransferencia;
+    const cheques = d.ventasCheque+d.pagosCheque;
+    const sinClasificar = d.ventasOtras+d.pagosOtros;
+    return `<div class="ruta-block">
+      <div class="ruta-header"><span>${escHTML(nombre)}</span><span style="color:${totalEntregar>=0?'#0f7c38':'#a93226'}">$${totalEntregar.toFixed(2)}</span></div>
+      <div class="ruta-linea"><span>Ventas al contado</span><b>$${d.ventasContado.toFixed(2)}</b></div>
+      <div class="ruta-linea"><span>Pagos cobrados en efectivo</span><b>$${d.pagosEfectivo.toFixed(2)}</b></div>
+      <div class="ruta-linea"><span>Gastos de la ruta</span><b>$${d.gastos.toFixed(2)}</b></div>
+      <div class="pasos-box">
+        <div class="pasos-title">TOTAL A ENTREGAR — PASO A PASO</div>
+        <div class="ruta-linea"><span>(Ruta) Ventas totales</span><span>$${totalRuta.toFixed(2)}</span></div>
+        <div class="ruta-linea"><span>+ Pagos</span><span>$${totalPagosAsesor.toFixed(2)}</span></div>
+        <div class="ruta-linea" style="font-weight:700"><span>= Total de Ingresos</span><span>$${totalIngresos.toFixed(2)}</span></div>
+        <div class="ruta-linea"><span>− Créditos</span><span>$${creditos.toFixed(2)}</span></div>
+        <div class="ruta-linea"><span>− Gastos</span><span>$${d.gastos.toFixed(2)}</span></div>
+        <div class="ruta-linea"><span>− Transferencias</span><span>$${transferencias.toFixed(2)}</span></div>
+        <div class="ruta-linea"><span>− Cheques</span><span>$${cheques.toFixed(2)}</span></div>
+        ${sinClasificar>0?`<div class="ruta-linea"><span>− Sin clasificar</span><span>$${sinClasificar.toFixed(2)}</span></div>`:''}
+        <div class="ruta-linea total-entregar"><span>Total a Entregar</span><span style="color:${totalEntregar>=0?'#0f7c38':'#a93226'}">$${totalEntregar.toFixed(2)}</span></div>
+      </div>
+    </div>`;
+  }).join('');
+  const v = window.open('', '_blank', 'width=900,height=900');
+  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Liquidación de Efectivo — Aqua Luan — ${fecha}</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'DM Sans',sans-serif;color:#1a3a5c;padding:24px;background:#fff;}
+    .print-header{margin-bottom:16px;padding-bottom:16px;border-bottom:2px solid #1a3a5c;}
+    .print-header h1{font-family:'DM Serif Display',serif;font-size:20px;color:#1a3a5c;}
+    .print-header p{font-size:11px;color:#888;margin-top:3px;}
+    .ruta-block{background:#f0f5f8;border-radius:8px;margin-bottom:14px;padding:12px 14px;}
+    .ruta-header{display:flex;justify-content:space-between;font-weight:800;font-size:14px;margin-bottom:8px;color:#1a3a5c;}
+    .ruta-linea{display:flex;justify-content:space-between;font-size:12px;padding:2px 0;color:#1a3a5c;}
+    .pasos-box{background:#f8fafc;border:1px solid #d2dae2;border-radius:6px;margin-top:8px;padding:8px 10px;font-size:11.5px;}
+    .pasos-title{font-size:9px;font-weight:800;letter-spacing:0.08em;color:#0f7c38;margin-bottom:6px;}
+    .total-entregar{border-top:1px solid #d2dae2;margin-top:4px;padding-top:6px;font-weight:800;font-size:13px;}
+    .total-general{background:#1a3a5c;border-radius:10px;padding:14px 18px;margin-top:8px;display:flex;justify-content:space-between;align-items:center;}
+    .total-general span:first-child{font-size:11px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.6);}
+    .total-general span:last-child{font-family:'DM Serif Display',serif;font-size:22px;color:#4ec9a0;}
+    @media print{body{padding:12px;}}
+  </style></head><body>
+  <div class="print-header">
+    <h1>LIQUIDACIÓN DE EFECTIVO POR ASESOR</h1>
+    <p>Fecha: ${fecha} · Generado: ${new Date().toLocaleString('es-EC')}</p>
+  </div>
+  ${bloques || '<p style="color:#888;font-style:italic">No hay ventas, pagos ni gastos registrados en este período.</p>'}
+  <div class="total-general">
+    <span>TOTAL EFECTIVO A ENTREGAR HOY (TODAS LAS RUTAS)</span>
+    <span>$${totalGeneral.toFixed(2)}</span>
+  </div>
+  <script>window.onload=function(){window.print();}<\/script>
+  </body></html>`);
+  v.document.close();
+}
+
 /* [NEW] Inventario — entradas y salidas, en vivo */
 let _unsubInventario=null, _movimientosInvRaw=[];
 function _iniciarListenerInventario(){
@@ -499,6 +651,7 @@ function _recalcularTodosLosDatos() {
   }));
   todosLosDatos = filas;
   renderDashboard();
+  if (typeof renderLiquidacionDash === 'function') renderLiquidacionDash(); // [NEW]
   document.getElementById('lastUpdate').textContent = 'Actualizado: ' + new Date().toLocaleTimeString('es-EC', { hour:'2-digit', minute:'2-digit' });
 }
 function iniciarListenersDashboard() {
