@@ -1944,65 +1944,27 @@ function imprimirCierre() {
 }
 
 /* [NEW] Exportar Pagos registrados a PDF */
-function exportarPagosPDF() {
-  const datos = pagosDetalleActuales || [];
-  if (!datos.length) { alert('No hay pagos para exportar. Aplica los filtros primero.'); return; }
+/* [NEW] Reemplaza a exportarPagosPDF() + exportarGastosPDF() por separado —
+   ahora un solo botón imprime Pagos y Gastos juntos, en un solo documento. */
+function exportarPagosGastosPDF() {
+  const pagos = pagosDetalleActuales || [];
+  const gastos = gastosDetalleActuales || [];
+  if (!pagos.length && !gastos.length) { alert('No hay pagos ni gastos para exportar. Aplica los filtros primero.'); return; }
   const fecha = _textoRangoFecha();
-  const total = datos.reduce((s,r) => s + (parseFloat(r['TOTAL PEDIDO ($)'])||0), 0);
+  const totalPagos = pagos.reduce((s,r) => s + (parseFloat(r['TOTAL PEDIDO ($)'])||0), 0);
+  const totalGastos = gastos.reduce((s,r) => s + Math.abs(parseFloat(r['TOTAL PEDIDO ($)'])||0), 0);
+  const neto = totalPagos - totalGastos;
   const porForma = {};
-  datos.forEach(r => { const f = r['FORMA DE PAGO'] || 'Sin especificar'; porForma[f] = (porForma[f]||0) + (parseFloat(r['TOTAL PEDIDO ($)'])||0); });
+  pagos.forEach(r => { const f = r['FORMA DE PAGO'] || 'Sin especificar'; porForma[f] = (porForma[f]||0) + (parseFloat(r['TOTAL PEDIDO ($)'])||0); });
   const resumenForma = Object.entries(porForma).sort(([,a],[,b]) => b-a).map(([f,v]) => `<span style="display:inline-block;background:#e8f0fd;border-radius:100px;padding:5px 14px;font-size:11px;font-weight:700;color:#0d47a1;margin:2px">${f}: $${v.toFixed(2)}</span>`).join('');
-  const filas = datos.map(r => `<tr>
+  const filasPagos = pagos.map(r => `<tr>
     <td>${escHTML(r['CLIENTE']||'-')}</td>
     <td>${(r['ASESOR / RUTA']||'').split(':')[1]?.trim()||r['ASESOR / RUTA']||'-'}</td>
     <td>${r['FORMA DE PAGO']||'-'}</td>
     <td>${limpiarFecha(r['FECHA'])}</td>
     <td style="text-align:right">$${(parseFloat(r['TOTAL PEDIDO ($)'])||0).toFixed(2)}</td>
   </tr>`).join('');
-  const v = window.open('', '_blank', 'width=900,height=900');
-  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Pagos Registrados — Aqua Luan — ${fecha}</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    *{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:'DM Sans',sans-serif;color:#1a3a5c;padding:24px;background:#fff;}
-    .print-header{text-align:center;margin-bottom:16px;padding-bottom:16px;border-bottom:2px solid #1a3a5c;}
-    .print-header h1{font-family:'DM Serif Display',serif;font-size:22px;color:#1a3a5c;}
-    .print-header p{font-size:12px;color:#888;margin-top:4px;}
-    .resumen-forma{text-align:center;margin-bottom:20px;}
-    table{width:100%;border-collapse:collapse;font-size:12px;}
-    thead tr{background:#1565c0;}
-    thead th{padding:9px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#fff;}
-    thead th:last-child{text-align:right}
-    tbody td{padding:9px 12px;border-bottom:1px solid #eee;}
-    tbody tr:nth-child(even){background:#f7fafb;}
-    .total-row{background:#e8f0fd;font-weight:800;color:#0d47a1;}
-    .total-row td{padding:12px;border-top:2px solid #1565c0;}
-    @media print{body{padding:12px;} thead{display:table-header-group;}}
-  </style></head><body>
-  <div class="print-header">
-    <h1>💰 Pagos Registrados — Aqua Luan</h1>
-    <p>Fecha: ${fecha} · ${datos.length} pago(s) · Generado: ${new Date().toLocaleString('es-EC')}</p>
-  </div>
-  <div class="resumen-forma">${resumenForma}</div>
-  <table>
-    <thead><tr><th>Cliente</th><th>Asesor</th><th>Forma de Pago</th><th>Fecha</th><th>Monto</th></tr></thead>
-    <tbody>
-      ${filas}
-      <tr class="total-row"><td colspan="4" style="text-align:right">TOTAL PAGOS</td><td style="text-align:right">$${total.toFixed(2)}</td></tr>
-    </tbody>
-  </table>
-  <script>window.onload=function(){window.print();}<\/script>
-  </body></html>`);
-  v.document.close();
-}
-
-/* [NEW] Exportar Gastos registrados a PDF */
-function exportarGastosPDF() {
-  const datos = gastosDetalleActuales || [];
-  if (!datos.length) { alert('No hay gastos para exportar. Aplica los filtros primero.'); return; }
-  const fecha = _textoRangoFecha();
-  const total = datos.reduce((s,r) => s + Math.abs(parseFloat(r['TOTAL PEDIDO ($)'])||0), 0);
-  const filas = datos.map(r => {
+  const filasGastos = gastos.map(r => {
     const desc = r['NOTAS'] || r['CLIENTE'] || r['DIRECCIÓN'] || '-';
     return `<tr>
       <td>${escHTML(desc)}</td>
@@ -2012,35 +1974,57 @@ function exportarGastosPDF() {
     </tr>`;
   }).join('');
   const v = window.open('', '_blank', 'width=900,height=900');
-  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Gastos Registrados — Aqua Luan — ${fecha}</title>
+  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Pagos y Gastos — Aqua Luan — ${fecha}</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
     body{font-family:'DM Sans',sans-serif;color:#1a3a5c;padding:24px;background:#fff;}
-    .print-header{text-align:center;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid #1a3a5c;}
+    .print-header{text-align:center;margin-bottom:16px;padding-bottom:16px;border-bottom:2px solid #1a3a5c;}
     .print-header h1{font-family:'DM Serif Display',serif;font-size:22px;color:#1a3a5c;}
     .print-header p{font-size:12px;color:#888;margin-top:4px;}
+    .resumen-forma{text-align:center;margin-bottom:18px;}
+    .seccion-title{font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;margin:22px 0 8px;}
     table{width:100%;border-collapse:collapse;font-size:12px;}
-    thead tr{background:#c0392b;}
     thead th{padding:9px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#fff;}
     thead th:last-child{text-align:right}
     tbody td{padding:9px 12px;border-bottom:1px solid #eee;}
     tbody tr:nth-child(even){background:#f7fafb;}
-    .total-row{background:#fdecea;font-weight:800;color:#a93226;}
-    .total-row td{padding:12px;border-top:2px solid #c0392b;}
+    .tabla-pagos thead tr{background:#1565c0;}
+    .tabla-gastos thead tr{background:#c0392b;}
+    .total-row-pagos{background:#e8f0fd;font-weight:800;color:#0d47a1;}
+    .total-row-pagos td{padding:12px;border-top:2px solid #1565c0;}
+    .total-row-gastos{background:#fdecea;font-weight:800;color:#a93226;}
+    .total-row-gastos td{padding:12px;border-top:2px solid #c0392b;}
+    .neto-box{background:#1a3a5c;border-radius:12px;padding:16px 20px;margin-top:24px;display:flex;align-items:center;justify-content:space-between;}
+    .neto-label{font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.6);}
+    .neto-value{font-family:'DM Serif Display',serif;font-size:26px;color:${neto>=0?'#4ec9a0':'#f48fb1'};}
     @media print{body{padding:12px;} thead{display:table-header-group;}}
   </style></head><body>
   <div class="print-header">
-    <h1>📉 Gastos Registrados — Aqua Luan</h1>
-    <p>Fecha: ${fecha} · ${datos.length} gasto(s) · Generado: ${new Date().toLocaleString('es-EC')}</p>
+    <h1>💳 Pagos y Gastos — Aqua Luan</h1>
+    <p>Fecha: ${fecha} · ${pagos.length} pago(s) · ${gastos.length} gasto(s) · Generado: ${new Date().toLocaleString('es-EC')}</p>
   </div>
-  <table>
-    <thead><tr><th>Descripción</th><th>Responsable</th><th>Fecha</th><th>Monto</th></tr></thead>
+  <div class="resumen-forma">${resumenForma}</div>
+  <div class="seccion-title" style="color:#1565c0">💰 Pagos registrados</div>
+  <table class="tabla-pagos">
+    <thead><tr><th>Cliente</th><th>Asesor</th><th>Forma de Pago</th><th>Fecha</th><th>Monto</th></tr></thead>
     <tbody>
-      ${filas}
-      <tr class="total-row"><td colspan="3" style="text-align:right">TOTAL GASTOS</td><td style="text-align:right">$${total.toFixed(2)}</td></tr>
+      ${filasPagos || '<tr><td colspan="5" style="text-align:center;color:#888">Sin pagos en este período</td></tr>'}
+      <tr class="total-row-pagos"><td colspan="4" style="text-align:right">TOTAL PAGOS</td><td style="text-align:right">$${totalPagos.toFixed(2)}</td></tr>
     </tbody>
   </table>
+  <div class="seccion-title" style="color:#c0392b">📉 Gastos registrados</div>
+  <table class="tabla-gastos">
+    <thead><tr><th>Descripción</th><th>Responsable</th><th>Fecha</th><th>Monto</th></tr></thead>
+    <tbody>
+      ${filasGastos || '<tr><td colspan="4" style="text-align:center;color:#888">Sin gastos en este período</td></tr>'}
+      <tr class="total-row-gastos"><td colspan="3" style="text-align:right">TOTAL GASTOS</td><td style="text-align:right">$${totalGastos.toFixed(2)}</td></tr>
+    </tbody>
+  </table>
+  <div class="neto-box">
+    <span class="neto-label">Total en caja (Pagos − Gastos)</span>
+    <span class="neto-value">$${neto.toFixed(2)}</span>
+  </div>
   <script>window.onload=function(){window.print();}<\/script>
   </body></html>`);
   v.document.close();
