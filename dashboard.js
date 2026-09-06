@@ -873,13 +873,15 @@ function renderCharts(pedidos, pedidosConTotal) {
     data: { labels: Object.keys(ventasPorRuta), datasets: [{ label:'Ventas ($)', data: Object.values(ventasPorRuta), backgroundColor:['#0a7c6e','#1565c0','#e67e22','#c0392b','#4ec9a0'], borderRadius:6 }] },
     options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{beginAtZero:true,ticks:{callback:v=>'$'+v,font:{size:11}},grid:{color:'rgba(0,0,0,0.05)'}}, x:{ticks:{font:{size:11}},grid:{display:false}} } }
   });
+  // [FIX] Antes se mostraban solo los primeros 6 productos — ahora se incluyen
+  // TODOS los productos vendidos en el período filtrado, sin límite.
   const cantPorProducto = {};
   pedidos.forEach(r => { const p=r['PRODUCTO']||''; if(p) cantPorProducto[p]=(cantPorProducto[p]||0)+(parseFloat(r['CANTIDAD'])||0); });
-  const prodSorted = Object.entries(cantPorProducto).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const prodSorted = Object.entries(cantPorProducto).sort((a,b)=>b[1]-a[1]);
   if (charts.productos) charts.productos.destroy();
   charts.productos = new Chart(document.getElementById('chartProductos').getContext('2d'), {
     type:'doughnut',
-    data:{ labels:prodSorted.map(([k])=>k.length>15?k.substring(0,15)+'…':k), datasets:[{ data:prodSorted.map(([,v])=>v), backgroundColor:['#0a7c6e','#1565c0','#e67e22','#c0392b','#4ec9a0','#1a3a5c'], borderWidth:2, borderColor:'#fff' }] },
+    data:{ labels:prodSorted.map(([k])=>k.length>15?k.substring(0,15)+'…':k), datasets:[{ data:prodSorted.map(([,v])=>v), backgroundColor:['#0a7c6e','#1565c0','#e67e22','#c0392b','#4ec9a0','#1a3a5c','#8e44ad','#d35400','#16a085','#7f8c8d','#2c3e50','#f39c12'], borderWidth:2, borderColor:'#fff' }] },
     options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{position:'right',labels:{font:{size:10},boxWidth:12,padding:8}} } }
   });
   const ventasPorHora = {};
