@@ -467,7 +467,7 @@ body { padding: 1rem 0.75rem 3rem; }
 .add-row { grid-template-columns: 1fr 1fr; }
 .add-row .btn-add { grid-column: 1 / -1; width: 100%; }
 .lista-header, .lista-item { grid-template-columns: 1fr 48px 68px 68px 28px; font-size: 12px; }
-.pagos-header, .pago-item { grid-template-columns: 1fr 80px 70px 64px 28px 28px; font-size: 12px; }
+.pagos-header, .pago-item { grid-template-columns: 1fr 80px 70px 64px 28px 28px 28px; font-size: 12px; }
 .gastos-header, .gasto-item { grid-template-columns: 1fr 90px 70px 64px 28px 28px; font-size: 12px; }
 .modal-btns { grid-template-columns: 1fr; }
 .resumen-grid { grid-template-columns: 1fr; }
@@ -793,7 +793,7 @@ body { padding: 1rem 0.75rem 3rem; }
     <div class="card"><button class="btn blue" onclick="registrarPago()"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1.5" y="4" width="13" height="9" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M1.5 7h13" stroke="currentColor" stroke-width="1.5"/><path d="M5 10.5h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Registrar pago</button><div class="status" id="status-pagos"></div></div>
     <div class="card">
       <div class="section-title blue">Pagos registrados hoy</div>
-      <div class="reg-lista empty" id="pagosLista"><div class="pagos-header"><span>Cliente</span><span>Asesor</span><span style="text-align:center">Forma</span><span style="text-align:right">Monto</span><span></span><span></span></div><div id="pagosItems"></div></div>
+      <div class="reg-lista empty" id="pagosLista"><div class="pagos-header"><span>Cliente</span><span>Asesor</span><span style="text-align:center">Forma</span><span style="text-align:right">Monto</span><span></span><span></span><span></span></div><div id="pagosItems"></div></div>
       <div id="pagosEmptyMsg" class="empty-msg">Aún no hay pagos registrados.</div>
     </div>
   </div>
@@ -1741,7 +1741,7 @@ function renderPagos(){
   const lista=document.getElementById('pagosLista'),empty=document.getElementById('pagosEmptyMsg'),items=document.getElementById('pagosItems');
   if(listaPagos.length===0){lista.classList.add('empty');empty.style.display='block';}else{lista.classList.remove('empty');empty.style.display='none';}
   const puedeEliminar=usuarioActual&&usuarioActual.esAdmin; /* [NEW] solo el administrador puede eliminar pagos */
-  items.innerHTML=listaPagos.map(p=>`<div class="pago-item"><div><div style="font-size:13px;font-weight:600;color:var(--navy)">${escHTML(p.cliente)}</div><div style="font-size:11px;color:var(--muted)">${escHTML((p.empleado||'').replace('RUTA ','R.'))} · ${escHTML(p.hora||'')}</div></div><div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHTML(p.notas||'-')}</div><div style="text-align:center">${badgeForma(p.forma)}</div><span class="pago-monto">$${(parseFloat(p.monto)||0).toFixed(2)}</span><button class="btn-imprimir-mini" onclick="imprimirPago('${escHTML(p.id)}')" title="Imprimir comprobante">🖨️</button>${puedeEliminar?`<button class="btn-remove" onclick="eliminarPago('${escHTML(p.id)}')">&times;</button>`:'<span></span>'}</div>`).join('');
+  items.innerHTML=listaPagos.map(p=>`<div class="pago-item"><div><div style="font-size:13px;font-weight:600;color:var(--navy)">${escHTML(p.cliente)}</div><div style="font-size:11px;color:var(--muted)">${escHTML((p.empleado||'').replace('RUTA ','R.'))} · ${escHTML(p.hora||'')}</div></div><div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHTML(p.notas||'-')}</div><div style="text-align:center">${badgeForma(p.forma)}</div><span class="pago-monto">$${(parseFloat(p.monto)||0).toFixed(2)}</span><button class="btn-imprimir-mini" onclick="imprimirPago('${escHTML(p.id)}')" title="Imprimir comprobante PDF">🖨️</button><button class="btn-imprimir-mini" onclick="imprimirPagoTermico('${escHTML(p.id)}')" title="Imprimir ticket térmico">🧾</button>${puedeEliminar?`<button class="btn-remove" onclick="eliminarPago('${escHTML(p.id)}')">&times;</button>`:'<span></span>'}</div>`).join('');
 }
 function actualizarResumenPagos(){
   const t=listaPagos.reduce((s,p)=>s+(parseFloat(p.monto)||0),0);
@@ -2358,6 +2358,36 @@ function _buildTicketHTML(d){
   <div class="t-center t-small" style="margin-top:14px">Firma asesor: ____________</div>
   <div class="t-center t-small" style="margin-top:10px">Firma cliente: ____________</div>
   <div class="t-center t-small" style="margin-top:10px">www.elhyai.com</div>`;
+}
+/* [NEW] Ticket térmico (48mm) para un PAGO — mismo patrón que _buildTicketHTML()
+   de pedidos, reutilizando _abrirVentanaTicket() y los mismos estilos de rollo
+   térmico. No reemplaza el comprobante en PDF (imprimirPago), que sigue
+   disponible con el ícono 🖨️ para quien quiera guardarlo/enviarlo en A4;
+   este es el que se imprime bien en la impresora térmica del celular (RawBT). */
+function _buildTicketPagoHTML(p){
+  const fechaStr=p.fecha?new Date(p.fecha+'T00:00:00').toLocaleDateString('es-EC',{day:'2-digit',month:'2-digit',year:'numeric'}):'-';
+  const horaTicket=p.hora||(p.creadoEn?_horaDeTimestamp(p.creadoEn):'');
+  return `<div class="t-center"><img src="logo-luanaqua.png" class="t-logo" alt="Aqua Luan"></div>
+  <div class="t-center t-small t-bold" style="letter-spacing:0.5px">COMPROBANTE DE PAGO</div>
+  <div class="t-line"></div>
+  <table class="t-tbl"><tr><td>Fecha:</td><td class="t-r">${fechaStr}</td></tr>
+  ${horaTicket?`<tr><td>Hora:</td><td class="t-r">${escHTML(horaTicket)}</td></tr>`:''}
+  <tr><td>Ruta:</td><td class="t-r">${escHTML(p.empleado||'-')}</td></tr>
+  <tr><td>Forma:</td><td class="t-r t-pago-val">${escHTML(p.forma||'-')}</td></tr></table>
+  <div class="t-line"></div>
+  <div class="t-bold">CLIENTE: ${escHTML(p.cliente||'-')}</div>
+  ${p.notas?`<div class="t-small">Nota: ${escHTML(p.notas)}</div>`:''}
+  <div class="t-line"></div>
+  <table class="t-tbl"><tr class="t-total"><td>MONTO RECIBIDO</td><td class="t-r">$${(parseFloat(p.monto)||0).toFixed(2)}</td></tr></table>
+  <div class="t-line"></div>
+  <div class="t-center t-small" style="margin-top:14px">Firma asesor: ____________</div>
+  <div class="t-center t-small" style="margin-top:10px">Firma cliente: ____________</div>
+  <div class="t-center t-small" style="margin-top:10px">www.elhyai.com</div>`;
+}
+function imprimirPagoTermico(id){
+  const p=listaPagos.find(x=>x.id===id);
+  if(!p){alert('No se encontró ese pago.');return;}
+  _abrirVentanaTicket(_buildTicketPagoHTML(p));
 }
 function _abrirVentanaTicket(contenido){
   const v=window.open('','_blank','width=380,height=700');
