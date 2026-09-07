@@ -351,7 +351,7 @@ function _calcularLiquidacionDash(){
   const getAsesor = nombre => { if(!porAsesor[nombre]) porAsesor[nombre] = {
     ventasContado:0, ventasCredito:0, ventasTransferencia:0, ventasCheque:0, ventasOtras:0,
     pagosEfectivo:0, pagosTransferencia:0, pagosCheque:0, pagosOtros:0,
-    gastos:0
+    gastos:0, productos:{} /* [NEW] desglose por producto vendido, para ver qué vendió cada asesor */
   }; return porAsesor[nombre]; };
   _pedidosRaw.forEach(p=>{
     const d = getAsesor(p.empleado || 'Sin asignar'); const tot = parseFloat(p.total||0);
@@ -360,6 +360,13 @@ function _calcularLiquidacionDash(){
     else if(p.formapago==='Transferencia') d.ventasTransferencia+=tot;
     else if(p.formapago==='Cheque') d.ventasCheque+=tot;
     else d.ventasOtras+=tot;
+    // [NEW] Acumular por producto (solo productos vendidos, no regalías que van a $0)
+    (p.productos||[]).forEach(prod=>{
+      const nom = prod.nombre || 'Sin nombre';
+      if(!d.productos[nom]) d.productos[nom] = { cantidad:0, dolares:0 };
+      d.productos[nom].cantidad += parseFloat(prod.cantidad||0);
+      d.productos[nom].dolares  += parseFloat(prod.subtotal||0);
+    });
   });
   _pagosRaw.forEach(p=>{
     const d = getAsesor(p.empleado || 'Sin asignar');
@@ -396,6 +403,16 @@ function renderLiquidacionDash(){
     const transferencias = d.ventasTransferencia+d.pagosTransferencia;
     const cheques = d.ventasCheque+d.pagosCheque;
     const sinClasificar = d.ventasOtras+d.pagosOtros;
+    // [NEW] Desglose por producto vendido por este asesor, ordenado de mayor a menor venta
+    const prodsOrdenados = Object.entries(d.productos).sort(([,a],[,b]) => b.dolares - a.dolares);
+    const totalCantidadProd = prodsOrdenados.reduce((s,[,p]) => s + p.cantidad, 0);
+    const totalDolaresProd  = prodsOrdenados.reduce((s,[,p]) => s + p.dolares, 0);
+    const filasProductosLiq = prodsOrdenados.map(([nom,p]) => `
+      <tr>
+        <td>${escHTML(nom)}</td>
+        <td>${p.cantidad % 1 === 0 ? parseInt(p.cantidad) : p.cantidad.toFixed(1)}</td>
+        <td>$${p.dolares.toFixed(2)}</td>
+      </tr>`).join('');
     return `<div class="table-card" style="margin-bottom:12px">
       <div style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;background:var(--surface2)">
         <span style="font-weight:800;color:var(--navy)">${escHTML(nombre)}</span>
@@ -418,6 +435,21 @@ function renderLiquidacionDash(){
         ${sinClasificar>0?`<div style="display:flex;justify-content:space-between;padding:2px 0"><span>− Sin clasificar</span><span>$${sinClasificar.toFixed(2)}</span></div>`:''}
         <div style="display:flex;justify-content:space-between;padding-top:6px;margin-top:4px;border-top:1px solid var(--border);font-weight:800"><span>Total a Entregar</span><span style="color:${totalEntregar>=0?'#0f7c38':'#a93226'}">$${totalEntregar.toFixed(2)}</span></div>
       </div>
+      ${prodsOrdenados.length ? `
+      <div style="margin:0 16px 14px">
+        <div class="cierre-section-label" style="margin-bottom:6px">📦 Productos vendidos por ${escHTML(nombre)}</div>
+        <table class="cierre-prod-table">
+          <thead><tr><th>Producto</th><th>Cantidad</th><th>Total ($)</th></tr></thead>
+          <tbody>
+            ${filasProductosLiq}
+            <tr class="cierre-prod-subtotal">
+              <td style="font-weight:800">SUBTOTAL PRODUCTOS</td>
+              <td style="font-weight:800;text-align:right;color:var(--blue)">${totalCantidadProd % 1 === 0 ? parseInt(totalCantidadProd) : totalCantidadProd.toFixed(1)}</td>
+              <td style="font-weight:800;text-align:right;color:var(--teal)">$${totalDolaresProd.toFixed(2)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>` : ''}
     </div>`;
   }).join('');
   document.getElementById('liquidacionDashTotalValor').textContent = '$'+totalGeneral.toFixed(2);
@@ -438,6 +470,23 @@ function imprimirLiquidacionDash(){
     const transferencias = d.ventasTransferencia+d.pagosTransferencia;
     const cheques = d.ventasCheque+d.pagosCheque;
     const sinClasificar = d.ventasOtras+d.pagosOtros;
+    // [NEW] Desglose por producto vendido, también en el PDF
+    const prodsOrdenados = Object.entries(d.productos).sort(([,a],[,b]) => b.dolares - a.dolares);
+    const totalCantidadProd = prodsOrdenados.reduce((s,[,p]) => s + p.cantidad, 0);
+    const totalDolaresProd  = prodsOrdenados.reduce((s,[,p]) => s + p.dolares, 0);
+    const filasProductosPdf = prodsOrdenados.map(([nom,p]) => `
+      <tr><td>${escHTML(nom)}</td><td style="text-align:right">${p.cantidad % 1 === 0 ? parseInt(p.cantidad) : p.cantidad.toFixed(1)}</td><td style="text-align:right">$${p.dolares.toFixed(2)}</td></tr>`).join('');
+    const bloqueProductos = prodsOrdenados.length ? `
+      <div class="prod-box">
+        <div class="prod-title">PRODUCTOS VENDIDOS</div>
+        <table class="prod-table">
+          <thead><tr><th>Producto</th><th style="text-align:right">Cant.</th><th style="text-align:right">Total</th></tr></thead>
+          <tbody>
+            ${filasProductosPdf}
+            <tr class="prod-subtotal"><td>SUBTOTAL</td><td style="text-align:right">${totalCantidadProd % 1 === 0 ? parseInt(totalCantidadProd) : totalCantidadProd.toFixed(1)}</td><td style="text-align:right">$${totalDolaresProd.toFixed(2)}</td></tr>
+          </tbody>
+        </table>
+      </div>` : '';
     return `<div class="ruta-block">
       <div class="ruta-header"><span>${escHTML(nombre)}</span><span style="color:${totalEntregar>=0?'#0f7c38':'#a93226'}">$${totalEntregar.toFixed(2)}</span></div>
       <div class="ruta-linea"><span>Ventas al contado</span><b>$${d.ventasContado.toFixed(2)}</b></div>
@@ -455,6 +504,7 @@ function imprimirLiquidacionDash(){
         ${sinClasificar>0?`<div class="ruta-linea"><span>− Sin clasificar</span><span>$${sinClasificar.toFixed(2)}</span></div>`:''}
         <div class="ruta-linea total-entregar"><span>Total a Entregar</span><span style="color:${totalEntregar>=0?'#0f7c38':'#a93226'}">$${totalEntregar.toFixed(2)}</span></div>
       </div>
+      ${bloqueProductos}
     </div>`;
   }).join('');
   const v = window.open('', '_blank', 'width=900,height=900');
@@ -472,6 +522,13 @@ function imprimirLiquidacionDash(){
     .pasos-box{background:#f8fafc;border:1px solid #d2dae2;border-radius:6px;margin-top:8px;padding:8px 10px;font-size:11.5px;}
     .pasos-title{font-size:9px;font-weight:800;letter-spacing:0.08em;color:#0f7c38;margin-bottom:6px;}
     .total-entregar{border-top:1px solid #d2dae2;margin-top:4px;padding-top:6px;font-weight:800;font-size:13px;}
+    .prod-box{background:#f8fafc;border:1px solid #d2dae2;border-radius:6px;margin-top:8px;padding:8px 10px;}
+    .prod-title{font-size:9px;font-weight:800;letter-spacing:0.08em;color:#1a3a5c;margin-bottom:6px;}
+    .prod-table{width:100%;border-collapse:collapse;font-size:11px;}
+    .prod-table th{text-align:left;font-size:9px;font-weight:800;letter-spacing:0.04em;color:#888;padding:3px 4px;border-bottom:1px solid #d2dae2;}
+    .prod-table td{padding:3px 4px;border-bottom:1px solid #e6ebf0;}
+    .prod-table tr:last-child td{border-bottom:none;}
+    .prod-subtotal td{font-weight:800;border-top:1px solid #d2dae2;padding-top:5px;}
     .total-general{background:#1a3a5c;border-radius:10px;padding:14px 18px;margin-top:8px;display:flex;justify-content:space-between;align-items:center;}
     .total-general span:first-child{font-size:11px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.6);}
     .total-general span:last-child{font-family:'DM Serif Display',serif;font-size:22px;color:#4ec9a0;}
