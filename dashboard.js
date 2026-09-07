@@ -62,6 +62,26 @@ const RUTA_INITIALS = {
   'RUTA 5: Lister':    'Li',
   'RUTA 6: Asesora':   'A',
 };
+/* [FIX] RUTA_COLORS de arriba usa nombres en "Título" (ej. "Jefferson"), pero el
+   nombre real guardado en cada pedido es el que el admin escribió al crear el
+   asesor (ver crearAsesorReal en index.html) — normalmente todo en MAYÚSCULAS
+   (ej. "RUTA 1: JEFFERSON"). La comparación exacta RUTA_COLORS[asesorKey] nunca
+   coincidía por esa diferencia de mayúsculas, así que TODOS los marcadores del
+   mapa de "Rutas del Día" caían al mismo color por defecto. Esta función busca
+   sin distinguir mayúsculas/minúsculas y, si de verdad no encuentra el asesor,
+   genera un color de respaldo determinístico según su nombre (siempre el mismo
+   color para ese asesor, y distinto al de los demás) en vez de un gris/naranja
+   compartido por todos. */
+const RUTA_COLORS_LC = {};
+Object.entries(RUTA_COLORS).forEach(([k,v]) => { RUTA_COLORS_LC[k.trim().toLowerCase()] = v; });
+const _FALLBACK_COLOR_PALETTE = ['#1565c0','#0a7c6e','#e67e22','#c0392b','#7b1fa2','#0891b2','#c2185b','#558b2f','#ef6c00','#5d4037'];
+function colorDeAsesor(asesorKey){
+  const k = (asesorKey||'').trim().toLowerCase();
+  if (RUTA_COLORS_LC[k]) return RUTA_COLORS_LC[k];
+  let hash = 0;
+  for (let i=0; i<k.length; i++) hash = (hash*31 + k.charCodeAt(i)) >>> 0;
+  return _FALLBACK_COLOR_PALETTE[hash % _FALLBACK_COLOR_PALETTE.length];
+}
 
 let todosLosDatos = [];
 let charts = {};
@@ -1331,7 +1351,7 @@ function renderRutasDia(fecha, asesorFiltro) {
   let allBounds=[];
   const markerRefs={};
   Object.entries(rutasMap).forEach(([asesorKey,filas])=>{
-    const color=RUTA_COLORS[asesorKey]||'#e67e22';
+    const color=colorDeAsesor(asesorKey);
     const coords=[];
     filas.forEach((r,idx)=>{
       const lat=r._lat, lng=r._lng;
@@ -1365,7 +1385,7 @@ function renderRutasDia(fecha, asesorFiltro) {
 function renderMapLegend(asesores) {
   const el=document.getElementById('mapLegend');
   if(!asesores.length){ el.innerHTML='<span style="font-size:11px;color:var(--muted)">Sin datos GPS</span>'; return; }
-  el.innerHTML=asesores.map(a=>{ const color=RUTA_COLORS[a]||'#555'; const nombre=a.split(':')[1]?.trim()||a; return `<div class="legend-item"><div class="legend-dot" style="background:${color}"></div>${nombre}</div>`; }).join('');
+  el.innerHTML=asesores.map(a=>{ const color=colorDeAsesor(a); const nombre=a.split(':')[1]?.trim()||a; return `<div class="legend-item"><div class="legend-dot" style="background:${color}"></div>${nombre}</div>`; }).join('');
 }
 
 function centrarMapa() {
@@ -1395,7 +1415,7 @@ function renderAsesorCards(datosAll,datosGPS) {
   datosGPS.forEach(r=>{ const a=r['ASESOR / RUTA']||'Sin asignar'; if(!asesorMap[a])asesorMap[a]={filas:[],gps:[]}; asesorMap[a].gps.push(r); });
   if(!Object.keys(asesorMap).length){ grid.innerHTML='<div class="loading"><span style="color:var(--muted)">📭 Sin datos para el filtro seleccionado</span></div>'; return; }
   grid.innerHTML=Object.entries(asesorMap).map(([asesorKey,data])=>{
-    const color=RUTA_COLORS[asesorKey]||'#555', nombre=asesorKey.split(':')[1]?.trim()||asesorKey;
+    const color=colorDeAsesor(asesorKey), nombre=asesorKey.split(':')[1]?.trim()||asesorKey;
     const filas=data.filas, gps=data.gps;
     const clientes=new Set(filas.map(r=>`${r['CLIENTE']}-${r['FECHA']}`)).size;
     const total=filas.filter(r=>r['TOTAL PEDIDO ($)']&&parseFloat(r['TOTAL PEDIDO ($)'])>0).reduce((s,r)=>s+(parseFloat(r['TOTAL PEDIDO ($)'])||0),0);
@@ -1425,7 +1445,7 @@ function renderRutaTabla(datos,markerRefs) {
   card.style.display='block'; badge.textContent=mostrar.length+' registro'+(mostrar.length!==1?'s':'');
   note.textContent=datos.length>200?`Mostrando 200 de ${datos.length} registros totales.`:'';
   tbody.innerHTML=mostrar.map((r,idx)=>{
-    const asesorKey=r['ASESOR / RUTA']||'', color=RUTA_COLORS[asesorKey]||'#ccc', nombre=asesorKey.split(':')[1]?.trim()||asesorKey||'-';
+    const asesorKey=r['ASESOR / RUTA']||'', color=asesorKey?colorDeAsesor(asesorKey):'#ccc', nombre=asesorKey.split(':')[1]?.trim()||asesorKey||'-';
     const total=r['TOTAL PEDIDO ($)']?`<strong style="color:var(--teal)">$${parseFloat(r['TOTAL PEDIDO ($)']).toFixed(2)}</strong>`:'<span style="color:var(--muted)">—</span>';
     const pago=r['FORMA DE PAGO']?`<span class="badge badge-teal">${r['FORMA DE PAGO']}</span>`:'';
     const notas=r['NOTAS']?`<span style="font-size:11px;color:var(--muted);font-style:italic" title="${escapeAttr(r['NOTAS'])}">${escHTML(r['NOTAS'].substring(0,30))}${r['NOTAS'].length>30?'…':''}</span>`:'<span style="color:var(--muted);font-size:11px">—</span>';
@@ -1809,7 +1829,7 @@ function renderReporteAsesores(){
   if (!_asesoresCache.length) { grid.innerHTML = '<div class="empty-state"><div class="icon">👤</div>No hay asesores registrados</div>'; return; }
 
   grid.innerHTML = _asesoresCache.map(ruta => {
-    const color = RUTA_COLORS[ruta] || '#555';
+    const color = colorDeAsesor(ruta);
     const nombre = ruta.split(':')[1]?.trim() || ruta;
     const total = ventasPorRuta[ruta] || 0;
     const activo = ruta === _asesorReporteSeleccionado;
@@ -1977,7 +1997,7 @@ function abrirCierreDia() {
   // ── Renderizar bloques por asesor
   let html = '';
   Object.entries(porAsesor).sort(([,a],[,b]) => b.total - a.total).forEach(([asesor, d]) => {
-    const color  = RUTA_COLORS[asesor] || '#0a7c6e';
+    const color  = colorDeAsesor(asesor);
     const nombre = asesor.split(':')[1]?.trim() || asesor;
     const numClientes = d.clientesUnicos.size;
     const numPedidos  = d._pedidosVisto ? d._pedidosVisto.size : 0;
