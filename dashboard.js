@@ -618,6 +618,7 @@ function _filaProducto(p, prod, esPrimera, esRegalo) {
     'PRECIO UNIT.': esRegalo ? 0 : (prod.precio != null ? prod.precio : ''),
     'SUBTOTAL': esRegalo ? 0 : (prod.subtotal != null ? prod.subtotal : ''),
     'TOTAL PEDIDO ($)': esPrimera ? (parseFloat(p.total) || 0) : '',
+    'ABONO': esPrimera ? (parseFloat(p.abono) || 0) : '', // [NEW] abono parcial (Contado o Crédito) para mostrar saldo pendiente en el Dashboard
     'FORMA DE PAGO': p.formapago || '', 'LINK GPS': (p.gps && p.gps.url) ? p.gps.url : '', 'NOTAS': p.notas || '',
     'LATITUD': (p.gps && p.gps.lat != null) ? p.gps.lat : '', 'LONGITUD': (p.gps && p.gps.lng != null) ? p.gps.lng : '',
     'PRECISIÓN GPS': (p.gps && p.gps.acc != null) ? `±${p.gps.acc}m` : '',
@@ -971,7 +972,13 @@ function renderTabla(pedidos) {
   tbody.innerHTML = pedidos.slice(0,100).map(r => {
     const gps   = r['LINK GPS'] ? `<a href="${r['LINK GPS']}" target="_blank" style="color:var(--teal);font-weight:700;font-size:11px">📍 Ver</a>` : '<span style="color:var(--muted);font-size:11px">—</span>';
     const total = r['TOTAL PEDIDO ($)'] ? `<strong style="color:var(--teal)">$${parseFloat(r['TOTAL PEDIDO ($)']).toFixed(2)}</strong>` : '';
-    const pago  = r['FORMA DE PAGO'] ? `<span class="badge badge-teal">${r['FORMA DE PAGO']}</span>` : '';
+    // [NEW] Si quedó saldo pendiente a crédito (venta con abono parcial en Contado o
+    // Crédito), lo muestra debajo de la forma de pago — sin agregar columnas nuevas,
+    // para no afectar exportaciones a PDF ni el resto de la tabla.
+    const abonoVal = parseFloat(r['ABONO']||0);
+    const totalVal = parseFloat(r['TOTAL PEDIDO ($)']||0);
+    const tieneSaldo = abonoVal>0 && totalVal>0 && abonoVal<totalVal;
+    const pago  = r['FORMA DE PAGO'] ? `<span class="badge badge-teal">${r['FORMA DE PAGO']}</span>${tieneSaldo?`<div style="font-size:10px;color:var(--red);margin-top:2px;white-space:nowrap">Abono $${abonoVal.toFixed(2)} · Saldo $${(totalVal-abonoVal).toFixed(2)}</div>`:''}` : '';
     /* [NEW] Botón Editar — solo funciona si la fila trae el id real del pedido en Firestore
        (las filas de pagos/gastos no lo traen, pero renderTabla solo recibe pedidos con producto) */
     const accion = (r['_pedidoId'] && ROL_ACTUAL === 'admin') ? `<button class="btn-editar-fila" onclick="abrirEditarPedido('${r['_pedidoId']}')" title="Editar este pedido">✏ Editar</button><button class="btn-eliminar-fila" onclick="eliminarPedidoCompleto('${r['_pedidoId']}')" title="Eliminar este pedido permanentemente">🗑 Eliminar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>'; /* [NEW] Secretaria no ve Editar/Eliminar */
