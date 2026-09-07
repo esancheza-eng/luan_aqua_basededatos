@@ -353,9 +353,32 @@ function _calcularLiquidacionDash(){
     pagosEfectivo:0, pagosTransferencia:0, pagosCheque:0, pagosOtros:0,
     gastos:0, productos:{} /* [NEW] desglose por producto vendido, para ver qué vendió cada asesor */
   }; return porAsesor[nombre]; };
-  _pedidosRaw.forEach(p=>{
+  // [FIX] Antes esta función ignoraba por completo el selector "Asesor" del filtro
+  // general del Dashboard — siempre calculaba y mostraba TODAS las rutas, aunque
+  // el usuario hubiera elegido una en el dropdown. Ahora, si hay un asesor
+  // seleccionado, solo se procesan sus pedidos/pagos/gastos.
+  const asesorSel = document.getElementById('filtroAsesor') ? document.getElementById('filtroAsesor').value : '';
+  const pedidosF = asesorSel ? _pedidosRaw.filter(p => (p.empleado||'') === asesorSel) : _pedidosRaw;
+  const pagosF   = asesorSel ? _pagosRaw.filter(p => (p.empleado||'') === asesorSel) : _pagosRaw;
+  const gastosF  = asesorSel ? _gastosRaw.filter(g => (g.empleado||'') === asesorSel) : _gastosRaw;
+  pedidosF.forEach(p=>{
     const d = getAsesor(p.empleado || 'Sin asignar'); const tot = parseFloat(p.total||0);
-    if(p.formapago==='Contado') d.ventasContado+=tot;
+    const abono = parseFloat(p.abono||0); // [FIX] venta con abono parcial (Contado o Crédito)
+    if(abono>0 && abono<tot){
+      // [FIX] El abono ya se registra por separado como un "Pago" en efectivo
+      // (ver confirmarEnvio en index.html), así que aquí solo se cuenta el
+      // SALDO PENDIENTE como crédito — sumar también el total completo aquí
+      // duplicaba el abono (efectivo real entregado) y siempre sobrestimaba
+      // lo que el asesor debía entregar. Con esto la Liquidación del
+      // Dashboard vuelve a coincidir con la de Detalle de Pedidos.
+      d.ventasCredito+=(tot-abono);
+    } else if(abono>=tot && tot>0){
+      // El abono cubrió el 100% de la venta al momento de hacerla — no se
+      // generó un Pago aparte, así que ese efectivo se cuenta aquí
+      // directamente, sin importar la forma de pago elegida.
+      d.ventasContado+=tot;
+    }
+    else if(p.formapago==='Contado') d.ventasContado+=tot;
     else if(p.formapago==='Crédito') d.ventasCredito+=tot;
     else if(p.formapago==='Transferencia') d.ventasTransferencia+=tot;
     else if(p.formapago==='Cheque') d.ventasCheque+=tot;
@@ -368,14 +391,14 @@ function _calcularLiquidacionDash(){
       d.productos[nom].dolares  += parseFloat(prod.subtotal||0);
     });
   });
-  _pagosRaw.forEach(p=>{
+  pagosF.forEach(p=>{
     const d = getAsesor(p.empleado || 'Sin asignar');
     if(p.forma==='Efectivo') d.pagosEfectivo+=(parseFloat(p.monto)||0);
     else if(p.forma==='Transferencia') d.pagosTransferencia+=(parseFloat(p.monto)||0);
     else if(p.forma==='Cheque') d.pagosCheque+=(parseFloat(p.monto)||0);
     else d.pagosOtros+=(parseFloat(p.monto)||0);
   });
-  _gastosRaw.forEach(g=>{ getAsesor(g.empleado || 'Sin asignar').gastos += (parseFloat(g.monto)||0); });
+  gastosF.forEach(g=>{ getAsesor(g.empleado || 'Sin asignar').gastos += (parseFloat(g.monto)||0); });
   return porAsesor;
 }
 function renderLiquidacionDash(){
