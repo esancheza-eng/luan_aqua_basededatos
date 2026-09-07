@@ -2333,6 +2333,7 @@ function exportarDetallePDF() {
 
   const filas = datos.map(r => {
     const total = r['TOTAL PEDIDO ($)'] ? `$${parseFloat(r['TOTAL PEDIDO ($)']).toFixed(2)}` : '—';
+    const precioUnit = r['PRECIO UNIT.']!==undefined && r['PRECIO UNIT.']!=='' ? `$${parseFloat(r['PRECIO UNIT.']).toFixed(2)}` : '—';
     return `<tr>
       <td>${limpiarFecha(r['FECHA'])}</td>
       <td>${(r['ASESOR / RUTA']||'').split(':')[1]?.trim()||r['ASESOR / RUTA']||'-'}</td>
@@ -2340,11 +2341,17 @@ function exportarDetallePDF() {
       <td>${escHTML(r['TELÉFONO']||'-')}</td>
       <td>${escHTML(r['PRODUCTO']||'-')}</td>
       <td style="text-align:center">${r['CANTIDAD']||'-'}</td>
+      <td style="text-align:right">${precioUnit}</td>
       <td style="text-align:right">$${parseFloat(r['SUBTOTAL']||0).toFixed(2)}</td>
       <td style="text-align:right;font-weight:700">${total}</td>
       <td>${r['FORMA DE PAGO']||'-'}</td>
     </tr>`;
   }).join('');
+
+  // [NEW] URL absoluta del logo — esta ventana de impresión se abre en blanco
+  // (sin la URL del dashboard como base), así que una ruta relativa "logo-luanaqua.png"
+  // no cargaría. Se arma con location.origin para que funcione en cualquier dominio.
+  const logoUrl = location.origin + '/logo-luanaqua.png';
 
   const v = window.open('', '_blank', 'width=1000,height=900');
   v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Detalle de Pedidos — Aqua Luan — ${fecha}</title>
@@ -2352,7 +2359,8 @@ function exportarDetallePDF() {
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
     body{font-family:'DM Sans',sans-serif;color:#1a3a5c;padding:24px;background:#fff;}
-    .print-header{text-align:center;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid #1a3a5c;}
+    .print-header{display:flex;align-items:center;justify-content:center;gap:14px;text-align:center;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid #1a3a5c;}
+    .print-header img{height:46px;width:auto;}
     .print-header h1{font-family:'DM Serif Display',serif;font-size:22px;color:#1a3a5c;}
     .print-header p{font-size:12px;color:#888;margin-top:4px;}
     table{width:100%;border-collapse:collapse;font-size:11px;}
@@ -2362,19 +2370,31 @@ function exportarDetallePDF() {
     tbody tr:nth-child(even){background:#f7fafb;}
     .total-row{background:#e6f4f2;font-weight:800;color:#085f54;}
     .total-row td{padding:10px;border-top:2px solid #0a7c6e;}
-    @media print{body{padding:12px;} thead{display:table-header-group;}}
+    .firmas{display:flex;justify-content:space-between;gap:30px;margin-top:70px;page-break-inside:avoid;}
+    .firmas .firma{flex:1;text-align:center;}
+    .firmas .firma-linea{border-top:1.5px solid #1a3a5c;margin-bottom:6px;}
+    .firmas .firma-label{font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#1a3a5c;}
+    @media print{body{padding:12px;} thead{display:table-header-group;} .firmas{margin-top:60px;}}
   </style></head><body>
   <div class="print-header">
-    <h1>📋 Detalle de Pedidos — Aqua Luan</h1>
-    <p>Fecha: ${fecha} · Asesor: ${asesorLabel} · ${datos.length} línea(s) · Generado: ${new Date().toLocaleString('es-EC')}</p>
+    <img src="${logoUrl}" alt="Aqua Luan" onerror="this.style.display='none'">
+    <div>
+      <h1>📋 Detalle de Pedidos — Aqua Luan</h1>
+      <p>Fecha: ${fecha} · Asesor: ${asesorLabel} · ${datos.length} línea(s) · Generado: ${new Date().toLocaleString('es-EC')}</p>
+    </div>
   </div>
   <table>
-    <thead><tr><th>Fecha</th><th>Asesor</th><th>Cliente</th><th>Teléfono</th><th>Producto</th><th>Cant.</th><th>Subtotal</th><th>Total</th><th>Pago</th></tr></thead>
+    <thead><tr><th>Fecha</th><th>Asesor</th><th>Cliente</th><th>Teléfono</th><th>Producto</th><th>Cant.</th><th>Precio Unit.</th><th>Subtotal</th><th>Total</th><th>Pago</th></tr></thead>
     <tbody>
       ${filas}
-      <tr class="total-row"><td colspan="7" style="text-align:right">TOTAL GENERAL</td><td style="text-align:right">$${totalGeneral.toFixed(2)}</td><td></td></tr>
+      <tr class="total-row"><td colspan="8" style="text-align:right">TOTAL GENERAL</td><td style="text-align:right">$${totalGeneral.toFixed(2)}</td><td></td></tr>
     </tbody>
   </table>
+  <div class="firmas">
+    <div class="firma"><div class="firma-linea">&nbsp;</div><div class="firma-label">Firma Secretaria</div></div>
+    <div class="firma"><div class="firma-linea">&nbsp;</div><div class="firma-label">Firma Asesor</div></div>
+    <div class="firma"><div class="firma-linea">&nbsp;</div><div class="firma-label">Firma Ayudante</div></div>
+  </div>
   <script>window.onload=function(){window.print();}<\/script>
   </body></html>`);
   v.document.close();
