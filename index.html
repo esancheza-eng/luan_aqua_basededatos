@@ -542,6 +542,8 @@ body { padding: 1rem 0.75rem 3rem; }
     <table class="modal-table">
       <tr><td>Asesor / Ruta</td><td id="m-empleado">-</td></tr>
       <tr><td>Forma de pago</td><td id="m-formapago">-</td></tr>
+      <tr id="m-abono-row" style="display:none"><td>Abono recibido</td><td id="m-abono">-</td></tr>
+      <tr id="m-saldo-row" style="display:none"><td>Saldo a crédito</td><td id="m-saldo">-</td></tr>
       <tr><td>Cliente</td><td id="m-nombre">-</td></tr>
       <tr><td>Telefono</td><td id="m-telefono">-</td></tr>
       <tr><td>Direccion</td><td id="m-direccion">-</td></tr>
@@ -664,7 +666,7 @@ body { padding: 1rem 0.75rem 3rem; }
         </div>
         <div class="field">
           <label for="formapago">Forma de pago</label>
-          <select id="formapago" required>
+          <select id="formapago" required onchange="_actualizarVisibilidadAbono()">
             <option value="">-- Selecciona --</option>
             <option value="Contado">Contado</option>
             <option value="Crédito">Crédito</option>
@@ -672,6 +674,13 @@ body { padding: 1rem 0.75rem 3rem; }
             <option value="Cheque">Cheque</option>
           </select>
         </div>
+      </div>
+      <!-- [NEW] Abono en efectivo para ventas a crédito — ej. venta de $30, abono $20,
+           quedan $10 de saldo a crédito. Solo visible cuando Forma de pago = Crédito. -->
+      <div class="field" id="wrap-abono" style="display:none">
+        <label for="abono">Monto recibido en efectivo (opcional — deja el resto a crédito)</label>
+        <input type="number" id="abono" placeholder="0.00" min="0" step="0.01" inputmode="decimal" oninput="_actualizarInfoAbono()">
+        <div id="abono-saldo-info" style="font-size:12px;color:var(--muted);margin-top:4px"></div>
       </div>
       <hr class="divider">
       <div class="section-title">Datos del cliente</div>
@@ -1262,7 +1271,7 @@ function _iniciarListenersDelDia(u){
   let qGastos=db.collection('gastos').where('fecha','==',hoy);
   if(!u.esAdmin){ qPedidos=qPedidos.where('empleado','==',u.ruta); qPagos=qPagos.where('empleado','==',u.ruta); qGastos=qGastos.where('empleado','==',u.ruta); }
   _unsubPedidosHoy=qPedidos.onSnapshot(snap=>{
-    const hist=snap.docs.map(d=>{ const r=d.data(); return {id:d.id,nombre:r.cliente,total:r.total,fecha:r.fecha,empleado:r.empleado,formapago:r.formapago,telefono:r.telefono,direccion:r.direccion,notas:r.notas,productos:r.productos||[],gps:r.gps||null,hora:r.hora||_horaDeTimestamp(r.creadoEn),_ts:r.creadoEn?.toMillis?.()||0}; }).sort((a,b)=>b._ts-a._ts); // [NEW] recupera la hora real desde creadoEn para TODOS los pedidos de hoy, incluso los creados antes de este cambio
+    const hist=snap.docs.map(d=>{ const r=d.data(); return {id:d.id,nombre:r.cliente,total:r.total,fecha:r.fecha,empleado:r.empleado,formapago:r.formapago,telefono:r.telefono,direccion:r.direccion,notas:r.notas,productos:r.productos||[],gps:r.gps||null,abono:r.abono||0,hora:r.hora||_horaDeTimestamp(r.creadoEn),_ts:r.creadoEn?.toMillis?.()||0}; }).sort((a,b)=>b._ts-a._ts); // [NEW] recupera la hora real desde creadoEn para TODOS los pedidos de hoy, incluso los creados antes de este cambio
     sessionStorage.setItem('aqualuan-historial',JSON.stringify(hist));
     const contHist=document.getElementById('content-historial');
     if(contHist&&contHist.classList.contains('active'))cargarHistorial();
@@ -1394,6 +1403,37 @@ function _verificarCambioDeDia(){
 }
 
 function calcTotal(){ return productos.reduce((s,p)=>s+p.subtotal,0); }
+/* [NEW] Abono parcial en Contado o Crédito: muestra el campo cuando Forma de pago es
+   Contado o Crédito (en Transferencia/Cheque se asume pago completo por ese medio),
+   y calcula en vivo cuánto queda de saldo (total - abono) mientras el asesor escribe.
+   Sirve para el caso de venta de $30 donde solo se cobran $20 en efectivo y quedan
+   $10 pendientes a crédito, sin importar si se eligió Contado o Crédito. */
+function _permiteAbono(forma){ return forma==='Crédito'||forma==='Contado'; }
+function _actualizarVisibilidadAbono(){
+  const permite=_permiteAbono(document.getElementById('formapago').value);
+  document.getElementById('wrap-abono').style.display=permite?'block':'none';
+  if(!permite) document.getElementById('abono').value='';
+  _actualizarInfoAbono();
+}
+function _actualizarInfoAbono(){
+  const info=document.getElementById('abono-saldo-info');
+  if(!info) return;
+  const permite=_permiteAbono(document.getElementById('formapago').value);
+  if(!permite){ info.textContent=''; return; }
+  const total=calcTotal();
+  const abono=parseMonto(document.getElementById('abono').value)||0;
+  const saldo=Math.max(total-abono,0);
+  if(abono>0 && abono<total){
+    info.textContent=`Abono: $${abono.toFixed(2)} — Saldo a crédito: $${saldo.toFixed(2)}`;
+    info.style.color='var(--teal-dark)';
+  }else if(abono>=total && total>0){
+    info.textContent='Pago completo — no queda saldo pendiente.';
+    info.style.color='var(--success-text)';
+  }else{
+    info.textContent=`Saldo total a crédito: $${total.toFixed(2)}`;
+    info.style.color='var(--muted)';
+  }
+}
 function renderLista(){
   const items=document.getElementById('productosItems'),lista=document.getElementById('productosLista'),emptyMsg=document.getElementById('emptyMsg');
   if(productos.length===0){lista.classList.add('empty');emptyMsg.style.display='block';}
@@ -1406,6 +1446,7 @@ function renderLista(){
     return `<div class="producto-bloque">${filaPrincipal}${filasRegalia}${btnToggle}${formRegalia}</div>`;
   }).join('');
   document.getElementById('totalGeneral').textContent='$'+calcTotal().toFixed(2);
+  _actualizarInfoAbono();
 }
 function _opcionesProductosHTML(){
   return '<option value="">-- Selecciona --</option>' + LISTAS_BLANCAS.productos.map(n=>`<option value="${escHTML(n)}">${escHTML(n)}</option>`).join('');
@@ -1504,12 +1545,27 @@ async function abrirModal(){
   if(!nombre){setStatus('error','Ingresa el nombre del cliente.');return;}
   if(productos.length===0){setStatus('error','Agrega al menos un producto.');return;}
   const total=calcTotal();
-  dataPendiente={empleado,formapago,nombre,telefono,fecha,direccion,notas,productos:[...productos],total:total.toFixed(2),gps:null,hora:new Date().toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit',hour12:true})}; // [NEW] hora exacta en que se genera la venta, para el ticket térmico
+  /* [NEW] Abono parcial en Contado o Crédito — valida que no sea mayor al total. */
+  let abono=0;
+  if(_permiteAbono(formapago)){
+    abono=parseMonto(document.getElementById('abono').value)||0;
+    if(abono<0){setStatus('error','El abono no puede ser negativo.');return;}
+    if(abono>total){setStatus('error','El abono no puede ser mayor al total de la venta.');return;}
+  }
+  dataPendiente={empleado,formapago,nombre,telefono,fecha,direccion,notas,productos:[...productos],total:total.toFixed(2),abono,gps:null,hora:new Date().toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit',hour12:true})}; // [NEW] hora exacta en que se genera la venta, para el ticket térmico
   const offline=!navigator.onLine;
   document.getElementById('modalOfflineNote').classList.toggle('show',offline);
   document.getElementById('modal-subtitle-text').textContent=offline?'Sin internet — se guardará localmente':'Revisa todos los datos antes de enviar a Google Drive';
   document.getElementById('m-empleado').textContent=empleado;
   document.getElementById('m-formapago').textContent=formapago;
+  /* [NEW] Muestra Abono/Saldo en el modal cuando quedó un saldo pendiente a crédito. */
+  const mostrarAbono=_permiteAbono(formapago)&&abono>0&&abono<total;
+  document.getElementById('m-abono-row').style.display=mostrarAbono?'table-row':'none';
+  document.getElementById('m-saldo-row').style.display=mostrarAbono?'table-row':'none';
+  if(mostrarAbono){
+    document.getElementById('m-abono').textContent='$'+abono.toFixed(2);
+    document.getElementById('m-saldo').textContent='$'+Math.max(total-abono,0).toFixed(2);
+  }
   document.getElementById('m-nombre').textContent=nombre;
   document.getElementById('m-telefono').textContent=telefono||'-';
   document.getElementById('m-direccion').textContent=direccion||'-';
@@ -1586,6 +1642,7 @@ async function confirmarEnvio(){
     empleado:dataPendiente.empleado, cliente:dataPendiente.nombre, telefono:dataPendiente.telefono||'',
     direccion:dataPendiente.direccion||'', fecha:dataPendiente.fecha, notas:dataPendiente.notas||'',
     formapago:dataPendiente.formapago, total:dataPendiente.total,
+    abono:dataPendiente.abono||0, // [NEW] abono en efectivo cuando formapago es Crédito
     productos:dataPendiente.productos.map(p=>({nombre:p.nombre,cantidad:p.cantidad,precio:p.precio,subtotal:p.subtotal,regalias:(p.regalias||[]).map(r=>({nombre:r.nombre,cantidad:r.cantidad}))})),
     gps:dataPendiente.gps?{lat:dataPendiente.gps.lat,lng:dataPendiente.gps.lng,acc:dataPendiente.gps.acc,url:dataPendiente.gps.url}:null,
     creadoPor:usuarioActual?.uid||null, creadoEn:firebase.firestore.FieldValue.serverTimestamp()
@@ -1600,7 +1657,24 @@ async function confirmarEnvio(){
      pantalla — nunca de forma indefinida, igual que antes. */
   let _errorRealGuardado=null; // [FIX] distingue "aún sincronizando" de "falló de verdad"
   const escrituraPedido = db.collection('pedidos').add(doc)
-    .then(refPedido => { _descontarInventarioAutomatico(doc, refPedido.id); return refPedido; })
+    .then(refPedido => {
+      _descontarInventarioAutomatico(doc, refPedido.id);
+      // [NEW] Si hubo abono en efectivo, lo registra como un Pago normal —
+      // así aparece automáticamente en cierre de caja, resumen del día y
+      // dashboards, sin tener que tocar esa lógica en ningún otro lado.
+      // [NEW] Solo si el abono es PARCIAL (deja saldo a crédito). Si el abono
+      // cubre el total completo, es una venta normal ya cobrada del todo y no
+      // se duplica como Pago aparte — evita inflar el Cuadre de Caja.
+      if(doc.abono>0 && doc.abono<parseFloat(doc.total)){
+        db.collection('pagos').add({
+          empleado:doc.empleado, fecha:doc.fecha, cliente:doc.cliente,
+          monto:doc.abono, forma:'Efectivo',
+          notas:`Abono inicial (venta a crédito de $${doc.total})`,
+          creadoPor:usuarioActual?.uid||null, creadoEn:firebase.firestore.FieldValue.serverTimestamp()
+        }).catch(err=>console.warn('No se pudo registrar el abono como pago:',err));
+      }
+      return refPedido;
+    })
     .catch(err => {
       console.warn('Error real al guardar el pedido:', err);
       _errorRealGuardado=err;
@@ -1654,6 +1728,9 @@ async function confirmarEnvio(){
 function limpiarSoloFormulario(){
   if(!usuarioActual||usuarioActual.esAdmin) document.getElementById('empleado').value='';
   ['formapago','nombre','telefono','direccion','notas'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('abono').value=''; // [NEW]
+  document.getElementById('wrap-abono').style.display='none'; // [NEW]
+  document.getElementById('abono-saldo-info').textContent=''; // [NEW]
   productos=[]; renderLista();
   const hoy=new Date(),yyyy=hoy.getFullYear(),mm=String(hoy.getMonth()+1).padStart(2,'0'),dd=String(hoy.getDate()).padStart(2,'0');
   document.getElementById('fecha').value=`${yyyy}-${mm}-${dd}`;
@@ -2241,6 +2318,17 @@ function _buildPDF(doc,d){
   y+=4;doc.setFillColor(26,58,92);doc.roundedRect(margin,y,pageW-margin*2,12,3,3,'F');
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(200,220,240);doc.text('TOTAL GENERAL',margin+4,y+8);
   doc.setFontSize(13);doc.setTextColor(78,201,160);doc.text(`$${d.total}`,pageW-margin-4,y+8.5,{align:'right'});
+  // [NEW] Abono recibido y saldo a crédito — solo cuando quedó un saldo pendiente real
+  // (venta con abono parcial en Contado o Crédito), igual que en el ticket térmico.
+  if(d.abono && parseFloat(d.abono)>0 && parseFloat(d.abono)<parseFloat(d.total)){
+    y+=18;
+    doc.setFillColor(230,244,242);doc.setDrawColor(78,201,160);doc.setLineWidth(0.4);doc.roundedRect(margin,y,pageW-margin*2,16,3,3,'FD');
+    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(10,124,110);doc.text('ABONO RECIBIDO',margin+4,y+6);
+    doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(10,124,110);doc.text(`$${parseFloat(d.abono).toFixed(2)}`,margin+4,y+13);
+    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(192,57,43);doc.text('SALDO A CRÉDITO',col2,y+6);
+    doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(192,57,43);doc.text(`$${(parseFloat(d.total)-parseFloat(d.abono)).toFixed(2)}`,col2,y+13);
+    y+=16;
+  }
   if(d.gps){
     y+=18;doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(10,124,110);
     doc.text('UBICACIÓN GPS DEL PEDIDO',margin,y);doc.setDrawColor(78,201,160);doc.setLineWidth(0.5);doc.line(margin,y+2,pageW-margin,y+2);y+=9;
@@ -2337,7 +2425,7 @@ function _buildTicketHTML(d){
     }
     return row;
   }).join('');
-  return `<div class="t-center"><img src="logo-luanaqua.png" class="t-logo" alt="Aqua Luan"></div>
+  return `<div class="t-center"><img src="${LOGO_LUANAQUA_B64}" class="t-logo" alt="Aqua Luan"></div>
   <div class="t-center t-small t-bold" style="letter-spacing:0.5px">SISTEMA DE PEDIDOS</div>
   <div class="t-line"></div>
   <table class="t-tbl"><tr><td>Pedido:</td><td class="t-r">${fechaStr}</td></tr>
@@ -2354,6 +2442,7 @@ function _buildTicketHTML(d){
   <table class="t-tbl">${productosHtml}</table>
   <div class="t-line"></div>
   <table class="t-tbl"><tr class="t-total"><td>TOTAL</td><td class="t-r">$${d.total}</td></tr></table>
+  ${(d.abono>0 && parseFloat(d.abono)<parseFloat(d.total))?`<table class="t-tbl"><tr><td>Abono:</td><td class="t-r">$${parseFloat(d.abono).toFixed(2)}</td></tr><tr><td>Saldo créd.:</td><td class="t-r">$${(parseFloat(d.total)-parseFloat(d.abono)).toFixed(2)}</td></tr></table>`:''}
   <div class="t-line"></div>
   <div class="t-center t-small" style="margin-top:14px">Firma asesor: ____________</div>
   <div class="t-center t-small" style="margin-top:10px">Firma cliente: ____________</div>
@@ -2367,7 +2456,7 @@ function _buildTicketHTML(d){
 function _buildTicketPagoHTML(p){
   const fechaStr=p.fecha?new Date(p.fecha+'T00:00:00').toLocaleDateString('es-EC',{day:'2-digit',month:'2-digit',year:'numeric'}):'-';
   const horaTicket=p.hora||(p.creadoEn?_horaDeTimestamp(p.creadoEn):'');
-  return `<div class="t-center"><img src="logo-luanaqua.png" class="t-logo" alt="Aqua Luan"></div>
+  return `<div class="t-center"><img src="${LOGO_LUANAQUA_B64}" class="t-logo" alt="Aqua Luan"></div>
   <div class="t-center t-small t-bold" style="letter-spacing:0.5px">COMPROBANTE DE PAGO</div>
   <div class="t-line"></div>
   <table class="t-tbl"><tr><td>Fecha:</td><td class="t-r">${fechaStr}</td></tr>
