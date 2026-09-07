@@ -436,7 +436,15 @@
 <script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-auth-compat.js" integrity="sha384-UaGuhpArNP+gULAiiQrJNwk1AWTIZsfFEygQkDQYIGsTjoBmbSXgWfQeFJJXuFub" crossorigin="anonymous"></script>
 <script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore-compat.js" integrity="sha384-O2tgK2bVAUCyEX//gu7nH2z8A92RsaKhRAQABpJ7kLaF/4KQYEltHstFCV7nxWpr" crossorigin="anonymous"></script>
 <script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-app-check-compat.js"></script>
-<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT" crossorigin="anonymous"></script>
+<!-- [FIX] xlsx (SheetJS, ~1MB) se quitó de aquí: antes se descargaba en CADA login,
+     para TODOS los usuarios (incluida Secretaria, que ni siquiera puede ver la
+     pestaña "Importar Datos"), aunque solo hace falta ahí. Como es un script
+     bloqueante cargado justo antes de dashboard.js, si cdn.sheetjs.com tardaba
+     en responder, TODO el dashboard se quedaba esperando antes de poder hacer
+     login o ver cualquier dato — eso explica la demora y el error intermitente
+     al entrar. Ahora se descarga solo la primera vez que el admin entra a
+     "Importar Datos" (ver cargarXLSX en dashboard.js), igual que ya se hacía
+     con Leaflet para el mapa de rutas. -->
 <script src="dashboard.js"></script>
 
 <!-- ═══════════════════ MODAL CIERRE DEL DÍA ═══════════════════ -->
