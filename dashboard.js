@@ -859,6 +859,16 @@ function renderDashboard() {
   const ventasPorAsesor = {};
   pedidosConTotal.forEach(r => { const a = r['ASESOR / RUTA'] || 'Sin asignar'; ventasPorAsesor[a] = (ventasPorAsesor[a]||0) + (parseFloat(r['TOTAL PEDIDO ($)'])||0); });
   const asesorTop = Object.entries(ventasPorAsesor).sort((a,b) => b[1]-a[1])[0];
+  // [FIX] "Total en caja" usaba (Total cobrado − Total gastos), pero "Total cobrado"
+  // solo suma la colección de Pagos (abonos/cobros aparte) — nunca incluía las
+  // Ventas al Contado del día, así que si la mayoría de ventas eran a Crédito,
+  // esta tarjeta daba negativo aunque sí hubiera efectivo real entrando por
+  // ventas al contado. Ahora reutiliza el mismo cálculo ya correcto de
+  // Liquidación (Ventas al Contado + Pagos en Efectivo − Gastos, con el ajuste
+  // de abonos parciales) sumado entre todos los asesores, para que ambas
+  // pantallas coincidan siempre.
+  const totalCajaReal = Object.values(_calcularLiquidacionDash())
+    .reduce((s,d) => s + d.ventasContado + d.pagosEfectivo - d.gastos, 0);
   document.getElementById('kpiGrid').innerHTML = `
     <div class="kpi-card teal"><div class="kpi-icon">💰</div><div class="kpi-label">Total ventas</div><div class="kpi-value">$${totalReal.toFixed(2)}</div><div class="kpi-sub">${pedidosUnicos} pedido(s)</div></div>
     <div class="kpi-card blue"><div class="kpi-icon">💳</div><div class="kpi-label">Total cobrado</div><div class="kpi-value">$${totalPagos.toFixed(2)}</div><div class="kpi-sub">${pagos.length} pago(s)</div></div>
@@ -866,7 +876,7 @@ function renderDashboard() {
     <div class="kpi-card orange"><div class="kpi-icon">👥</div><div class="kpi-label">Clientes atendidos</div><div class="kpi-value">${clientesUnicos}</div><div class="kpi-sub">${pedidosUnicos} pedido(s)</div></div>
     <div class="kpi-card navy"><div class="kpi-icon">🏆</div><div class="kpi-label">Asesor top</div><div class="kpi-value" style="font-size:1rem">${asesorTop ? asesorTop[0].split(':')[1]?.trim()||asesorTop[0] : '—'}</div><div class="kpi-sub">${asesorTop ? '$'+asesorTop[1].toFixed(2) : 'Sin datos'}</div></div>
     <div class="kpi-card accent"><div class="kpi-icon">📦</div><div class="kpi-label">Líneas de producto</div><div class="kpi-value">${pedidos.length}</div><div class="kpi-sub">unidades registradas</div></div>
-    <div class="kpi-card navy"><div class="kpi-icon">🧮</div><div class="kpi-label">Total en caja</div><div class="kpi-value" style="color:${(totalPagos-totalGastos)>=0?'#0a7c6e':'#c0392b'}">$${(totalPagos-totalGastos).toFixed(2)}</div><div class="kpi-sub">Ingresos − Egresos</div></div>
+    <div class="kpi-card navy"><div class="kpi-icon">🧮</div><div class="kpi-label">Total en caja</div><div class="kpi-value" style="color:${totalCajaReal>=0?'#0a7c6e':'#c0392b'}">$${totalCajaReal.toFixed(2)}</div><div class="kpi-sub">Contado + Cobrado efectivo − Gastos</div></div>
   `;
   renderCharts(pedidos, pedidosConTotal);
   pedidosDetalleActuales = pedidos;
@@ -1867,6 +1877,20 @@ function renderReporteAsesorDetalle(){
   const totalGastos  = gastos.reduce((s,r) => s + Math.abs(parseFloat(r['TOTAL PEDIDO ($)'])||0), 0);
   const clientesUnicos = new Set(pedidos.map(r => r['CLIENTE'])).size;
   const pedidosUnicos  = new Set(pedidos.map(r => r['_pedidoId'] || `${r['CLIENTE']}-${r['FECHA']}`)).size; // [FIX] usa el ID real del pedido cuando existe
+  // [FIX] "Total en caja" no puede salir de (Total cobrado − Total gastos):
+  // "Total cobrado" solo suma la colección de Pagos (mezclando además
+  // Efectivo/Transferencia/Cheque) y nunca incluye las Ventas al Contado del
+  // día. Se recalcula aquí igual que en Liquidación: Ventas al Contado (con
+  // el ajuste de abono parcial) + Pagos cobrados SOLO en Efectivo − Gastos.
+  const pagosEfectivoAsesor = pagos.filter(r => r['FORMA DE PAGO']==='Efectivo').reduce((s,r) => s + (parseFloat(r['TOTAL PEDIDO ($)'])||0), 0);
+  const ventasContadoAsesor = pedidosConTotal.reduce((s,r) => {
+    const tot = parseFloat(r['TOTAL PEDIDO ($)']) || 0;
+    const abono = parseFloat(r['ABONO'] || 0);
+    if (abono > 0 && abono < tot) return s; // abono parcial: el efectivo real ya se cuenta vía Pagos, no se duplica aquí
+    if (abono >= tot && tot > 0) return s + tot; // el abono cubrió el 100% de la venta
+    return r['FORMA DE PAGO'] === 'Contado' ? s + tot : s;
+  }, 0);
+  const totalCajaAsesor = ventasContadoAsesor + pagosEfectivoAsesor - totalGastos;
 
   const porFormaVentas = {};
   pedidosConTotal.forEach(r => { const f = r['FORMA DE PAGO']||'Sin especificar'; porFormaVentas[f] = (porFormaVentas[f]||0) + (parseFloat(r['TOTAL PEDIDO ($)'])||0); });
@@ -1910,7 +1934,7 @@ function renderReporteAsesorDetalle(){
         <div class="kpi-card blue"><div class="kpi-icon">💳</div><div class="kpi-label">Total cobrado</div><div class="kpi-value">$${totalCobrado.toFixed(2)}</div><div class="kpi-sub">${pagos.length} pago(s)</div></div>
         <div class="kpi-card red"><div class="kpi-icon">📉</div><div class="kpi-label">Total gastos</div><div class="kpi-value">$${totalGastos.toFixed(2)}</div><div class="kpi-sub">${gastos.length} gasto(s)</div></div>
         <div class="kpi-card orange"><div class="kpi-icon">👥</div><div class="kpi-label">Clientes atendidos</div><div class="kpi-value">${clientesUnicos}</div></div>
-        <div class="kpi-card navy"><div class="kpi-icon">🧮</div><div class="kpi-label">Total en caja</div><div class="kpi-value" style="color:${(totalCobrado-totalGastos)>=0?'#0a7c6e':'#c0392b'}">$${(totalCobrado-totalGastos).toFixed(2)}</div></div>
+        <div class="kpi-card navy"><div class="kpi-icon">🧮</div><div class="kpi-label">Total en caja</div><div class="kpi-value" style="color:${totalCajaAsesor>=0?'#0a7c6e':'#c0392b'}">$${totalCajaAsesor.toFixed(2)}</div></div>
       </div>
       <div class="table-header"><div class="table-title">💳 Formas de pago (ventas)</div></div>
       <div style="padding:0 1.25rem 14px">${tagsFormaVentas}</div>
