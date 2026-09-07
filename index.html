@@ -1864,7 +1864,21 @@ function _calcularLiquidacion(){
   }; return porAsesor[nombre]; };
   hist.forEach(p=>{
     const d=getAsesor(p.empleado||'Sin asignar'); const tot=parseFloat(p.total||0);
-    if(p.formapago==='Contado') d.ventasContado+=tot;
+    const abono=parseFloat(p.abono||0); // [FIX] venta con abono parcial (Contado o Crédito)
+    if(abono>0 && abono<tot){
+      // [FIX] El abono ya se registra por separado como un "Pago" en efectivo
+      // (ver confirmarEnvio), así que aquí solo se cuenta el SALDO PENDIENTE
+      // como crédito — sumar también el total completo aquí duplicaba el
+      // abono (efectivo real entregado) y siempre sobrestimaba lo que el
+      // asesor debía entregar.
+      d.ventasCredito+=(tot-abono);
+    } else if(abono>=tot && tot>0){
+      // El abono cubrió el 100% de la venta al momento de hacerla — no se
+      // generó un Pago aparte (ver confirmarEnvio), así que ese efectivo
+      // se cuenta aquí directamente, sin importar la forma de pago elegida.
+      d.ventasContado+=tot;
+    }
+    else if(p.formapago==='Contado') d.ventasContado+=tot;
     else if(p.formapago==='Crédito') d.ventasCredito+=tot;
     else if(p.formapago==='Transferencia') d.ventasTransferencia+=tot;
     else if(p.formapago==='Cheque') d.ventasCheque+=tot;
