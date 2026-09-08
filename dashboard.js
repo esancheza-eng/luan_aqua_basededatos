@@ -124,6 +124,7 @@ function switchSeccionDash(sec){
     if (sec === 'auditoria') { _iniciarListenerAuditoria(); _yaCargado.auditoria = true; }
   }
   if (sec === 'liquidacionDash' && typeof renderLiquidacionDash === 'function') renderLiquidacionDash(); // [NEW] siempre refresca al entrar, ya usa datos que el Dashboard ya tiene cargados
+  if (sec === 'notasAdicionalesDash' && typeof renderNotasAdicionalesDash === 'function') renderNotasAdicionalesDash(); // [NEW] sección independiente de Notas Adicionales
 }
 function switchTab(tab) {
   document.getElementById('viewDashboard').classList.toggle('active', tab === 'dashboard');
@@ -504,19 +505,18 @@ function renderLiquidacionDash(){
     </div>`;
   }).join('');
   document.getElementById('liquidacionDashTotalValor').textContent = '$'+totalGeneral.toFixed(2);
-  renderNotasAdicionalesDash();
 }
-/* [NEW] Notas Adicionales — muestra debajo de Liquidación los pedidos del
-   período/asesor filtrado que traen alguna nota registrada (ej. regalías
-   pendientes de entregas anteriores, condiciones especiales, etc.), para
-   que no se pierdan dentro del detalle de cada pedido. */
+/* [NEW] Notas Adicionales — sección independiente en el menú lateral. Muestra
+   los pedidos del período filtrado (fecha del Dashboard) que traen alguna
+   nota registrada (ej. regalías pendientes de entregas anteriores,
+   condiciones especiales, etc.), para que no se pierdan dentro del detalle
+   de cada pedido. */
 function renderNotasAdicionalesDash(){
   const tbody = document.getElementById('notasAdicionalesTbody');
   const tabla = document.getElementById('notasAdicionalesTabla');
   const emptyMsg = document.getElementById('notasAdicionalesEmptyMsg');
   if(!tbody) return;
-  const asesorSel = document.getElementById('filtroAsesor') ? document.getElementById('filtroAsesor').value : '';
-  const pedidosConNota = (asesorSel ? _pedidosRaw.filter(p => (p.empleado||'') === asesorSel) : _pedidosRaw)
+  const pedidosConNota = _pedidosRaw
     .filter(p => (p.notas||'').trim() !== '')
     .sort((a,b) => (b.creadoEn?.toMillis?.() || 0) - (a.creadoEn?.toMillis?.() || 0));
   if(!pedidosConNota.length){
@@ -796,6 +796,9 @@ function _recalcularTodosLosDatos() {
   // viendo. Ahora solo se actualiza si esa pestaña está realmente abierta.
   const seccionLiquidacionVisible = document.getElementById('seccion-liquidacionDash')?.classList.contains('active');
   if (seccionLiquidacionVisible && typeof renderLiquidacionDash === 'function') renderLiquidacionDash();
+  // [NEW] misma lógica de refresco perezoso para la sección independiente de Notas Adicionales
+  const seccionNotasAdicionalesVisible = document.getElementById('seccion-notasAdicionalesDash')?.classList.contains('active');
+  if (seccionNotasAdicionalesVisible && typeof renderNotasAdicionalesDash === 'function') renderNotasAdicionalesDash();
   document.getElementById('lastUpdate').textContent = 'Actualizado: ' + new Date().toLocaleTimeString('es-EC', { hour:'2-digit', minute:'2-digit' });
 }
 function iniciarListenersDashboard() {
