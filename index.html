@@ -542,7 +542,7 @@ body { padding: 1rem 0.75rem 3rem; }
 }
 .pago-credito-monto { color: var(--muted); font-weight: 700; margin-left: 2px; }
 .pago-credito-monto.debe { color: #e23d3d; }
-.pago-montos { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+.pago-montos { margin-top: 12px; display: none; flex-direction: column; gap: 10px; }
 .pago-monto-row { display: flex; align-items: center; gap: 10px; }
 .pago-monto-row label { min-width: 130px; font-size: 13px; font-weight: 600; color: var(--navy); display: flex; align-items: center; gap: 6px; }
 .pago-monto-row input { flex: 1; height: 40px; border: 1.5px solid var(--border); border-radius: 10px; padding: 0 12px; font-size: 14px; font-family: inherit; color: var(--navy); background: #fff; }
@@ -764,15 +764,12 @@ body { padding: 1rem 0.75rem 3rem; }
         <label class="pago-opt"><input type="radio" name="pagoOpt" value="Crédito" onchange="_elegirFormaPago(this.value)"> 📋 CRÉDITO <span class="pago-credito-monto" id="pagoCreditoMonto">$0.00</span></label>
       </div>
       <div class="pago-montos" id="pagoMontos">
-        <div class="pago-monto-row"><label>💵 Contado</label><input type="number" id="montoContado" placeholder="0.00" min="0" step="0.01" inputmode="decimal" oninput="_actualizarDesglosePago()"></div>
-        <div class="pago-monto-row"><label>🏦 Transferencia</label><input type="number" id="montoTransferencia" placeholder="0.00" min="0" step="0.01" inputmode="decimal" oninput="_actualizarDesglosePago()"></div>
-        <div class="pago-monto-row"><label>📄 Cheque</label><input type="number" id="montoCheque" placeholder="0.00" min="0" step="0.01" inputmode="decimal" oninput="_actualizarDesglosePago()"></div>
+        <div class="pago-monto-row" id="rowMontoContado" style="display:none"><label>💵 Contado</label><input type="text" id="montoContado" placeholder="0.00" inputmode="decimal" autocomplete="off" maxlength="12" oninput="filtrarInputMonto(this);_actualizarDesglosePago()"></div>
+        <div class="pago-monto-row" id="rowMontoTransferencia" style="display:none"><label>🏦 Transferencia</label><input type="text" id="montoTransferencia" placeholder="0.00" inputmode="decimal" autocomplete="off" maxlength="12" oninput="filtrarInputMonto(this);_actualizarDesglosePago()"></div>
+        <div class="pago-monto-row" id="rowMontoCheque" style="display:none"><label>📄 Cheque</label><input type="text" id="montoCheque" placeholder="0.00" inputmode="decimal" autocomplete="off" maxlength="12" oninput="filtrarInputMonto(this);_actualizarDesglosePago()"></div>
       </div>
       <div class="pago-resumen-box" id="pagoResumenBox">
         <div class="pago-resumen-total"><span>TOTAL</span><span id="pagoResumenTotal">$0.00</span></div>
-        <div class="pago-resumen-line"><span>💵 Contado</span><span id="sumContado">$0.00</span></div>
-        <div class="pago-resumen-line"><span>🏦 Transferencia</span><span id="sumTransferencia">$0.00</span></div>
-        <div class="pago-resumen-line"><span>📄 Cheque</span><span id="sumCheque">$0.00</span></div>
       </div>
       <input type="hidden" id="abono" value="">
       <div id="wrap-abono" style="display:none"></div>
@@ -1313,7 +1310,7 @@ function _iniciarListenersDelDia(u){
   let qGastos=db.collection('gastos').where('fecha','==',hoy);
   if(!u.esAdmin){ qPedidos=qPedidos.where('empleado','==',u.ruta); qPagos=qPagos.where('empleado','==',u.ruta); qGastos=qGastos.where('empleado','==',u.ruta); }
   _unsubPedidosHoy=qPedidos.onSnapshot(snap=>{
-    const hist=snap.docs.map(d=>{ const r=d.data(); return {id:d.id,nombre:r.cliente,total:r.total,fecha:r.fecha,empleado:r.empleado,formapago:r.formapago,telefono:r.telefono,direccion:r.direccion,notas:r.notas,productos:r.productos||[],gps:r.gps||null,abono:r.abono||0,hora:r.hora||_horaDeTimestamp(r.creadoEn),_ts:r.creadoEn?.toMillis?.()||0}; }).sort((a,b)=>b._ts-a._ts); // [NEW] recupera la hora real desde creadoEn para TODOS los pedidos de hoy, incluso los creados antes de este cambio
+    const hist=snap.docs.map(d=>{ const r=d.data(); return {id:d.id,nombre:r.cliente,total:r.total,fecha:r.fecha,empleado:r.empleado,formapago:r.formapago,telefono:r.telefono,direccion:r.direccion,notas:r.notas,productos:r.productos||[],gps:r.gps||null,abono:r.abono||0,pagos:r.pagos||[],creditoPendiente:r.creditoPendiente||0,hora:r.hora||_horaDeTimestamp(r.creadoEn),_ts:r.creadoEn?.toMillis?.()||0}; }).sort((a,b)=>b._ts-a._ts); // [NEW] recupera la hora real desde creadoEn para TODOS los pedidos de hoy, incluso los creados antes de este cambio
     sessionStorage.setItem('aqualuan-historial',JSON.stringify(hist));
     const contHist=document.getElementById('content-historial');
     if(contHist&&contHist.classList.contains('active'))cargarHistorial();
@@ -1450,6 +1447,17 @@ function calcTotal(){ return productos.reduce((s,p)=>s+p.subtotal,0); }
    y calcula en vivo cuánto queda de saldo (total - abono) mientras el asesor escribe.
    Sirve para el caso de venta de $30 donde solo se cobran $20 en efectivo y quedan
    $10 pendientes a crédito, sin importar si se eligió Contado o Crédito. */
+function _textoDesglosePago(d){
+  const partes=[];
+  (d.pagos||[]).forEach(pg=>{
+    const m=parseFloat(pg.monto||0);
+    if(m>0) partes.push((pg.forma||'')+' $'+m.toFixed(2));
+  });
+  const cred=parseFloat(d.creditoPendiente||0);
+  if(cred>0.009) partes.push('Crédito $'+cred.toFixed(2));
+  if(!partes.length) return d.formapago||'-';
+  return partes.join(' + ');
+}
 function _permiteAbono(forma){ return forma==='Crédito'||forma==='Contado'; }
 function _leerMontosPago(){
   return {
@@ -1484,14 +1492,40 @@ function _armarPagoDesdeUI(total){
 function _armarPagoMultiple(formapago,total,abono){
   return _armarPagoDesdeUI(total);
 }
+let _pagosAbiertos=new Set();
 function _elegirFormaPago(valor){
   const sel=document.getElementById('formapago');
   if(sel) sel.value=valor||'';
-  document.querySelectorAll('input[name="pagoOpt"]').forEach(r=>{ r.checked=r.value===valor; });
+  document.querySelectorAll('input[name="pagoOpt"]').forEach(r=>{ r.checked=_pagosAbiertos.has(r.value) || r.value===valor; });
   if(valor==='Crédito'){
+    _pagosAbiertos.clear();
+    document.querySelectorAll('input[name="pagoOpt"]').forEach(r=>{ r.checked=r.value==='Crédito'; });
     ['montoContado','montoTransferencia','montoCheque'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  } else if(valor==='Contado'||valor==='Transferencia'||valor==='Cheque'){
+    _pagosAbiertos.add(valor);
+    document.querySelectorAll('input[name="pagoOpt"]').forEach(r=>{ r.checked=_pagosAbiertos.has(r.value); });
   }
+  _desplegarCamposPago(valor);
   _actualizarDesglosePago();
+}
+function _desplegarCamposPago(valor){
+  const mapa={Contado:'rowMontoContado',Transferencia:'rowMontoTransferencia',Cheque:'rowMontoCheque'};
+  const idsInput={Contado:'montoContado',Transferencia:'montoTransferencia',Cheque:'montoCheque'};
+  if(valor==='Crédito' || (!valor && !_pagosAbiertos.size)){
+    _pagosAbiertos.clear();
+    Object.values(mapa).forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
+    const box=document.getElementById('pagoMontos'); if(box) box.style.display='none';
+    return;
+  }
+  const box=document.getElementById('pagoMontos'); if(box) box.style.display='flex';
+  Object.entries(mapa).forEach(([forma,id])=>{
+    const row=document.getElementById(id);
+    if(!row) return;
+    const monto=parseMonto(document.getElementById(idsInput[forma])?.value)||0;
+    row.style.display=(_pagosAbiertos.has(forma) || monto>0)?'flex':'none';
+  });
+  const focus=document.getElementById(idsInput[valor]);
+  if(focus) setTimeout(()=>focus.focus(),50);
 }
 function _actualizarMontoCreditoUI(){ _actualizarDesglosePago(); }
 function _actualizarVisibilidadAbono(){ _actualizarDesglosePago(); }
@@ -1503,9 +1537,6 @@ function _actualizarDesglosePago(){
   if(abonoEl) abonoEl.value=m.Contado?String(m.Contado):'';
   const setTxt=(id,v)=>{ const el=document.getElementById(id); if(el) el.textContent='$'+v.toFixed(2); };
   setTxt('pagoResumenTotal',total);
-  setTxt('sumContado',m.Contado);
-  setTxt('sumTransferencia',m.Transferencia);
-  setTxt('sumCheque',m.Cheque);
   const saldo=Math.max(total-(m.Contado+m.Transferencia+m.Cheque),0);
   const cred=document.getElementById('pagoCreditoMonto');
   if(cred){
@@ -1635,7 +1666,7 @@ async function abrirModal(){
   document.getElementById('modalOfflineNote').classList.toggle('show',offline);
   document.getElementById('modal-subtitle-text').textContent=offline?'Sin internet — se guardará localmente':'Revisa todos los datos antes de enviar a Google Drive';
   document.getElementById('m-empleado').textContent=empleado;
-  document.getElementById('m-formapago').textContent=pagoMulti.formapago+(pagoMulti.creditoPendiente>0?' (saldo $'+pagoMulti.creditoPendiente.toFixed(2)+')':'');
+  document.getElementById('m-formapago').textContent=_textoDesglosePago(pagoMulti);
   /* [NEW] Muestra Abono/Saldo en el modal cuando quedó un saldo pendiente a crédito. */
   const mostrarAbono=_permiteAbono(formapago)&&abono>0&&abono<total;
   document.getElementById('m-abono-row').style.display=mostrarAbono?'table-row':'none';
@@ -1806,6 +1837,7 @@ function limpiarSoloFormulario(){
   ['formapago','nombre','telefono','direccion','notas'].forEach(id=>document.getElementById(id).value='');
   document.querySelectorAll('input[name="pagoOpt"]').forEach(r=>{ r.checked=false; });
   ['montoContado','montoTransferencia','montoCheque','abono'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  _desplegarCamposPago('');
   _actualizarDesglosePago();
   productos=[]; renderLista();
   const hoy=new Date(),yyyy=hoy.getFullYear(),mm=String(hoy.getMonth()+1).padStart(2,'0'),dd=String(hoy.getDate()).padStart(2,'0');
@@ -2382,7 +2414,7 @@ function _buildPDF(doc,d){
   doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(10,124,110);doc.text('ASESOR / RUTA',margin+4,y+7);
   doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(26,58,92);doc.text(d.empleado||'-',margin+4,y+15);
   doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(10,124,110);doc.text('FORMA DE PAGO',col2,y+7);
-  doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(26,58,92);doc.text(d.formapago||'-',col2,y+15);
+  doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(26,58,92);doc.text(_textoDesglosePago(d),col2,y+15);
   y+=30;doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(10,124,110);
   doc.text('DATOS DEL CLIENTE',margin,y);doc.setDrawColor(78,201,160);doc.setLineWidth(0.5);doc.line(margin,y+2,pageW-margin,y+2);y+=8;
   [['Cliente',d.nombre||'-'],['Teléfono',d.telefono||'-'],['Dirección',d.direccion||'-'],['Notas',d.notas||'-']].forEach(([lbl,val])=>{
@@ -2410,14 +2442,27 @@ function _buildPDF(doc,d){
   doc.setFontSize(13);doc.setTextColor(78,201,160);doc.text(`$${d.total}`,pageW-margin-4,y+8.5,{align:'right'});
   // [NEW] Abono recibido y saldo a crédito — solo cuando quedó un saldo pendiente real
   // (venta con abono parcial en Contado o Crédito), igual que en el ticket térmico.
-  if(d.abono && parseFloat(d.abono)>0 && parseFloat(d.abono)<parseFloat(d.total)){
-    y+=18;
-    doc.setFillColor(230,244,242);doc.setDrawColor(78,201,160);doc.setLineWidth(0.4);doc.roundedRect(margin,y,pageW-margin*2,16,3,3,'FD');
-    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(10,124,110);doc.text('ABONO RECIBIDO',margin+4,y+6);
-    doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(10,124,110);doc.text(`$${parseFloat(d.abono).toFixed(2)}`,margin+4,y+13);
-    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(192,57,43);doc.text('SALDO A CRÉDITO',col2,y+6);
-    doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(192,57,43);doc.text(`$${(parseFloat(d.total)-parseFloat(d.abono)).toFixed(2)}`,col2,y+13);
+  const desglose=_textoDesglosePago(d);
+  const cred=parseFloat(d.creditoPendiente||0);
+  if((d.pagos&&d.pagos.length) || cred>0.009){
     y+=16;
+    const filas=(d.pagos||[]).filter(pg=>parseFloat(pg.monto)>0);
+    const alto=8+6*(filas.length+(cred>0.009?1:0));
+    doc.setFillColor(230,244,242);doc.setDrawColor(78,201,160);doc.setLineWidth(0.4);doc.roundedRect(margin,y,pageW-margin*2,alto,3,3,'FD');
+    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(10,124,110);doc.text('DESGLOSE DE PAGO',margin+4,y+6);
+    let yy=y+12;
+    filas.forEach(pg=>{
+      doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(26,58,92);
+      doc.text(pg.forma||'',margin+4,yy);
+      doc.text('$'+parseFloat(pg.monto).toFixed(2),pageW-margin-4,yy,{align:'right'});
+      yy+=6;
+    });
+    if(cred>0.009){
+      doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(192,57,43);
+      doc.text('Saldo a crédito',margin+4,yy);
+      doc.text('$'+cred.toFixed(2),pageW-margin-4,yy,{align:'right'});
+    }
+    y+=alto;
   }
   if(d.gps){
     y+=18;doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(10,124,110);
@@ -2521,7 +2566,7 @@ function _buildTicketHTML(d){
   <table class="t-tbl"><tr><td>Pedido:</td><td class="t-r">${fechaStr}</td></tr>
   ${horaTicket?`<tr><td>Hora:</td><td class="t-r">${escHTML(horaTicket)}</td></tr>`:''}
   <tr><td>Ruta:</td><td class="t-r">${escHTML(d.empleado||'-')}</td></tr>
-  <tr><td>Pago:</td><td class="t-r t-pago-val">${escHTML(d.formapago||'-')}</td></tr></table>
+  <tr><td>Pago:</td><td class="t-r t-pago-val">${escHTML(_textoDesglosePago(d))}</td></tr></table>
   <div class="t-line"></div>
   <div class="t-bold">CLIENTE: ${escHTML(d.nombre||'-')}</div>
   ${d.telefono?`<div class="t-small">Tel: ${escHTML(d.telefono)}</div>`:''}
@@ -2532,7 +2577,7 @@ function _buildTicketHTML(d){
   <table class="t-tbl">${productosHtml}</table>
   <div class="t-line"></div>
   <table class="t-tbl"><tr class="t-total"><td>TOTAL</td><td class="t-r">$${d.total}</td></tr></table>
-  ${(d.abono>0 && parseFloat(d.abono)<parseFloat(d.total))?`<table class="t-tbl"><tr><td>Abono:</td><td class="t-r">$${parseFloat(d.abono).toFixed(2)}</td></tr><tr><td>Saldo créd.:</td><td class="t-r">$${(parseFloat(d.total)-parseFloat(d.abono)).toFixed(2)}</td></tr></table>`:''}
+  ${((d.pagos&&d.pagos.length)||parseFloat(d.creditoPendiente)>0)?`<table class="t-tbl">${(d.pagos||[]).filter(pg=>parseFloat(pg.monto)>0).map(pg=>`<tr><td>${escHTML(pg.forma)}:</td><td class="t-r">$${parseFloat(pg.monto).toFixed(2)}</td></tr>`).join('')}${parseFloat(d.creditoPendiente)>0?`<tr><td>Saldo créd.:</td><td class="t-r">$${parseFloat(d.creditoPendiente).toFixed(2)}</td></tr>`:''}</table>`:''}
   <div class="t-line"></div>
   <div class="t-center t-small" style="margin-top:14px">Firma asesor: ____________</div>
   <div class="t-center t-small" style="margin-top:10px">Firma cliente: ____________</div>
