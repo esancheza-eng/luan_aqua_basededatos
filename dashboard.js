@@ -137,10 +137,17 @@ function switchSeccionDash(sec){
   // cargadas quedan en tiempo real mientras dure la sesión, sin recargar.
   if (ROL_ACTUAL === 'admin' && !_yaCargado[sec]) {
     if (sec === 'eliminados') { _iniciarListenerEliminados(); _yaCargado.eliminados = true; }
-    if (sec === 'inventario') { _iniciarListenerInventario(); _yaCargado.inventario = true; }
     if (sec === 'roles') { _iniciarListenerRolesHistorial(); _yaCargado.roles = true; }
     if (sec === 'pedidosweb') { _iniciarListenerPedidosWeb(); _yaCargado.pedidosweb = true; }
     if (sec === 'auditoria') { _iniciarListenerAuditoria(); _yaCargado.auditoria = true; }
+  }
+  // Inventario: el stock se calcula con TODO el historial, así que el listener
+  // no puede llevar limit. Para que no quede abierto todo el día, solo vive
+  // mientras el admin está dentro de esta pestaña.
+  if (ROL_ACTUAL === 'admin' && sec === 'inventario') {
+    _iniciarListenerInventario();
+  } else if (typeof detenerListenerInventario === 'function') {
+    detenerListenerInventario();
   }
   if (sec === 'liquidacionDash' && typeof renderLiquidacionDash === 'function') renderLiquidacionDash(); // [NEW] siempre refresca al entrar, ya usa datos que el Dashboard ya tiene cargados
   if (sec === 'notasAdicionalesDash' && typeof renderNotasAdicionalesDash === 'function') renderNotasAdicionalesDash(); // [NEW] sección independiente de Notas Adicionales
