@@ -98,6 +98,9 @@ function colorDeAsesor(asesorKey){
 
 let todosLosDatos = [];
 let charts = {};
+// [FIX] Caché de los datos que ya usa renderCharts() — permite redibujar los 3
+// gráficos al instante al volver a "Resumen General", sin recalcular filtros.
+let _kpiPedidosCache = [], _kpiPedidosConTotalCache = [];
 let autoRefreshInterval = null;
 let leafletMap = null;
 let leafletLoaded = false;
@@ -138,6 +141,10 @@ function switchSeccionDash(sec){
   }
   if (sec === 'liquidacionDash' && typeof renderLiquidacionDash === 'function') renderLiquidacionDash(); // [NEW] siempre refresca al entrar, ya usa datos que el Dashboard ya tiene cargados
   if (sec === 'notasAdicionalesDash' && typeof renderNotasAdicionalesDash === 'function') renderNotasAdicionalesDash(); // [NEW] sección independiente de Notas Adicionales
+  // [FIX] Los gráficos de "Resumen General" ya no se redibujan en cada cambio de
+  // Firestore si esta pestaña no está activa (ver comentario en renderDashboard) —
+  // así que al entrar aquí se redibujan al instante con los últimos datos en caché.
+  if (sec === 'resumen' && typeof renderCharts === 'function') renderCharts(_kpiPedidosCache, _kpiPedidosConTotalCache);
 }
 function switchTab(tab) {
   document.getElementById('viewDashboard').classList.toggle('active', tab === 'dashboard');
@@ -799,7 +806,12 @@ function _expandirPedido(p) {
 let _recalcDebounceTimer = null;
 function _recalcularTodosLosDatosDebounced() {
   if (_recalcDebounceTimer) clearTimeout(_recalcDebounceTimer);
-  _recalcDebounceTimer = setTimeout(() => { _recalcDebounceTimer = null; _recalcularTodosLosDatos(); }, 250);
+  // [FIX] Ventana ampliada de 250ms a 800ms: con 5 asesores activos a la vez,
+  // 250ms agrupaba solo ráfagas muy pegadas (ej. un mismo pedido con abono que
+  // escribe en 2 colecciones); 800ms agrupa mejor también cuando 2-3 asesores
+  // distintos guardan casi al mismo tiempo pero no en el mismo instante exacto,
+  // sin que el retraso se note para quien mira el Dashboard.
+  _recalcDebounceTimer = setTimeout(() => { _recalcDebounceTimer = null; _recalcularTodosLosDatos(); }, 800);
 }
 function _recalcularTodosLosDatos() {
   let filas = [];
@@ -947,7 +959,17 @@ function renderDashboard() {
     <div class="kpi-card accent"><div class="kpi-icon">📦</div><div class="kpi-label">Líneas de producto</div><div class="kpi-value">${pedidos.length}</div><div class="kpi-sub">unidades registradas</div></div>
     <div class="kpi-card navy"><div class="kpi-icon">🧮</div><div class="kpi-label">Total en caja</div><div class="kpi-value" style="color:${totalCajaReal>=0?'#0a7c6e':'#c0392b'}">$${totalCajaReal.toFixed(2)}</div><div class="kpi-sub">Contado + Cobrado efectivo − Gastos</div></div>
   `;
-  renderCharts(pedidos, pedidosConTotal);
+  // [FIX] Los 3 gráficos (Chart.js) son la parte más pesada de esta función —
+  // destruyen y vuelven a crear 3 canvas cada vez que llega cualquier cambio de
+  // Firestore, aunque el admin esté viendo otra pestaña (Cuadre de Caja, Reporte
+  // por Asesor, etc.) donde esos gráficos ni siquiera son visibles. Con varios
+  // asesores registrando pedidos seguido, eso sumaba trabajo innecesario a cada
+  // recálculo. Ahora solo se redibujan si "Resumen General" está realmente
+  // activa; se guardan los datos en caché para poder redibujarlos al instante
+  // (sin volver a filtrar/agrupar nada) apenas el admin entra a esa pestaña.
+  _kpiPedidosCache = pedidos; _kpiPedidosConTotalCache = pedidosConTotal;
+  const seccionResumenVisible = document.getElementById('seccion-resumen')?.classList.contains('active');
+  if (seccionResumenVisible) renderCharts(pedidos, pedidosConTotal);
   pedidosDetalleActuales = pedidos;
   _pedidosTablaFiltrados = _filtrarPorPagoChecklist(pedidos); // [NEW]
   renderFiltroPagoDropdown(pedidos); // [NEW] opciones del checklist -- siempre sobre el set completo, para no perder checkboxes de formas de pago ocultas
