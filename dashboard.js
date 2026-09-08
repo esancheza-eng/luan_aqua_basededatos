@@ -403,12 +403,20 @@ function _calcularLiquidacionDash(){
     else if(p.formapago==='Transferencia') d.ventasTransferencia+=tot;
     else if(p.formapago==='Cheque') d.ventasCheque+=tot;
     else d.ventasOtras+=tot;
-    // [NEW] Acumular por producto (solo productos vendidos, no regalías que van a $0)
+    // [FIX] Acumular por producto vendido, y también las regalías entregadas
+    // (a $0, ya que no representan ingreso, pero sí deben verse reflejadas
+    // como unidades entregadas en el desglose de la Liquidación)
     (p.productos||[]).forEach(prod=>{
       const nom = prod.nombre || 'Sin nombre';
       if(!d.productos[nom]) d.productos[nom] = { cantidad:0, dolares:0 };
       d.productos[nom].cantidad += parseFloat(prod.cantidad||0);
       d.productos[nom].dolares  += parseFloat(prod.subtotal||0);
+      (prod.regalias||[]).forEach(reg=>{
+        const nomReg = '🎁 REGALO: ' + (reg.nombre || 'Sin nombre');
+        if(!d.productos[nomReg]) d.productos[nomReg] = { cantidad:0, dolares:0 };
+        d.productos[nomReg].cantidad += parseFloat(reg.cantidad||0);
+        // dolares se mantiene en 0 para regalías, no afecta el total en $
+      });
     });
   });
   pagosF.forEach(p=>{
