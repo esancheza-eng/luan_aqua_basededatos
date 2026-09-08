@@ -461,6 +461,24 @@ background: #fff8e1; border: 1px solid #ffc107; border-radius: var(--radius);
 padding: 10px 14px; margin-bottom: 12px; text-align: center;
 }
 .login-bloqueo.show { display: block; }
+/* [NEW] Aviso de pestaña duplicada — ver nota junto a enablePersistence más abajo */
+.multitab-overlay {
+display: none; position: fixed; inset: 0; z-index: 1000;
+background: rgba(10,30,60,0.55); align-items: center; justify-content: center; padding: 1rem;
+}
+.multitab-overlay.show { display: flex; animation: fadeIn 0.2s ease; }
+.multitab-box {
+background: #fff; border-radius: var(--radius-lg); box-shadow: var(--shadow);
+padding: 2rem 1.75rem; width: 100%; max-width: 360px; text-align: center;
+}
+.multitab-box .multitab-icon { font-size: 2rem; margin-bottom: 0.75rem; }
+.multitab-box h3 { font-family: 'DM Sans', sans-serif; font-size: 1.05rem; font-weight: 700; color: var(--navy); margin-bottom: 0.5rem; }
+.multitab-box p { font-size: 13px; color: var(--muted); line-height: 1.5; margin-bottom: 1.25rem; }
+.multitab-box button {
+background: var(--navy); color: #fff; border: none; border-radius: 100px;
+padding: 10px 22px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 700;
+cursor: pointer;
+}
 @media (max-width: 480px) {
 body { padding: 1rem 0.75rem 3rem; }
 .grid-2, .grid-3 { grid-template-columns: 1fr; }
@@ -622,6 +640,16 @@ body { padding: 1rem 0.75rem 3rem; }
 
 <!-- Aviso expiración -->
 <div id="avisoSesion" style="display:none;position:fixed;bottom:20px;right:20px;background:#fff8e1;border:1.5px solid #ffc107;border-radius:12px;padding:12px 18px;font-size:13px;font-weight:600;color:#795c00;z-index:200;box-shadow:0 4px 20px rgba(0,0,0,0.15)"></div>
+
+<!-- [NEW] Aviso de pestaña duplicada (ver enablePersistence más abajo) -->
+<div class="multitab-overlay" id="multitabOverlay">
+  <div class="multitab-box">
+    <div class="multitab-icon">⚠️</div>
+    <h3>Ya tienes esta app abierta</h3>
+    <p>Detectamos otra pestaña de Aqua Luan abierta en este navegador. Para evitar que los pedidos se traben o dupliquen, usa solo una pestaña a la vez.</p>
+    <button onclick="location.reload()">Cerrar esta pestaña y reintentar</button>
+  </div>
+</div>
 
 <div class="container">
   <div class="offline-banner" id="offlineBanner">
@@ -1080,7 +1108,16 @@ const cloudFns = firebase.functions();
 // [NEW] Persistencia offline nativa de Firestore — reemplaza el IndexedDB/cola manual
 // que se usaba con Google Sheets. Firestore guarda los cambios localmente cuando no hay
 // internet y los sincroniza solo apenas vuelve la conexión, sin código adicional.
-db.enablePersistence({synchronizeTabs:true}).catch(err=>{ console.warn('Persistencia offline no disponible:',err.code); });
+db.enablePersistence({synchronizeTabs:true}).catch(err=>{
+  console.warn('Persistencia offline no disponible:',err.code);
+  /* [NEW] 'failed-precondition' = ya hay otra pestaña de esta misma app abierta
+     compitiendo por la persistencia offline (IndexedDB). Antes esto solo se
+     registraba en consola y la pestaña se quedaba trabada en silencio; ahora
+     se lo avisamos al usuario con una acción clara en vez de dejarlo adivinar. */
+  if(err.code === 'failed-precondition'){
+    document.getElementById('multitabOverlay').classList.add('show');
+  }
+});
 const DOMINIO_LOGIN = '@luanaqua.app'; // el "usuario" corto se convierte a este correo interno para Firebase Auth
 
 function _emailDeUsuario(usuario){
