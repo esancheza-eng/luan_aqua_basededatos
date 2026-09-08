@@ -1032,6 +1032,16 @@ firebase.initializeApp(firebaseConfig);
    offline es el núcleo del negocio en ruta, así que App Check se deja SOLO en el
    Dashboard (dashboard.html) — el admin siempre trabaja con internet en oficina. */
 const auth = firebase.auth();
+// [FIX] Mismo ajuste que en dashboard.js: el authDomain de Firebase
+// ("luan-aqua.firebaseapp.com") es distinto al dominio real de esta app, así
+// que por defecto Firebase Auth depende de un iframe oculto hacia ese dominio
+// para sincronizar la sesión — navegadores con "Tracking Prevention" (Edge)
+// o bloqueo de cookies de terceros lo bloquean, y los reintentos silenciosos
+// de Firebase pueden sentirse como que la app se traba. Persistencia LOCAL
+// guarda la sesión directo en el IndexedDB del propio dominio, sin ese
+// iframe — y sigue funcionando sin internet igual que antes (IndexedDB es
+// local, no depende de red), así que no afecta el guardado offline en ruta.
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(err => console.warn('No se pudo fijar persistencia LOCAL de Auth:', err));
 const db   = firebase.firestore();
 /* [NEW] Cloud Functions — usado por la gestión de asesores (restablecer contraseña
    y eliminar cuenta completa) porque el SDK de cliente nunca puede tocar la
