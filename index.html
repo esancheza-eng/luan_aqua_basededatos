@@ -541,6 +541,14 @@ body { padding: 1rem 0.75rem 3rem; }
   accent-color: var(--teal); cursor: pointer; flex-shrink: 0;
 }
 .pago-credito-monto { color: var(--muted); font-weight: 700; margin-left: 2px; }
+.pago-credito-monto.debe { color: #e23d3d; }
+.pago-montos { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+.pago-monto-row { display: flex; align-items: center; gap: 10px; }
+.pago-monto-row label { min-width: 130px; font-size: 13px; font-weight: 600; color: var(--navy); display: flex; align-items: center; gap: 6px; }
+.pago-monto-row input { flex: 1; height: 40px; border: 1.5px solid var(--border); border-radius: 10px; padding: 0 12px; font-size: 14px; font-family: inherit; color: var(--navy); background: #fff; }
+.pago-resumen-box { margin-top: 14px; background: var(--surface2); border: 1.5px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+.pago-resumen-total { display: flex; justify-content: space-between; font-weight: 800; font-size: 14px; color: var(--navy); padding-bottom: 8px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+.pago-resumen-line { display: flex; justify-content: space-between; font-size: 13px; color: var(--navy); padding: 3px 0; }
 .btn-wa-resumen { width: 100%; padding: 13px; background: #25D366; color: #fff; border: none; border-radius: var(--radius); font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background 0.2s; }
 .btn-wa-resumen:hover { background: #1da851; }
 </style>
@@ -755,11 +763,20 @@ body { padding: 1rem 0.75rem 3rem; }
         <label class="pago-opt"><input type="radio" name="pagoOpt" value="Cheque" onchange="_elegirFormaPago(this.value)"> 📄 CHEQUE</label>
         <label class="pago-opt"><input type="radio" name="pagoOpt" value="Crédito" onchange="_elegirFormaPago(this.value)"> 📋 CRÉDITO <span class="pago-credito-monto" id="pagoCreditoMonto">$0.00</span></label>
       </div>
-      <div class="field" id="wrap-abono" style="display:none;margin-top:12px">
-        <label for="abono">Monto recibido en efectivo (opcional — deja el resto a crédito)</label>
-        <input type="number" id="abono" placeholder="0.00" min="0" step="0.01" inputmode="decimal" oninput="_actualizarInfoAbono()">
-        <div id="abono-saldo-info" style="font-size:12px;color:var(--muted);margin-top:4px"></div>
+      <div class="pago-montos" id="pagoMontos">
+        <div class="pago-monto-row"><label>💵 Contado</label><input type="number" id="montoContado" placeholder="0.00" min="0" step="0.01" inputmode="decimal" oninput="_actualizarDesglosePago()"></div>
+        <div class="pago-monto-row"><label>🏦 Transferencia</label><input type="number" id="montoTransferencia" placeholder="0.00" min="0" step="0.01" inputmode="decimal" oninput="_actualizarDesglosePago()"></div>
+        <div class="pago-monto-row"><label>📄 Cheque</label><input type="number" id="montoCheque" placeholder="0.00" min="0" step="0.01" inputmode="decimal" oninput="_actualizarDesglosePago()"></div>
       </div>
+      <div class="pago-resumen-box" id="pagoResumenBox">
+        <div class="pago-resumen-total"><span>TOTAL</span><span id="pagoResumenTotal">$0.00</span></div>
+        <div class="pago-resumen-line"><span>💵 Contado</span><span id="sumContado">$0.00</span></div>
+        <div class="pago-resumen-line"><span>🏦 Transferencia</span><span id="sumTransferencia">$0.00</span></div>
+        <div class="pago-resumen-line"><span>📄 Cheque</span><span id="sumCheque">$0.00</span></div>
+      </div>
+      <input type="hidden" id="abono" value="">
+      <div id="wrap-abono" style="display:none"></div>
+      <div id="abono-saldo-info" style="display:none"></div>
     </div>
 
     <div class="card">
@@ -1101,7 +1118,7 @@ function escHTML(str) {
 const LISTAS_BLANCAS = {
   empleado: [], // [NEW] se llena en vivo desde Firestore (usuarios) — ver _iniciarListenerAsesoresRutas()
   empleadoGasto: [], // [NEW] ídem + 'Administración'
-  formapago: ['Contado','Crédito','Transferencia','Cheque'],
+  formapago: ['Contado','Crédito','Transferencia','Cheque','Mixto'],
   pagoForma: ['Efectivo','Transferencia','Cheque'],
   productos: ['BOTELLON 20LT','BOTELLON CON LLAVE','PACA 625ML AZUL','PACA 600ML VERDE','PACA 1000ML','PACA 400ML','GALONES 4LT','POMA 5LTS','ENVASE CON LLAVE','ENVASE AZUL ADICIONAL']
 };
@@ -1434,63 +1451,67 @@ function calcTotal(){ return productos.reduce((s,p)=>s+p.subtotal,0); }
    Sirve para el caso de venta de $30 donde solo se cobran $20 en efectivo y quedan
    $10 pendientes a crédito, sin importar si se eligió Contado o Crédito. */
 function _permiteAbono(forma){ return forma==='Crédito'||forma==='Contado'; }
+function _leerMontosPago(){
+  return {
+    Contado: parseMonto(document.getElementById('montoContado')?.value)||0,
+    Transferencia: parseMonto(document.getElementById('montoTransferencia')?.value)||0,
+    Cheque: parseMonto(document.getElementById('montoCheque')?.value)||0
+  };
+}
+function _armarPagoDesdeUI(total){
+  const tot=Number((parseFloat(total)||0).toFixed(2));
+  const m=_leerMontosPago();
+  let c=m.Contado, t=m.Transferencia, q=m.Cheque;
+  const radio=document.getElementById('formapago')?.value||'';
+  const escritos=c+t+q;
+  if(escritos===0 && tot>0){
+    if(radio==='Contado') c=tot;
+    else if(radio==='Transferencia') t=tot;
+    else if(radio==='Cheque') q=tot;
+  }
+  if(c+t+q>tot+0.009) return {error:'La suma de las formas de pago no puede ser mayor al total.'};
+  const pagos=[];
+  if(c>0) pagos.push({forma:'Contado',monto:Number(c.toFixed(2))});
+  if(t>0) pagos.push({forma:'Transferencia',monto:Number(t.toFixed(2))});
+  if(q>0) pagos.push({forma:'Cheque',monto:Number(q.toFixed(2))});
+  const creditoPendiente=Number(Math.max(tot-(c+t+q),0).toFixed(2));
+  let formapago;
+  if(!pagos.length) formapago='Crédito';
+  else if(pagos.length>1 || creditoPendiente>0) formapago='Mixto';
+  else formapago=pagos[0].forma;
+  return {formapago,pagos,creditoPendiente,abono:c};
+}
 function _armarPagoMultiple(formapago,total,abono){
-  const tot=parseFloat(total)||0;
-  const ab=parseFloat(abono)||0;
-  if(formapago==='Crédito' && ab<=0){
-    return {formapago:'Crédito',pagos:[],creditoPendiente:Number(tot.toFixed(2)),abono:0};
-  }
-  if(_permiteAbono(formapago) && ab>0 && ab<tot){
-    return {formapago:'Mixto',pagos:[{forma:'Contado',monto:Number(ab.toFixed(2))}],creditoPendiente:Number((tot-ab).toFixed(2)),abono:Number(ab.toFixed(2))};
-  }
-  if(_permiteAbono(formapago) && ab>=tot && tot>0){
-    return {formapago:'Contado',pagos:[{forma:'Contado',monto:Number(tot.toFixed(2))}],creditoPendiente:0,abono:Number(tot.toFixed(2))};
-  }
-  if(formapago==='Contado'){
-    return {formapago:'Contado',pagos:[{forma:'Contado',monto:Number(tot.toFixed(2))}],creditoPendiente:0,abono:0};
-  }
-  return {formapago,pagos:[{forma:formapago,monto:Number(tot.toFixed(2))}],creditoPendiente:0,abono:0};
+  return _armarPagoDesdeUI(total);
 }
 function _elegirFormaPago(valor){
   const sel=document.getElementById('formapago');
   if(sel) sel.value=valor||'';
   document.querySelectorAll('input[name="pagoOpt"]').forEach(r=>{ r.checked=r.value===valor; });
-  _actualizarVisibilidadAbono();
-}
-function _actualizarMontoCreditoUI(){
-  const el=document.getElementById('pagoCreditoMonto');
-  if(!el) return;
-  const total=calcTotal();
-  const forma=document.getElementById('formapago')?.value||'';
-  const abono=_permiteAbono(forma)?(parseMonto(document.getElementById('abono')?.value)||0):0;
-  const saldo=Math.max(total-abono,0);
-  el.textContent='$'+saldo.toFixed(2);
-}
-function _actualizarVisibilidadAbono(){
-  const permite=_permiteAbono(document.getElementById('formapago').value);
-  document.getElementById('wrap-abono').style.display=permite?'block':'none';
-  if(!permite) document.getElementById('abono').value='';
-  _actualizarInfoAbono();
-}
-function _actualizarInfoAbono(){
-  const info=document.getElementById('abono-saldo-info');
-  if(!info) return;
-  const permite=_permiteAbono(document.getElementById('formapago').value);
-  if(!permite){ info.textContent=''; return; }
-  const total=calcTotal();
-  const abono=parseMonto(document.getElementById('abono').value)||0;
-  const saldo=Math.max(total-abono,0);
-  if(abono>0 && abono<total){
-    info.textContent=`Abono: $${abono.toFixed(2)} — Saldo a crédito: $${saldo.toFixed(2)}`;
-    info.style.color='var(--teal-dark)';
-  }else if(abono>=total && total>0){
-    info.textContent='Pago completo — no queda saldo pendiente.';
-    info.style.color='var(--success-text)';
-  }else{
-    info.textContent=`Saldo total a crédito: $${total.toFixed(2)}`;
-    info.style.color='var(--muted)';
+  if(valor==='Crédito'){
+    ['montoContado','montoTransferencia','montoCheque'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   }
-  _actualizarMontoCreditoUI();
+  _actualizarDesglosePago();
+}
+function _actualizarMontoCreditoUI(){ _actualizarDesglosePago(); }
+function _actualizarVisibilidadAbono(){ _actualizarDesglosePago(); }
+function _actualizarInfoAbono(){ _actualizarDesglosePago(); }
+function _actualizarDesglosePago(){
+  const total=calcTotal();
+  const m=_leerMontosPago();
+  const abonoEl=document.getElementById('abono');
+  if(abonoEl) abonoEl.value=m.Contado?String(m.Contado):'';
+  const setTxt=(id,v)=>{ const el=document.getElementById(id); if(el) el.textContent='$'+v.toFixed(2); };
+  setTxt('pagoResumenTotal',total);
+  setTxt('sumContado',m.Contado);
+  setTxt('sumTransferencia',m.Transferencia);
+  setTxt('sumCheque',m.Cheque);
+  const saldo=Math.max(total-(m.Contado+m.Transferencia+m.Cheque),0);
+  const cred=document.getElementById('pagoCreditoMonto');
+  if(cred){
+    cred.textContent='$'+saldo.toFixed(2);
+    cred.classList.toggle('debe', saldo>0.009);
+  }
 }
 function renderLista(){
   const items=document.getElementById('productosItems'),lista=document.getElementById('productosLista'),emptyMsg=document.getElementById('emptyMsg');
@@ -1504,7 +1525,7 @@ function renderLista(){
     return `<div class="producto-bloque">${filaPrincipal}${filasRegalia}${btnToggle}${formRegalia}</div>`;
   }).join('');
   document.getElementById('totalGeneral').textContent='$'+calcTotal().toFixed(2);
-  _actualizarInfoAbono();
+  _actualizarDesglosePago();
 }
 function _opcionesProductosHTML(){
   return '<option value="">-- Selecciona --</option>' + LISTAS_BLANCAS.productos.map(n=>`<option value="${escHTML(n)}">${escHTML(n)}</option>`).join('');
@@ -1599,24 +1620,22 @@ async function abrirModal(){
   const direccion=sanitizarTexto(document.getElementById('direccion').value,200);
   const notas=sanitizarTexto(document.getElementById('notas').value,500);
   if(!esValorSeguro(empleado,LISTAS_BLANCAS.empleado)){setStatus('error','Selecciona un asesor válido.');return;}
-  if(!esValorSeguro(formapago,LISTAS_BLANCAS.formapago)){setStatus('error','Selecciona una forma de pago válida.');return;}
   if(!nombre){setStatus('error','Ingresa el nombre del cliente.');return;}
   if(productos.length===0){setStatus('error','Agrega al menos un producto.');return;}
   const total=calcTotal();
-  /* [NEW] Abono parcial en Contado o Crédito — valida que no sea mayor al total. */
-  let abono=0;
-  if(_permiteAbono(formapago)){
-    abono=parseMonto(document.getElementById('abono').value)||0;
-    if(abono<0){setStatus('error','El abono no puede ser negativo.');return;}
-    if(abono>total){setStatus('error','El abono no puede ser mayor al total de la venta.');return;}
+  const pagoMulti=_armarPagoDesdeUI(total);
+  if(pagoMulti.error){setStatus('error',pagoMulti.error);return;}
+  if(!pagoMulti.pagos.length && formapago!=='Crédito' && !formapago){
+    setStatus('error','Selecciona una forma de pago o ingresa los montos.');return;
   }
-  const pagoMulti=_armarPagoMultiple(formapago,total,abono);
-  dataPendiente={empleado,formapago:pagoMulti.formapago,formapagoOrigen:formapago,nombre,telefono,fecha,direccion,notas,productos:[...productos],total:total.toFixed(2),abono:pagoMulti.abono,pagos:pagoMulti.pagos,creditoPendiente:pagoMulti.creditoPendiente,gps:null,hora:new Date().toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit',hour12:true})};
+  if(!esValorSeguro(pagoMulti.formapago,LISTAS_BLANCAS.formapago)){setStatus('error','Selecciona una forma de pago válida.');return;}
+  const abono=pagoMulti.abono||0;
+  dataPendiente={empleado,formapago:pagoMulti.formapago,formapagoOrigen:formapago||pagoMulti.formapago,nombre,telefono,fecha,direccion,notas,productos:[...productos],total:total.toFixed(2),abono,pagos:pagoMulti.pagos,creditoPendiente:pagoMulti.creditoPendiente,gps:null,hora:new Date().toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit',hour12:true})};
   const offline=!navigator.onLine;
   document.getElementById('modalOfflineNote').classList.toggle('show',offline);
   document.getElementById('modal-subtitle-text').textContent=offline?'Sin internet — se guardará localmente':'Revisa todos los datos antes de enviar a Google Drive';
   document.getElementById('m-empleado').textContent=empleado;
-  document.getElementById('m-formapago').textContent=formapago;
+  document.getElementById('m-formapago').textContent=pagoMulti.formapago+(pagoMulti.creditoPendiente>0?' (saldo $'+pagoMulti.creditoPendiente.toFixed(2)+')':'');
   /* [NEW] Muestra Abono/Saldo en el modal cuando quedó un saldo pendiente a crédito. */
   const mostrarAbono=_permiteAbono(formapago)&&abono>0&&abono<total;
   document.getElementById('m-abono-row').style.display=mostrarAbono?'table-row':'none';
@@ -1726,14 +1745,10 @@ async function confirmarEnvio(){
       // [NEW] Solo si el abono es PARCIAL (deja saldo a crédito). Si el abono
       // cubre el total completo, es una venta normal ya cobrada del todo y no
       // se duplica como Pago aparte — evita inflar el Cuadre de Caja.
-      if(doc.abono>0 && doc.abono<parseFloat(doc.total)){
-        db.collection('pagos').add({
-          empleado:doc.empleado, fecha:doc.fecha, cliente:doc.cliente,
-          monto:doc.abono, forma:'Efectivo',
-          notas:`Abono inicial (venta a crédito de $${doc.total})`,
-          creadoPor:usuarioActual?.uid||null, creadoEn:firebase.firestore.FieldValue.serverTimestamp()
-        }).catch(err=>console.warn('No se pudo registrar el abono como pago:',err));
-      }
+      // El desglose vive en el propio pedido (pagos[] + creditoPendiente).
+      // NO se escribe un documento extra en la colección 'pagos': el Dashboard
+      // ya cuenta el contado desde p.pagos y, si se duplicara aquí, inflaba caja.
+      
       return refPedido;
     })
     .catch(err => {
@@ -1790,9 +1805,8 @@ function limpiarSoloFormulario(){
   if(!usuarioActual||usuarioActual.esAdmin) document.getElementById('empleado').value='';
   ['formapago','nombre','telefono','direccion','notas'].forEach(id=>document.getElementById(id).value='');
   document.querySelectorAll('input[name="pagoOpt"]').forEach(r=>{ r.checked=false; });
-  document.getElementById('abono').value=''; // [NEW]
-  document.getElementById('wrap-abono').style.display='none'; // [NEW]
-  document.getElementById('abono-saldo-info').textContent=''; // [NEW]
+  ['montoContado','montoTransferencia','montoCheque','abono'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  _actualizarDesglosePago();
   productos=[]; renderLista();
   const hoy=new Date(),yyyy=hoy.getFullYear(),mm=String(hoy.getMonth()+1).padStart(2,'0'),dd=String(hoy.getDate()).padStart(2,'0');
   document.getElementById('fecha').value=`${yyyy}-${mm}-${dd}`;
