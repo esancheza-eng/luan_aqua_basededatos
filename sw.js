@@ -4,7 +4,7 @@
    Firestore (db.enablePersistence en index.html). Este archivo solo se encarga de que
    la página misma cargue sin conexión. */
 
-const CACHE_NAME = 'luan-aqua-shell-v2';
+const CACHE_NAME = 'luan-aqua-shell-v3';
 
 const APP_SHELL = [
   './',
