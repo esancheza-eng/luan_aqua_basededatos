@@ -1434,6 +1434,23 @@ function calcTotal(){ return productos.reduce((s,p)=>s+p.subtotal,0); }
    Sirve para el caso de venta de $30 donde solo se cobran $20 en efectivo y quedan
    $10 pendientes a crédito, sin importar si se eligió Contado o Crédito. */
 function _permiteAbono(forma){ return forma==='Crédito'||forma==='Contado'; }
+function _armarPagoMultiple(formapago,total,abono){
+  const tot=parseFloat(total)||0;
+  const ab=parseFloat(abono)||0;
+  if(formapago==='Crédito' && ab<=0){
+    return {formapago:'Crédito',pagos:[],creditoPendiente:Number(tot.toFixed(2)),abono:0};
+  }
+  if(_permiteAbono(formapago) && ab>0 && ab<tot){
+    return {formapago:'Mixto',pagos:[{forma:'Contado',monto:Number(ab.toFixed(2))}],creditoPendiente:Number((tot-ab).toFixed(2)),abono:Number(ab.toFixed(2))};
+  }
+  if(_permiteAbono(formapago) && ab>=tot && tot>0){
+    return {formapago:'Contado',pagos:[{forma:'Contado',monto:Number(tot.toFixed(2))}],creditoPendiente:0,abono:Number(tot.toFixed(2))};
+  }
+  if(formapago==='Contado'){
+    return {formapago:'Contado',pagos:[{forma:'Contado',monto:Number(tot.toFixed(2))}],creditoPendiente:0,abono:0};
+  }
+  return {formapago,pagos:[{forma:formapago,monto:Number(tot.toFixed(2))}],creditoPendiente:0,abono:0};
+}
 function _elegirFormaPago(valor){
   const sel=document.getElementById('formapago');
   if(sel) sel.value=valor||'';
@@ -1593,7 +1610,8 @@ async function abrirModal(){
     if(abono<0){setStatus('error','El abono no puede ser negativo.');return;}
     if(abono>total){setStatus('error','El abono no puede ser mayor al total de la venta.');return;}
   }
-  dataPendiente={empleado,formapago,nombre,telefono,fecha,direccion,notas,productos:[...productos],total:total.toFixed(2),abono,gps:null,hora:new Date().toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit',hour12:true})}; // [NEW] hora exacta en que se genera la venta, para el ticket térmico
+  const pagoMulti=_armarPagoMultiple(formapago,total,abono);
+  dataPendiente={empleado,formapago:pagoMulti.formapago,formapagoOrigen:formapago,nombre,telefono,fecha,direccion,notas,productos:[...productos],total:total.toFixed(2),abono:pagoMulti.abono,pagos:pagoMulti.pagos,creditoPendiente:pagoMulti.creditoPendiente,gps:null,hora:new Date().toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit',hour12:true})};
   const offline=!navigator.onLine;
   document.getElementById('modalOfflineNote').classList.toggle('show',offline);
   document.getElementById('modal-subtitle-text').textContent=offline?'Sin internet — se guardará localmente':'Revisa todos los datos antes de enviar a Google Drive';
@@ -1683,7 +1701,9 @@ async function confirmarEnvio(){
     empleado:dataPendiente.empleado, cliente:dataPendiente.nombre, telefono:dataPendiente.telefono||'',
     direccion:dataPendiente.direccion||'', fecha:dataPendiente.fecha, notas:dataPendiente.notas||'',
     formapago:dataPendiente.formapago, total:dataPendiente.total,
-    abono:dataPendiente.abono||0, // [NEW] abono en efectivo cuando formapago es Crédito
+    abono:dataPendiente.abono||0,
+    pagos:dataPendiente.pagos||[],
+    creditoPendiente:dataPendiente.creditoPendiente||0,
     productos:dataPendiente.productos.map(p=>({nombre:p.nombre,cantidad:p.cantidad,precio:p.precio,subtotal:p.subtotal,regalias:(p.regalias||[]).map(r=>({nombre:r.nombre,cantidad:r.cantidad}))})),
     gps:dataPendiente.gps?{lat:dataPendiente.gps.lat,lng:dataPendiente.gps.lng,acc:dataPendiente.gps.acc,url:dataPendiente.gps.url}:null,
     creadoPor:usuarioActual?.uid||null, creadoEn:firebase.firestore.FieldValue.serverTimestamp()
