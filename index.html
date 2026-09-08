@@ -2602,8 +2602,8 @@ function _buildTicketHTML(d){
   <div class="t-line"></div>
   <table class="t-tbl"><tr><td>Pedido:</td><td class="t-r">${fechaStr}</td></tr>
   ${horaTicket?`<tr><td>Hora:</td><td class="t-r">${escHTML(horaTicket)}</td></tr>`:''}
-  <tr><td>Ruta:</td><td class="t-r">${escHTML(d.empleado||'-')}</td></tr>
-  <tr><td>Pago:</td><td class="t-r t-pago-val">${escHTML(_textoDesglosePago(d))}</td></tr></table>
+  <tr><td>Ruta:</td><td class="t-r">${escHTML(d.empleado||'-')}</td></tr></table>
+  <div class="t-pago-row"><span class="t-bold">Pago: </span><span class="t-pago-val">${escHTML(_textoDesglosePago(d))}</span></div>
   <div class="t-line"></div>
   <div class="t-bold">CLIENTE: ${escHTML(d.nombre||'-')}</div>
   ${d.telefono?`<div class="t-small">Tel: ${escHTML(d.telefono)}</div>`:''}
@@ -2668,6 +2668,13 @@ function _abrirVentanaTicket(contenido){
   .t-regalo{font-size:10px;font-weight:700;font-style:italic;padding-left:4px !important;}
   .t-total td{font-size:14px;font-weight:700;padding-top:2px !important;}
   .t-pago-val{font-size:14px !important;}
+  /* [NEW] Antes esta línea compartía tabla con Pedido/Hora/Ruta y heredaba
+     white-space:nowrap + width:1% (pensado para valores cortos como fechas).
+     Con varias formas de pago combinadas (ej. Contado + Transferencia +
+     Cheque + Crédito) el texto no cabía en una sola línea y se salía del
+     ancho del ticket. Como bloque aparte, ahora sí hace salto de línea
+     normal dentro del ancho de 46mm. */
+  .t-pago-row{white-space:normal;word-break:break-word;margin:1px 0;}
   </style></head><body>${contenido}<script>window.onload=function(){window.print();}<\/script></body></html>`);
   v.document.close();
 }
