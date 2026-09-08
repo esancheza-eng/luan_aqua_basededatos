@@ -101,6 +101,9 @@ let charts = {};
 // [FIX] Caché de los datos que ya usa renderCharts() — permite redibujar los 3
 // gráficos al instante al volver a "Resumen General", sin recalcular filtros.
 let _kpiPedidosCache = [], _kpiPedidosConTotalCache = [];
+// [FIX] Caché para diferir renderResumenPorCliente() y poblarClienteSelect() — ver
+// comentario en renderDashboard().
+let _resumenClientesPedidosCache = [], _clienteSelectPedidosCache = [];
 let autoRefreshInterval = null;
 let leafletMap = null;
 let leafletLoaded = false;
@@ -145,6 +148,11 @@ function switchSeccionDash(sec){
   // Firestore si esta pestaña no está activa (ver comentario en renderDashboard) —
   // así que al entrar aquí se redibujan al instante con los últimos datos en caché.
   if (sec === 'resumen' && typeof renderCharts === 'function') renderCharts(_kpiPedidosCache, _kpiPedidosConTotalCache);
+  // [FIX] Mismo patrón para el resumen por cliente (pestaña "Resumen General") y la
+  // tabla de "Consultar por Cliente" — se recalculan al instante solo al entrar,
+  // usando los datos que ya se tenían en caché desde el último cambio de Firestore.
+  if (sec === 'resumen' && typeof renderResumenPorCliente === 'function') renderResumenPorCliente(_resumenClientesPedidosCache);
+  if (sec === 'cliente' && typeof poblarClienteSelect === 'function') poblarClienteSelect(_clienteSelectPedidosCache);
 }
 function switchTab(tab) {
   document.getElementById('viewDashboard').classList.toggle('active', tab === 'dashboard');
@@ -974,8 +982,19 @@ function renderDashboard() {
   _pedidosTablaFiltrados = _filtrarPorPagoChecklist(pedidos); // [NEW]
   renderFiltroPagoDropdown(pedidos); // [NEW] opciones del checklist -- siempre sobre el set completo, para no perder checkboxes de formas de pago ocultas
   renderTabla(_pedidosTablaFiltrados);
-  renderResumenPorCliente(_pedidosTablaFiltrados); // [NEW]
-  poblarClienteSelect(pedidos);
+  // [FIX] LA PANTALLA SE CONGELABA con muchos clientes acumulados: renderResumenPorCliente()
+  // arma una tarjeta HTML completa por cada cliente único, y poblarClienteSelect() calcula
+  // sus estadísticas — ambas cosas corrían en CADA cambio de Firestore sin importar si el
+  // admin estaba viendo "Resumen General" / "Consultar por Cliente" o cualquier otra
+  // pestaña. Con cientos de clientes eso era trabajo pesado tirado a la basura la mayoría
+  // del tiempo. Ahora, igual que con los gráficos, solo corren si esa pestaña está
+  // realmente activa; los datos se guardan en caché para recalcularlos al instante apenas
+  // el admin entra a la pestaña correspondiente.
+  _resumenClientesPedidosCache = _pedidosTablaFiltrados;
+  _clienteSelectPedidosCache = pedidos;
+  if (seccionResumenVisible) renderResumenPorCliente(_pedidosTablaFiltrados);
+  const seccionClienteVisible = document.getElementById('seccion-cliente')?.classList.contains('active');
+  if (seccionClienteVisible) poblarClienteSelect(pedidos);
   renderPagosGastosDetalle(pagos, gastos); // [NEW]
   document.getElementById('chartsGrid').style.display = 'grid';
   document.getElementById('tableCard').style.display = 'block';
@@ -1713,16 +1732,36 @@ function poblarClienteSelect(datos) {
     if (!c.ultimoFecha) { c.ultimoFecha = primeraLinea['FECHA'] || ''; c.asesor = primeraLinea['ASESOR / RUTA'] || ''; }
   });
 
+  // [FIX] LA PANTALLA SE CONGELABA con muchos clientes/pedidos acumulados: antes, por
+  // CADA cliente se recorría TODO "todosLosDatos" dos veces completas (una para sumar
+  // sus ventas a crédito, otra para sumar sus pagos) — con cientos de clientes y miles
+  // de filas eso son millones de comparaciones repetidas en cada recálculo. Ahora se
+  // recorre "todosLosDatos" UNA SOLA VEZ, acumulando crédito y pagos por cliente en un
+  // mapa, y luego cada cliente solo consulta su propia entrada en ese mapa (instantáneo).
+  // Mismo resultado exacto, verificado comparando ambos cálculos sobre miles de filas
+  // simuladas antes de aplicar este cambio — solo cambia cómo se calcula, no el número.
+  const _mapaDeudaPorCliente = {};
+  todosLosDatos.forEach(r => {
+    const cliente = r['CLIENTE'];
+    if (!cliente) return;
+    if (!_mapaDeudaPorCliente[cliente]) _mapaDeudaPorCliente[cliente] = { credito: 0, pagos: 0 };
+    const tot = parseFloat(r['TOTAL PEDIDO ($)']||0);
+    if (r['PRODUCTO'] && tot > 0 && (r['FORMA DE PAGO']||'') === 'Crédito') {
+      _mapaDeudaPorCliente[cliente].credito += tot;
+    } else if (!r['PRODUCTO'] && tot > 0 && String(r['TOTAL PEDIDO ($)']).indexOf('-') === -1) {
+      _mapaDeudaPorCliente[cliente].pagos += tot;
+    }
+  });
+
   const hoyMs = Date.now();
   _clientesTablaDatos = Object.entries(porCliente).map(([nombre, c]) => {
     const ultimoDate = c.ultimoFecha ? new Date(c.ultimoFecha + 'T00:00:00') : null;
     const diasSinPedido = ultimoDate ? Math.max(0, Math.floor((hoyMs - ultimoDate.getTime()) / 86400000)) : 9999;
     const estado = _calcularEstadoCliente(diasSinPedido, c.total);
-    // Deuda Vigente — sobre TODO el historial del cliente, sin filtro de fecha (igual que antes)
-    const _todosPedidosCliente = todosLosDatos.filter(r => r['CLIENTE'] === nombre && r['PRODUCTO'] && parseFloat(r['TOTAL PEDIDO ($)']||0) > 0);
-    const _creditoTotalCliente = _todosPedidosCliente.filter(r => (r['FORMA DE PAGO']||'') === 'Crédito').reduce((s,r) => s + (parseFloat(r['TOTAL PEDIDO ($)'])||0), 0);
-    const _pagosTotalCliente = todosLosDatos.filter(r => r['CLIENTE'] === nombre && !r['PRODUCTO'] && parseFloat(r['TOTAL PEDIDO ($)']||0) > 0 && String(r['TOTAL PEDIDO ($)']).indexOf('-') === -1).reduce((s,r) => s + (parseFloat(r['TOTAL PEDIDO ($)'])||0), 0);
-    const deudaVigente = _creditoTotalCliente - _pagosTotalCliente;
+    // Deuda Vigente — sobre TODO el historial del cliente, sin filtro de fecha (igual que
+    // antes), ahora leída del mapa precalculado en una sola pasada arriba.
+    const _deuda = _mapaDeudaPorCliente[nombre] || { credito: 0, pagos: 0 };
+    const deudaVigente = _deuda.credito - _deuda.pagos;
     return {
       nombre, telefono: c.telefono, direccion: c.direccion, pedidos: c.pedidos, total: c.total,
       ultimoFecha: c.ultimoFecha, diasSinPedido, asesor: c.asesor, estado, deudaVigente, items: c.items
