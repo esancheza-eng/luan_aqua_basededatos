@@ -772,6 +772,22 @@ function _expandirPedido(p) {
   });
   return filas;
 }
+// [FIX] LA PANTALLA SE CONGELABA porque los 3 listeners de arriba (pedidos,
+// pagos, gastos) son independientes: cuando se guarda una venta con abono
+// parcial (que escribe en 'pedidos' Y 'pagos' casi al mismo tiempo), o cuando
+// varios de los ~14 cobradores registran pedidos en la misma ventana de
+// segundos, cada listener llamaba a _recalcularTodosLosDatos() por su cuenta
+// — y esa función reconstruye TODO de forma síncrona (KPIs, 3 gráficos
+// Chart.js con destroy()+new Chart(), tablas, resumen de clientes, cuadre de
+// caja, reporte por asesor). Dos o tres de esos renders pesados encadenados
+// en milisegundos bloqueaban el hilo principal del navegador y se sentían
+// como que "se congela la pantalla". Ahora los listeners llaman a esta
+// versión debounced, que agrupa ráfagas de cambios en una sola recarga.
+let _recalcDebounceTimer = null;
+function _recalcularTodosLosDatosDebounced() {
+  if (_recalcDebounceTimer) clearTimeout(_recalcDebounceTimer);
+  _recalcDebounceTimer = setTimeout(() => { _recalcDebounceTimer = null; _recalcularTodosLosDatos(); }, 250);
+}
 function _recalcularTodosLosDatos() {
   let filas = [];
   _pedidosRaw.forEach(p => { filas = filas.concat(_expandirPedido(p)); });
@@ -828,10 +844,10 @@ function iniciarListenersDashboard() {
        los documentos recibidos — nadie se excluye, solo se ordenan. */
     _pedidosRaw = snap.docs.map(d => ({ _id: d.id, ...d.data() }))
       .sort((a,b) => (b.creadoEn?.toMillis?.() || 0) - (a.creadoEn?.toMillis?.() || 0));
-    _recalcularTodosLosDatos();
+    _recalcularTodosLosDatosDebounced(); // [FIX] ver comentario en la función
   }, err => { console.error('listener pedidos:', err); document.getElementById('kpiGrid').innerHTML = '<div class="loading"><span>⚠️ Error al cargar datos: '+err.message+'</span></div>'; }); /* [FIX] _id agregado — antes no se guardaba el id del documento, y sin él no era posible editar un pedido puntual */
-  _unsubPagosAll   = qPagos.onSnapshot(snap => { _pagosRaw = snap.docs.map(d => ({ _id: d.id, ...d.data() })); _recalcularTodosLosDatos(); }, err => console.error('listener pagos:', err)); /* [NEW] _id agregado para poder editar/eliminar */
-  _unsubGastosAll  = qGastos.onSnapshot(snap => { _gastosRaw = snap.docs.map(d => ({ _id: d.id, ...d.data() })); _recalcularTodosLosDatos(); }, err => console.error('listener gastos:', err)); /* [NEW] _id agregado para poder editar/eliminar */
+  _unsubPagosAll   = qPagos.onSnapshot(snap => { _pagosRaw = snap.docs.map(d => ({ _id: d.id, ...d.data() })); _recalcularTodosLosDatosDebounced(); }, err => console.error('listener pagos:', err)); /* [NEW] _id agregado para poder editar/eliminar */
+  _unsubGastosAll  = qGastos.onSnapshot(snap => { _gastosRaw = snap.docs.map(d => ({ _id: d.id, ...d.data() })); _recalcularTodosLosDatosDebounced(); }, err => console.error('listener gastos:', err)); /* [NEW] _id agregado para poder editar/eliminar */
 }
 function detenerListenersDashboard() {
   if (_unsubPedidosAll) { _unsubPedidosAll(); _unsubPedidosAll = null; }
