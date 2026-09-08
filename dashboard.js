@@ -504,6 +504,35 @@ function renderLiquidacionDash(){
     </div>`;
   }).join('');
   document.getElementById('liquidacionDashTotalValor').textContent = '$'+totalGeneral.toFixed(2);
+  renderNotasAdicionalesDash();
+}
+/* [NEW] Notas Adicionales — muestra debajo de Liquidación los pedidos del
+   período/asesor filtrado que traen alguna nota registrada (ej. regalías
+   pendientes de entregas anteriores, condiciones especiales, etc.), para
+   que no se pierdan dentro del detalle de cada pedido. */
+function renderNotasAdicionalesDash(){
+  const tbody = document.getElementById('notasAdicionalesTbody');
+  const tabla = document.getElementById('notasAdicionalesTabla');
+  const emptyMsg = document.getElementById('notasAdicionalesEmptyMsg');
+  if(!tbody) return;
+  const asesorSel = document.getElementById('filtroAsesor') ? document.getElementById('filtroAsesor').value : '';
+  const pedidosConNota = (asesorSel ? _pedidosRaw.filter(p => (p.empleado||'') === asesorSel) : _pedidosRaw)
+    .filter(p => (p.notas||'').trim() !== '')
+    .sort((a,b) => (b.creadoEn?.toMillis?.() || 0) - (a.creadoEn?.toMillis?.() || 0));
+  if(!pedidosConNota.length){
+    tbody.innerHTML = '';
+    if(tabla) tabla.style.display = 'none';
+    if(emptyMsg) emptyMsg.style.display = 'block';
+    return;
+  }
+  if(tabla) tabla.style.display = '';
+  if(emptyMsg) emptyMsg.style.display = 'none';
+  tbody.innerHTML = pedidosConNota.map(p => `
+    <tr>
+      <td style="font-weight:700;color:var(--navy)">${escHTML(p.empleado||'-')}</td>
+      <td style="font-weight:600">${escHTML(p.cliente||'-')}</td>
+      <td style="font-style:italic;color:var(--muted)">📝 ${escHTML(p.notas)}</td>
+    </tr>`).join('');
 }
 function imprimirLiquidacionDash(){
   const porAsesor = _calcularLiquidacionDash();
