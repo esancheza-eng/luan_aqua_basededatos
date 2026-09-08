@@ -95,6 +95,7 @@
             <button class="dash-nav-item" data-section="pedidosweb" id="navPedidosWeb" onclick="switchSeccionDash('pedidosweb')">🌐 Pedidos Web</button>
             <button class="dash-nav-item" data-section="auditoria" id="navAuditoria" onclick="switchSeccionDash('auditoria')">🕵️ Auditoría</button>
             <button class="dash-nav-item" data-section="liquidacionDash" id="navLiquidacionDash" onclick="switchSeccionDash('liquidacionDash')">💵 Liquidación</button>
+            <button class="dash-nav-item" data-section="notasAdicionalesDash" id="navNotasAdicionalesDash" onclick="switchSeccionDash('notasAdicionalesDash')">📝 Notas Adicionales</button>
           </nav>
           <div class="dash-content">
         <div class="dash-section active" id="seccion-resumen">
@@ -361,10 +362,14 @@
             <span id="liquidacionDashTotalValor" style="font-family:'DM Serif Display',serif;font-size:1.6rem;color:#4ec9a0">$0.00</span>
           </div>
         </div>
-        <!-- [NEW] Notas Adicionales — pedidos con notas/observaciones registradas
-             (ej. regalías pendientes, condiciones especiales), filtradas por el
-             mismo período/asesor de la Liquidación de arriba. -->
-        <div class="table-card" style="margin-top:16px">
+        <!-- cierra seccion-liquidacionDash -->
+        </div>
+        <!-- [NEW] Notas Adicionales — sección independiente en el menú lateral,
+             debajo de Liquidación. Muestra los pedidos del período filtrado
+             que traen alguna nota registrada (ej. regalías pendientes,
+             condiciones especiales, etc.), separado del cálculo de efectivo. -->
+        <div class="dash-section" id="seccion-notasAdicionalesDash">
+        <div class="table-card">
           <div class="table-header">
             <div class="table-title">📝 Notas Adicionales</div>
           </div>
