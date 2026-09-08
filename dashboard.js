@@ -21,6 +21,19 @@ firebase.appCheck().activate(
   true
 );
 const auth = firebase.auth();
+// [FIX] LA PANTALLA SE SEGUÍA CONGELANDO en algunos navegadores (Edge/Chrome
+// con "Tracking Prevention" o bloqueo de cookies de terceros activado): el
+// authDomain de Firebase ("luan-aqua.firebaseapp.com") es un dominio DISTINTO
+// al del dashboard ("aqualuanpedidos.elhyai.com"), así que por defecto
+// Firebase Auth intenta sincronizar la sesión mediante un iframe oculto hacia
+// ese dominio — eso es justo lo que bloquea "Tracking Prevention" (mensajes
+// en consola: "requestStorageAccess: Permission denied" / "Tracking
+// Prevention blocked access to storage"). Cuando ese acceso falla, Firebase
+// reintenta la operación varias veces, y esos reintentos silenciosos podían
+// sentirse como que la pantalla se traba. Forzar persistencia LOCAL hace que
+// Firebase guarde la sesión directamente en el IndexedDB del propio dominio
+// del dashboard, sin depender de ese iframe entre dominios.
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(err => console.warn('No se pudo fijar persistencia LOCAL de Auth:', err));
 const db   = firebase.firestore();
 const DOMINIO_LOGIN = '@luanaqua.app';
 function _emailDeUsuario(usuario){
