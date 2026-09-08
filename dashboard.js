@@ -412,6 +412,25 @@ function _calcularLiquidacionDash(){
   const gastosF  = asesorSel ? _gastosRaw.filter(g => (g.empleado||'') === asesorSel) : _gastosRaw;
   pedidosF.forEach(p=>{
     const d = getAsesor(p.empleado || 'Sin asignar'); const tot = parseFloat(p.total||0);
+    // [FIX] NUEVO FORMATO DE PAGO MÚLTIPLE (index.html) — el asesor ahora puede marcar
+    // varias formas de pago a la vez (ej. $20 Contado + $30 Transferencia), y lo que no
+    // cubre ninguna forma marcada queda como 'creditoPendiente' automático. Ya NO se
+    // registra un "Pago" aparte en la colección 'pagos' para ese saldo (a diferencia del
+    // abono viejo) — todo el desglose vive dentro del propio pedido, en el array
+    // 'pagos' + 'creditoPendiente'. formapago pasa a valer 'Mixto' en estos casos, así
+    // que la comparación exacta de abajo (Contado/Crédito/Transferencia/Cheque) dejaría
+    // TODO el total de un pedido Mixto sin clasificar si no se maneja aparte primero.
+    if (p.pagos !== null && p.pagos !== undefined) {
+      (p.pagos || []).forEach(pg => {
+        const monto = parseFloat(pg.monto || 0);
+        if (pg.forma === 'Contado') d.ventasContado += monto;
+        else if (pg.forma === 'Transferencia') d.ventasTransferencia += monto;
+        else if (pg.forma === 'Cheque') d.ventasCheque += monto;
+        else d.ventasOtras += monto;
+      });
+      d.ventasCredito += parseFloat(p.creditoPendiente || 0);
+    } else {
+    // --- Compatibilidad con pedidos creados ANTES del pago múltiple (campo 'abono') ---
     const abono = parseFloat(p.abono||0); // [FIX] venta con abono parcial (Contado o Crédito)
     if(abono>0 && abono<tot){
       // [FIX] El abono ya se registra por separado como un "Pago" en efectivo
@@ -432,6 +451,7 @@ function _calcularLiquidacionDash(){
     else if(p.formapago==='Transferencia') d.ventasTransferencia+=tot;
     else if(p.formapago==='Cheque') d.ventasCheque+=tot;
     else d.ventasOtras+=tot;
+    }
     // [FIX] Acumular por producto vendido, y también las regalías entregadas
     // (a $0, ya que no representan ingreso, pero sí deben verse reflejadas
     // como unidades entregadas en el desglose de la Liquidación)
@@ -775,6 +795,28 @@ function _horaDeTs(ts) {
   catch { return ''; }
 }
 function _filaProducto(p, prod, esPrimera, esRegalo) {
+  // [FIX] NUEVO FORMATO DE PAGO MÚLTIPLE — index.html ahora permite marcar varias
+  // formas de pago a la vez (ej. Contado $20 + Transferencia $30) y ya NO guarda el
+  // campo 'abono'; en su lugar guarda 'pagos' (array [{forma,monto}, ...]) y
+  // 'creditoPendiente' (el saldo que no cubrió ninguna forma marcada). formapago pasa
+  // a valer 'Mixto' cuando se combinan formas o queda saldo, en vez de un solo nombre.
+  // Se calcula aquí un único campo CREDITO_PENDIENTE, válido para pedidos viejos
+  // (con 'abono') y nuevos (con 'pagos'), para que Deuda Vigente y demás cálculos de
+  // crédito no dependan de comparar el string de FORMA DE PAGO contra 'Crédito' —
+  // comparación que se rompía en cuanto formapago valía 'Mixto'.
+  let creditoPendienteCalc = 0;
+  if (esPrimera) {
+    if (p.pagos !== null && p.pagos !== undefined) {
+      // Pedido nuevo (pago múltiple): el saldo a crédito ya viene calculado.
+      creditoPendienteCalc = parseFloat(p.creditoPendiente || 0);
+    } else {
+      // Pedido viejo (formato anterior con 'abono' único o sin abono).
+      const totNum = parseFloat(p.total) || 0;
+      const abonoNum = parseFloat(p.abono || 0);
+      if (abonoNum > 0 && abonoNum < totNum) creditoPendienteCalc = totNum - abonoNum;
+      else if (abonoNum <= 0 && p.formapago === 'Crédito') creditoPendienteCalc = totNum;
+    }
+  }
   return {
     'FECHA': p.fecha || '', 'ASESOR / RUTA': p.empleado || '', 'CLIENTE': p.cliente || '',
     'TELÉFONO': p.telefono || '', 'DIRECCIÓN': p.direccion || '',
@@ -783,7 +825,9 @@ function _filaProducto(p, prod, esPrimera, esRegalo) {
     'PRECIO UNIT.': esRegalo ? 0 : (prod.precio != null ? prod.precio : ''),
     'SUBTOTAL': esRegalo ? 0 : (prod.subtotal != null ? prod.subtotal : ''),
     'TOTAL PEDIDO ($)': esPrimera ? (parseFloat(p.total) || 0) : '',
-    'ABONO': esPrimera ? (parseFloat(p.abono) || 0) : '', // [NEW] abono parcial (Contado o Crédito) para mostrar saldo pendiente en el Dashboard
+    'ABONO': esPrimera ? (parseFloat(p.abono) || 0) : '', // [LEGACY] solo tiene valor real en pedidos viejos
+    'CREDITO_PENDIENTE': esPrimera ? creditoPendienteCalc : '', // [NEW] válido para pedidos viejos y nuevos
+    'PAGOS_DESGLOSE': esPrimera ? (p.pagos || null) : null, // [NEW] desglose crudo del pago múltiple, para mostrarlo en el detalle
     'FORMA DE PAGO': p.formapago || '', 'LINK GPS': (p.gps && p.gps.url) ? p.gps.url : '', 'NOTAS': p.notas || '',
     'LATITUD': (p.gps && p.gps.lat != null) ? p.gps.lat : '', 'LONGITUD': (p.gps && p.gps.lng != null) ? p.gps.lng : '',
     'PRECISIÓN GPS': (p.gps && p.gps.acc != null) ? `±${p.gps.acc}m` : '',
@@ -1177,13 +1221,26 @@ function renderTabla(pedidos) {
   tbody.innerHTML = pedidos.slice(0,100).map(r => {
     const gps   = r['LINK GPS'] ? `<a href="${r['LINK GPS']}" target="_blank" style="color:var(--teal);font-weight:700;font-size:11px">📍 Ver</a>` : '<span style="color:var(--muted);font-size:11px">—</span>';
     const total = r['TOTAL PEDIDO ($)'] ? `<strong style="color:var(--teal)">$${parseFloat(r['TOTAL PEDIDO ($)']).toFixed(2)}</strong>` : '';
-    // [NEW] Si quedó saldo pendiente a crédito (venta con abono parcial en Contado o
-    // Crédito), lo muestra debajo de la forma de pago — sin agregar columnas nuevas,
-    // para no afectar exportaciones a PDF ni el resto de la tabla.
-    const abonoVal = parseFloat(r['ABONO']||0);
+    // [FIX] NUEVO FORMATO DE PAGO MÚLTIPLE — antes esto solo miraba el campo viejo
+    // 'ABONO', así que un pedido 'Mixto' (varias formas + saldo a crédito) nunca
+    // mostraba el aviso de saldo pendiente aunque sí tuviera uno. Ahora usa
+    // CREDITO_PENDIENTE (calculado en _filaProducto, válido para pedidos viejos y
+    // nuevos) y, si el pedido trae el desglose de pago múltiple (PAGOS_DESGLOSE),
+    // lo muestra completo en vez de solo "Abono/Saldo".
+    const creditoPend = parseFloat(r['CREDITO_PENDIENTE']||0);
     const totalVal = parseFloat(r['TOTAL PEDIDO ($)']||0);
-    const tieneSaldo = abonoVal>0 && totalVal>0 && abonoVal<totalVal;
-    const pago  = r['FORMA DE PAGO'] ? `<span class="badge badge-teal">${r['FORMA DE PAGO']}</span>${tieneSaldo?`<div style="font-size:10px;color:var(--red);margin-top:2px;white-space:nowrap">Abono $${abonoVal.toFixed(2)} · Saldo $${(totalVal-abonoVal).toFixed(2)}</div>`:''}` : '';
+    const tieneSaldo = creditoPend > 0.004 && totalVal > 0;
+    let detallePago = '';
+    if (tieneSaldo) {
+      if (r['PAGOS_DESGLOSE'] && r['PAGOS_DESGLOSE'].length) {
+        const partes = r['PAGOS_DESGLOSE'].map(pg => `${pg.forma} $${(parseFloat(pg.monto)||0).toFixed(2)}`).join(' + ');
+        detallePago = `<div style="font-size:10px;color:var(--muted);margin-top:2px;white-space:nowrap">${partes}</div><div style="font-size:10px;color:var(--red);white-space:nowrap">Saldo crédito $${creditoPend.toFixed(2)}</div>`;
+      } else {
+        const abonoVal = parseFloat(r['ABONO']||0);
+        detallePago = `<div style="font-size:10px;color:var(--red);margin-top:2px;white-space:nowrap">Abono $${abonoVal.toFixed(2)} · Saldo $${creditoPend.toFixed(2)}</div>`;
+      }
+    }
+    const pago  = r['FORMA DE PAGO'] ? `<span class="badge badge-teal">${r['FORMA DE PAGO']}</span>${detallePago}` : '';
     /* [NEW] Botón Editar — solo funciona si la fila trae el id real del pedido en Firestore
        (las filas de pagos/gastos no lo traen, pero renderTabla solo recibe pedidos con producto) */
     const accion = (r['_pedidoId'] && ROL_ACTUAL === 'admin') ? `<button class="btn-editar-fila" onclick="abrirEditarPedido('${r['_pedidoId']}')" title="Editar este pedido">✏ Editar</button><button class="btn-eliminar-fila" onclick="eliminarPedidoCompleto('${r['_pedidoId']}')" title="Eliminar este pedido permanentemente">🗑 Eliminar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>'; /* [NEW] Secretaria no ve Editar/Eliminar */
@@ -1745,11 +1802,17 @@ function poblarClienteSelect(datos) {
     const cliente = r['CLIENTE'];
     if (!cliente) return;
     if (!_mapaDeudaPorCliente[cliente]) _mapaDeudaPorCliente[cliente] = { credito: 0, pagos: 0 };
-    const tot = parseFloat(r['TOTAL PEDIDO ($)']||0);
-    if (r['PRODUCTO'] && tot > 0 && (r['FORMA DE PAGO']||'') === 'Crédito') {
-      _mapaDeudaPorCliente[cliente].credito += tot;
-    } else if (!r['PRODUCTO'] && tot > 0 && String(r['TOTAL PEDIDO ($)']).indexOf('-') === -1) {
-      _mapaDeudaPorCliente[cliente].pagos += tot;
+    // [FIX] NUEVO FORMATO DE PAGO MÚLTIPLE — antes esto comparaba FORMA DE PAGO
+    // contra el string exacto 'Crédito', lo cual dejaba de funcionar en cuanto
+    // formapago pasó a valer 'Mixto' (varias formas marcadas + saldo a crédito).
+    // Ahora usa CREDITO_PENDIENTE, un campo numérico ya calculado en _filaProducto()
+    // que da el mismo resultado para pedidos viejos (con 'abono') y nuevos (con
+    // 'pagos'+'creditoPendiente'), sin depender de ningún string de forma de pago.
+    const creditoPendiente = parseFloat(r['CREDITO_PENDIENTE']||0);
+    if (r['PRODUCTO'] && creditoPendiente > 0) {
+      _mapaDeudaPorCliente[cliente].credito += creditoPendiente;
+    } else if (!r['PRODUCTO'] && parseFloat(r['TOTAL PEDIDO ($)']||0) > 0 && String(r['TOTAL PEDIDO ($)']).indexOf('-') === -1) {
+      _mapaDeudaPorCliente[cliente].pagos += parseFloat(r['TOTAL PEDIDO ($)']||0);
     }
   });
 
@@ -1998,8 +2061,17 @@ function renderReporteAsesorDetalle(){
   // día. Se recalcula aquí igual que en Liquidación: Ventas al Contado (con
   // el ajuste de abono parcial) + Pagos cobrados SOLO en Efectivo − Gastos.
   const pagosEfectivoAsesor = pagos.filter(r => r['FORMA DE PAGO']==='Efectivo').reduce((s,r) => s + (parseFloat(r['TOTAL PEDIDO ($)'])||0), 0);
+  // [FIX] NUEVO FORMATO DE PAGO MÚLTIPLE — antes, un pedido 'Mixto' (varias formas
+  // marcadas) nunca coincidía con 'Contado' exacto, así que la parte realmente cobrada
+  // en efectivo dentro de esos pedidos se perdía por completo de "Total en caja" de este
+  // asesor. Ahora, si el pedido trae el desglose (PAGOS_DESGLOSE), se suma solo la
+  // porción marcada como "Contado" dentro de ese desglose.
   const ventasContadoAsesor = pedidosConTotal.reduce((s,r) => {
     const tot = parseFloat(r['TOTAL PEDIDO ($)']) || 0;
+    if (r['PAGOS_DESGLOSE'] && r['PAGOS_DESGLOSE'].length) {
+      const contadoParte = r['PAGOS_DESGLOSE'].filter(pg => pg.forma === 'Contado').reduce((s2,pg) => s2 + (parseFloat(pg.monto)||0), 0);
+      return s + contadoParte;
+    }
     const abono = parseFloat(r['ABONO'] || 0);
     if (abono > 0 && abono < tot) return s; // abono parcial: el efectivo real ya se cuenta vía Pagos, no se duplica aquí
     if (abono >= tot && tot > 0) return s + tot; // el abono cubrió el 100% de la venta
@@ -2584,7 +2656,19 @@ function renderModalEditarPedido(){
   if(!p) return;
 
   const optionsAsesor = _asesoresCache.map(r => `<option value="${r}" ${p.empleado===r?'selected':''}>${r.split(':')[1]?.trim()||r}</option>`).join('');
-  const optionsPago = FORMAS_PAGO_FIJAS.map(f => `<option value="${f}" ${p.formapago===f?'selected':''}>${f}</option>`).join('');
+  // [FIX] NUEVO FORMATO DE PAGO MÚLTIPLE — este selector solo conocía las 4 formas
+  // fijas (Contado/Crédito/Transferencia/Cheque). Si el pedido se creó con pago
+  // múltiple, su 'formapago' vale 'Mixto', y como esa opción no existía aquí, el
+  // <select> se quedaba sin ninguna marcada — al guardar CUALQUIER otro cambio (ej.
+  // solo el teléfono), esto sobrescribía 'Mixto' por el valor por defecto del
+  // desplegable sin que el admin lo pidiera. Este editor no soporta re-editar el
+  // desglose de pago múltiple en sí (pagos[]/creditoPendiente quedan intactos porque
+  // guardarEdicionPedido() solo actualiza los campos que sí edita este formulario);
+  // esta opción es solo para que 'Mixto' se conserve tal cual si no se toca.
+  const optionsPagoBase = p.formapago === 'Mixto'
+    ? [`<option value="Mixto" selected>Mixto (pago múltiple — no editable aquí)</option>`, ...FORMAS_PAGO_FIJAS.map(f => `<option value="${f}">${f}</option>`)]
+    : FORMAS_PAGO_FIJAS.map(f => `<option value="${f}" ${p.formapago===f?'selected':''}>${f}</option>`);
+  const optionsPago = optionsPagoBase.join('');
 
   document.getElementById('editarBody').innerHTML = `
     <div class="editar-seccion-label">📋 Datos del pedido</div>
