@@ -954,24 +954,9 @@ function renderPagosGastosDetalle(pagos, gastos) {
     ? `<div style="font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Desglose por forma de pago</div><div style="display:flex;flex-wrap:wrap;gap:8px">${tagsForma}</div>`
     : '';
 
-  document.getElementById('resumenPgGrid').innerHTML = `
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">
-      <div style="flex:1;min-width:170px;background:var(--teal-light);border:1.5px solid var(--success-border,#4ec9a0);border-radius:var(--radius);padding:14px 16px">
-        <div style="font-size:10px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--teal-dark)">🟢 Ingresos (pagos cobrados)</div>
-        <div style="font-family:'DM Serif Display',serif;font-size:1.6rem;color:var(--teal-dark)">$${totalPagos.toFixed(2)}</div>
-        <div style="font-size:11px;color:var(--muted)">${pagos.length} pago(s)</div>
-      </div>
-      <div style="flex:1;min-width:170px;background:#fdecea;border:1.5px solid #e57373;border-radius:var(--radius);padding:14px 16px">
-        <div style="font-size:10px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--red)">🔴 Egresos (gastos)</div>
-        <div style="font-family:'DM Serif Display',serif;font-size:1.6rem;color:var(--red)">$${totalGastos.toFixed(2)}</div>
-        <div style="font-size:11px;color:var(--muted)">${gastos.length} gasto(s)</div>
-      </div>
-    </div>
-    <div style="background:var(--navy);border-radius:var(--radius);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-      <span style="font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.6)">🧮 Total en caja (Ingresos − Egresos)</span>
-      <span style="font-family:'DM Serif Display',serif;font-size:1.9rem;color:${neto>=0?'#4ec9a0':'#f48fb1'}">$${neto.toFixed(2)}</span>
-    </div>
-    </div>`;
+  // [FIX] Se quitaron las tarjetas de Ingresos/Egresos/Total en Caja — ahora
+  // Cuadre de Caja muestra directamente Pagos registrados y Gastos registrados.
+  document.getElementById('resumenPgGrid').innerHTML = '';
 
   const tbodyPagos = document.getElementById('tablaPagosDetalle');
   if (!pagos.length) {
@@ -2306,12 +2291,16 @@ function exportarPagosGastosPDF() {
     </tr>`;
   }).join('');
   const v = window.open('', '_blank', 'width=900,height=900');
+  // [NEW] URL absoluta del logo — esta ventana se abre en blanco, sin el
+  // dashboard como base, así que una ruta relativa no cargaría.
+  const logoUrl = location.origin + '/logo-luanaqua.png';
   v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Pagos y Gastos — Aqua Luan — ${fecha}</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
     body{font-family:'DM Sans',sans-serif;color:#1a3a5c;padding:24px;background:#fff;}
-    .print-header{text-align:center;margin-bottom:16px;padding-bottom:16px;border-bottom:2px solid #1a3a5c;}
+    .print-header{display:flex;align-items:center;justify-content:center;gap:14px;text-align:center;margin-bottom:16px;padding-bottom:16px;border-bottom:2px solid #1a3a5c;}
+    .print-header img{height:46px;width:auto;}
     .print-header h1{font-family:'DM Serif Display',serif;font-size:22px;color:#1a3a5c;}
     .print-header p{font-size:12px;color:#888;margin-top:4px;}
     .resumen-forma{text-align:center;margin-bottom:18px;}
@@ -2330,11 +2319,18 @@ function exportarPagosGastosPDF() {
     .neto-box{background:#1a3a5c;border-radius:12px;padding:16px 20px;margin-top:24px;display:flex;align-items:center;justify-content:space-between;}
     .neto-label{font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.6);}
     .neto-value{font-family:'DM Serif Display',serif;font-size:26px;color:${neto>=0?'#4ec9a0':'#f48fb1'};}
-    @media print{body{padding:12px;} thead{display:table-header-group;}}
+    .firmas{display:flex;justify-content:space-between;gap:30px;margin-top:70px;page-break-inside:avoid;}
+    .firmas .firma{flex:1;text-align:center;}
+    .firmas .firma-linea{border-top:1.5px solid #1a3a5c;margin-bottom:6px;}
+    .firmas .firma-label{font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#1a3a5c;}
+    @media print{body{padding:12px;} thead{display:table-header-group;} .firmas{margin-top:60px;}}
   </style></head><body>
   <div class="print-header">
-    <h1>💳 Pagos y Gastos — Aqua Luan</h1>
-    <p>Fecha: ${fecha} · ${pagos.length} pago(s) · ${gastos.length} gasto(s) · Generado: ${new Date().toLocaleString('es-EC')}</p>
+    <img src="${logoUrl}" alt="Aqua Luan" onerror="this.style.display='none'">
+    <div>
+      <h1>💳 Pagos y Gastos — Aqua Luan</h1>
+      <p>Fecha: ${fecha} · ${pagos.length} pago(s) · ${gastos.length} gasto(s) · Generado: ${new Date().toLocaleString('es-EC')}</p>
+    </div>
   </div>
   <div class="resumen-forma">${resumenForma}</div>
   <div class="seccion-title" style="color:#1565c0">💰 Pagos registrados</div>
@@ -2356,6 +2352,11 @@ function exportarPagosGastosPDF() {
   <div class="neto-box">
     <span class="neto-label">Total en caja (Pagos − Gastos)</span>
     <span class="neto-value">$${neto.toFixed(2)}</span>
+  </div>
+  <div class="firmas">
+    <div class="firma"><div class="firma-linea">&nbsp;</div><div class="firma-label">Firma Secretaria</div></div>
+    <div class="firma"><div class="firma-linea">&nbsp;</div><div class="firma-label">Firma Asesor</div></div>
+    <div class="firma"><div class="firma-linea">&nbsp;</div><div class="firma-label">Firma Ayudante</div></div>
   </div>
   <script>window.onload=function(){window.print();}<\/script>
   </body></html>`);
