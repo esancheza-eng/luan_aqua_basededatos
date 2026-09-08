@@ -2009,6 +2009,24 @@ function _calcularLiquidacion(){
   }; return porAsesor[nombre]; };
   hist.forEach(p=>{
     const d=getAsesor(p.empleado||'Sin asignar'); const tot=parseFloat(p.total||0);
+    /* [FIX] NUEVO FORMATO DE PAGO MÚLTIPLE — el asesor puede marcar varias formas de
+       pago a la vez (ej. Contado + Transferencia + Cheque + Crédito). Antes, estos
+       pedidos llegaban aquí con formapago='Mixto' y, como no calzaba con ninguno de
+       los 4 casos de abajo, TODO el total cayía en "Sin clasificar" — la app de
+       pedidos mostraba $0 en Ventas al contado aunque el asesor sí hubiera cobrado
+       parte en efectivo. Mismo fix ya aplicado en el Dashboard (_calcularLiquidacionDash);
+       replicado aquí para que ambas pantallas coincidan siempre. */
+    if(p.pagos!==null && p.pagos!==undefined){
+      (p.pagos||[]).forEach(pg=>{
+        const monto=parseFloat(pg.monto||0);
+        if(pg.forma==='Contado') d.ventasContado+=monto;
+        else if(pg.forma==='Transferencia') d.ventasTransferencia+=monto;
+        else if(pg.forma==='Cheque') d.ventasCheque+=monto;
+        else d.ventasOtras+=monto;
+      });
+      d.ventasCredito+=parseFloat(p.creditoPendiente||0);
+    } else {
+    // --- Compatibilidad con pedidos creados ANTES del pago múltiple (campo 'abono') ---
     const abono=parseFloat(p.abono||0); // [FIX] venta con abono parcial (Contado o Crédito)
     if(abono>0 && abono<tot){
       // [FIX] El abono ya se registra por separado como un "Pago" en efectivo
@@ -2028,6 +2046,7 @@ function _calcularLiquidacion(){
     else if(p.formapago==='Transferencia') d.ventasTransferencia+=tot;
     else if(p.formapago==='Cheque') d.ventasCheque+=tot;
     else d.ventasOtras+=tot; // [NEW] resguardo por si llega un formapago fuera de las 4 opciones conocidas
+    }
   });
   listaPagos.forEach(p=>{
     const d=getAsesor(p.empleado||'Sin asignar');
