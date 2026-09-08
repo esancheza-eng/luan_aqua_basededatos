@@ -1,0 +1,202 @@
+# Changelog reconstruido — Luan Aqua (aqualuanpedidos.elhyai.com)
+
+> Generado el 8 de septiembre de 2026 a partir del historial real de `git log` del repo
+> `esancheza-eng/luan_aqua_basededatos`. Cerca de 82 de los 189 commits tienen mensajes
+> genéricos sin relación con este proyecto (`"Update fmt.Println message from 'Hello' to
+> 'Goodbye'"`, `"Update index.html"`, etc.) — todo indica que es texto de plantilla por
+> defecto de la herramienta de commits usada, no un intento de ocultar nada: el código de
+> cada uno de esos commits es real, legítimo y quedó revisado al reconstruir este documento.
+> Las descripciones de los commits marcados 🟠 se reconstruyeron a partir de los comentarios
+> `[NEW]`/`[FIX]` que el propio código dejó, o del diff cuando no había comentario.
+
+Leyenda: 🟢 mensaje original ya era descriptivo · 🟠 mensaje genérico, descripción reconstruida del diff
+
+- 🟢 `8f23ade` (2026-07-30) — Add files via upload
+- 🟠 `5a547ce` (2026-07-30) — *"Update print statement from 'Hello' to 'Goodbye'"* → [NEW] Firebase Auth avisa automáticamente cuando cambia la sesión —; [NEW] La restauración de sesión ahora la maneja auth.onAuthStateChanged() más arriba —; [NEW] Lista los asesores reales desde Firestore (ya no desde AUTH_REGISTRY); [NEW] Revoca el acceso del asesor (borra su perfil de Firestore) — ya no genera instrucciones; función(es) nueva(s): `_emailDeUsuario()`, `cerrarSesion()`
+- 🟢 `9c71408` (2026-07-30) — Integrate Firebase Auth for admin login
+- 🟢 `4f85259` (2026-07-30) — Rename dashboard (12).html to dashboard.html
+- 🟠 `68d330f` (2026-07-30) — *"Update print statement from 'Hello' to 'Goodbye'"* → [NEW] Persistencia offline nativa de Firestore — reemplaza el IndexedDB/cola manual; [NEW] cancela los listeners al cerrar sesión; [NEW] Listeners en tiempo real — reemplazan toda la lógica de localStorage por día.; [FIX] re-suscribe con la fecha del nuevo día; función(es) nueva(s): `_horaDeTimestamp()`, `_iniciarListenersDelDia()`
+- 🟢 `f5edf66` (2026-07-30) — Switch dashboard data source to Firestore
+- 🟠 `444b6a1` (2026-07-30) — *"Update fmt.Println message from 'Hello' to 'Goodbye'"* → [FIX] Fecha LOCAL (no UTC) — con .toISOString() en Ecuador (UTC-5), después de; función(es) nueva(s): `_fechaLocalHoy()`
+- 🟠 `d57f257` (2026-07-30) — *"Update print statement from 'Hello' to 'Goodbye'"* → [NEW] se llena en vivo desde Firestore (usuarios) — ver _iniciarListenerAsesoresRutas(); [NEW] ídem + 'Administración'; [NEW] Catálogo de productos en tiempo real — reemplaza la lista fija de LISTAS_BLANCAS.productos; [NEW] Repuebla el <select> de Ventas con el catálogo en vivo, conservando la selección si sigue existiendo; función(es) nueva(s): `_iniciarListenerProductos()`, `renderOpcionesProductoSelect()`, `_iniciarListenerAsesoresRutas()`, `renderSelectsRutasAdmin()`
+- 🟠 `190489c` (2026-07-30) — *"Update print statement from 'Hello' to 'Goodbye'"* → [FIX] antes no se refrescaba
+- 🟢 `12c9915` (2026-07-30) — Refactor 'filtroAsesor' to use dynamic data
+- 🟢 `88505f6` (2026-07-31) — Implement order editing feature with modal
+- 🟠 `e68f97f` (2026-07-31) — *"Update print statement from 'Hello' to 'Goodbye'"* → [FIX] Un asesor (no admin) nunca dispara _iniciarListenerAsesoresRutas() (esa función
+- 🟠 `4d5e012` (2026-07-31) — *"Update print statement from 'Hello' to 'Goodbye'"* → [FIX] Si el "Resumen del Día" ya está abierto (ej. mientras el admin edita un pedido; [FIX] refresco en vivo del Resumen del Día; [NEW] Antes el Resumen del Día se calculaba una sola vez, al momento de abrirlo — si; función(es) nueva(s): `_renderResumenDiaContenido()`, `abrirResumenDia()`
+- 🟠 `9c8f379` (2026-07-31) — *"Update dashboard.html"* → [NEW] Eliminar Pedido — botón rojo al lado de Editar; [NEW] hasta que el usuario toque manualmente la selección, se mantienen todos los clientes marcados por defecto; [NEW] Buscador multi-selección de montos (checkboxes) — reemplaza el select "Total mín."; [NEW] igual que con clientes: por defecto todos los montos quedan marcados; función(es) nueva(s): `renderListaMontosCheck()`, `toggleMontoSeleccionado()`, `toggleSeleccionarTodosMontos()`, `actualizarCheckTodosMontos()`, `actualizarLabelMontos()`
+- 🟢 `491fee9` (2026-07-31) — Add new dashboard sections for orders and inventory
+- 🟠 `5a6cc62` (2026-08-01) — *"Update print statement to say 'Goodbye World'"* → [FIX] ahora acepta 0 (nota, sin restar nada) — solo se rechaza negativo, vacío o mayor a 9999; [NEW] Descuenta stock automáticamente al confirmar una venta — escribe en la misma; [NEW] descuenta stock automáticamente por esta venta — no bloquea el guardado si falla; [FIX] las unidades de regalías ahora también suman al total; función(es) nueva(s): `_descontarInventarioAutomatico()`
+- 🟠 `9e62a4b` (2026-08-01) — *"Update print statement from 'Hello' to 'Goodbye'"* → [NEW] Reporte por Asesor — clic en una tarjeta para ver todo el detalle -->; [NEW] Crear Usuarios — cuentas de Secretaria (solo lectura del Dashboard) -->; [NEW] Instancia secundaria de Firebase — permite crear la cuenta de Secretaria sin; [NEW] 'admin' | 'secretaria' — controla qué secciones y botones se muestran; función(es) nueva(s): `escHTML()`, `aplicarRestriccionesRol()`, `getDatosSoloFecha()`, `renderReporteAsesores()`, `seleccionarAsesorReporte()`
+- 🟢 `a5bd0cb` (2026-08-01) — Create CNAME
+- 🟠 `3ab088a` (2026-08-01) — *"Update output message from 'Hello' to 'Goodbye'"* → contexto: `body { padding: 1rem 0.75rem 3rem; }`; línea añadida: `<script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-app-check-compat.js"></sc`; (1 file changed, 15 insertions(+), 5 deletions(-))
+- 🟠 `c14e46c` (2026-08-01) — *"Update fmt.Println message from 'Hello' to 'Goodbye'"* → contexto: `╚══════════════════════════════════════════════════════════════════════╝`; línea añadida: `<link rel="icon" type="image/png" href="logo-luanaqua.png">`; (1 file changed, 1 insertion(+))
+- 🟢 `f318236` (2026-08-01) — Implement Firebase App Check in dashboard.html
+- 🟠 `d0e8897` (2026-08-01) — *"Change greeting from 'Hello' to 'Goodbye'"* → cambio menor no reconstruible automáticamente (Change greeting from 'Hello' to 'Goodbye')
+- 🟢 `b44c70e` (2026-08-01) — Add manual login tracking and security checks
+- 🟠 `460df95` (2026-08-01) — *"Update print statement to show 'Goodbye World'"* → contexto: `body { padding: 1rem 0.75rem 3rem; }`; línea añadida: `/* [SECURITY — REVERTIDO en esta app] Se probó Firebase App Check aquí, pero se confirmó`; (1 file changed, 6 insertions(+), 9 deletions(-))
+- 🟠 `545205e` (2026-08-01) — *"Update print statement from 'Hello' to 'Goodbye'"* → [NEW] Extraído de la versión anterior (Google Sheets): esa versión nunca esperaba; [NEW] Igual que la versión anterior: si YA sabemos que no hay internet, no se; [NEW] El navegador dice que hay señal, pero por si acaso está desactualizado
+- 🟢 `5902baa` (2026-08-01) — Update dashboard table headers and data rendering
+- 🟢 `d7ae43c` (2026-08-01) — Improve login process and session security
+- 🟢 `f37ed89` (2026-08-01) — Implement client ordering by arrival time
+- 🟠 `1047324` (2026-08-01) — *"Update fmt.Println message from 'Hello' to 'Goodbye'"* → [NEW] Persistencia offline nativa de Firestore — reemplaza el IndexedDB/cola manual; [FIX] Fecha LOCAL (no UTC) — con .toISOString() en Ecuador (UTC-5), después de; [NEW] se llena en vivo desde Firestore (usuarios) — ver _iniciarListenerAsesoresRutas(); [NEW] ídem + 'Administración'; sección(es): Productos, Empleado responsable, Datos del cliente; función(es) nueva(s): `_emailDeUsuario()`, `_fechaLocalHoy()`, `generarTokenSesion()`, `esValorSeguro()`, `sanitizarTexto()`
+- 🟠 `54f45fc` (2026-08-01) — *"Update greeting from 'Hello' to 'Goodbye'"* → [NEW] Panel administrativo — menú lateral por secciones; [NEW] Editar Pedido — botón de fila + modal; [NEW] Eliminar Pedido — botón rojo al lado de Editar; [NEW] Detalle de Pagos y Gastos -->; función(es) nueva(s): `_emailDeUsuario()`, `switchSeccionDash()`, `switchTab()`, `cerrarSesion()`, `_iniciarListenerAsesoresDash()`
+- 🟢 `2273cdd` (2026-08-01) — Fix missing newline at end of dashboard.html
+- 🟢 `91ae519` (2026-08-01) — Add files via upload
+- 🟢 `0604499` (2026-08-01) — Add actions column for payments and expenses tables
+- 🟢 `3403850` (2026-08-01) — Fix missing newline at end of dashboard.html
+- 🟢 `a16aad1` (2026-08-01) — Fix missing newline at end of dashboard.html
+- 🟢 `7506e8b` (2026-08-01) — Implement web orders section in dashboard
+- 🟢 `996bf59` (2026-08-01) — Agregar Sistema Gerencial: módulo de clientes, KPIs ejecutivos, desempeño asesores y reactivación. URL: /sistemagerencial
+- 🟢 `92c68fb` (2026-08-01) — Fix: Sistema Gerencial real con modulo clientes 360, KPIs, asesores y reactivacion
+- 🟢 `49f4481` (2026-08-01) — Sistema Gerencial v2: sidebar vertical izquierda con todas las secciones del dashboard (Cuadre de Caja, Reporte Asesor, Eliminados, Inventario, Roles, Importar, Usuarios, Pedidos Web) + Clientes + datos demo enriquecidos
+- 🟢 `e07ee5c` (2026-08-01) — Sistema Gerencial v2: sidebar vertical con Cuadre, Asesores, Eliminados, Inventario, Roles, Importar, Usuarios, Pedidos Web + Clientes
+- 🟢 `77c172e` (2026-08-01) — Sistema Gerencial v2: sidebar vertical + todas las secciones (Cuadre, Asesores, Eliminados, Inventario, Roles, Importar, Usuarios, Pedidos Web, Clientes) con datos demo
+- 🟢 `72ce3a1` (2026-08-01) — Delete sistemagerencial directory
+- 🟠 `230d773` (2026-08-01) — *"Update fmt.Println message from 'Hello' to 'Goodbye'"* → [NEW] Modal 360° de Consultar por Cliente; [NEW] Estado de negocio de un cliente, según reglas exactas del negocio:; [NEW] estadísticas calculadas por cliente, para la tabla/modal/PDF; [NEW] checkboxes marcados para exportar; función(es) nueva(s): `_calcularEstadoCliente()`, `_badgeEstadoCliente()`, `poblarClienteSelect()`, `mostrarDetalleCliente()`, `toggleClienteSeleccionadoPdf()`
+- 🟢 `0967316` (2026-08-02) — Fix missing newline at end of dashboard.html
+- 🟠 `c7a065e` (2026-08-02) — *"Update print statement from 'Hello' to 'Goodbye'"* → [NEW] Buscador multi-selección de clientes (checkboxes); [NEW] hasta que el usuario toque manualmente la selección, se mantienen todos los clientes marcados por defecto; [NEW] Buscador multi-selección de montos (checkboxes) — reemplaza el select "Total mín."; [NEW] igual que con clientes: por defecto todos los montos quedan marcados; función(es) nueva(s): `poblarClienteSelect()`, `poblarFiltroTotalCliente()`, `renderListaMontosCheck()`, `toggleMontoSeleccionado()`, `toggleSeleccionarTodosMontos()`
+- 🟢 `88131fb` (2026-08-02) — Remove 'Pedidos Web' section from dashboard
+- 🟠 `e771df0` (2026-08-02) — *"Update fmt.Println output from 'Hello' to 'Goodbye'"* → [NEW] Modal 360° de Consultar por Cliente; [NEW] Pedidos Web — cola de pedidos que llegan de la página pública, pendientes de aprobación -->; [NEW] cola de pedidos de la página web; [NEW] Estado de negocio de un cliente, según reglas exactas del negocio:; función(es) nueva(s): `_calcularEstadoCliente()`, `_badgeEstadoCliente()`, `poblarClienteSelect()`, `mostrarDetalleCliente()`, `toggleClienteSeleccionadoPdf()`
+- 🟢 `6c06a03` (2026-08-02) — Fix missing newline at end of dashboard.html
+- 🟢 `3ce9425` (2026-08-02) — Fix missing newline at end of dashboard.html
+- 🟢 `95def6c` (2026-08-02) — Fix missing newline at end of dashboard.html
+- 🟢 `911d933` (2026-08-02) — Restore escapeAttr function in dashboard.html
+- 🟢 `bcc849a` (2026-08-02) — Add advisor name normalization and correction feature
+- 🟢 `f9a9686` (2026-08-02) — Add files via upload
+- 🟢 `4b034f3` (2026-08-02) — Add files via upload
+- 🟢 `ec17280` (2026-08-02) — Add files via upload
+- 🟢 `693da9f` (2026-08-02) — Add files via upload
+- 🟢 `225ee22` (2026-08-02) — Add files via upload
+- 🟢 `51a5af2` (2026-08-02) — Add README for Aqua Luan app icons
+- 🟢 `3a32cf2` (2026-08-02) — Add files via upload
+- 🟠 `e57081a` (2026-08-02) — *"Update print statement from 'Hello' to 'Goodbye'"* → línea añadida: `<link rel="manifest" href="./manifest.json">`; (1 file changed, 1 insertion(+))
+- 🟢 `82f8e90` (2026-08-02) — Update icon paths in manifest.json
+- 🟠 `f023984` (2026-08-02) — *"Update print statement from 'Hello' to 'Goodbye'"* → [FIX] excluye cuentas de Secretaria de este selector — solo debe mostrar asesores con ruta, evita que aparezcan mezcladas con las secretarias cre
+- 🟠 `e689f8b` (2026-08-13) — *"Fix typo in print statement"* → [NEW] Cloud Functions — usado por la gestión de asesores (restablecer contraseña; [NEW] Restablece la contraseña del asesor seleccionado, vía Cloud Function; sección(es): Restablecer contraseña
+- 🟠 `47e4464` (2026-08-14) — *"Update print statement from 'Hello' to 'Goodbye'"* → contexto: `async function resetearPasswordAsesor(){`; línea añadida: `/* [DIAGNÓSTICO TEMPORAL — quitar después de resolver el bug]`; (1 file changed, 21 insertions(+), 1 deletion(-))
+- 🟠 `ddaffff` (2026-08-14) — *"Change 'Hello World' to 'Goodbye World'"* → contexto: `async function eliminarAsesorSeleccionado(){`; línea añadida: `await _llamarFuncion('eliminarAsesorCompleto', { uid });`; (1 file changed, 22 insertions(+), 25 deletions(-))
+- 🟠 `fe25ec4` (2026-08-14) — *"Update print statement from 'Hello' to 'Goodbye'"* → contexto: `async function _llamarFuncion(nombre, datos){`; línea añadida: `const rawText = await resp.text();`; (1 file changed, 13 insertions(+), 2 deletions(-))
+- 🟠 `8b0eeea` (2026-08-14) — *"Update index.html"* → contexto: `async function _llamarFuncion(nombre, datos){`; (1 file changed, 5 deletions(-))
+- 🟢 `6e83dbb` (2026-08-14) — Add Cloud Functions for admin user management
+- 🟢 `5bed741` (2026-08-14) — Add package.json for Cloud Functions setup
+- 🟢 `f5bd56e` (2026-08-14) — Create package.json for Cloud Functions
+- 🟢 `760e935` (2026-08-14) — Delete functions/functions directory
+- 🟢 `5512a73` (2026-08-14) — Add README for Cloud Functions setup and usage
+- 🟠 `267a536` (2026-08-17) — *"Update print statement from 'Hello' to 'Goodbye'"* → [FIX] distingue "aún sincronizando" de "falló de verdad"; [FIX] Antes se llamaba mostrarExito() sin revisar si escrituraPedido falló de
+- 🟠 `15b19ea` (2026-08-18) — *"Update fmt.Println message from 'Hello' to 'Goodbye'"* → [FIX] Solo se limpia 'pago-empleado' si es un <select> real (admin). Si es un asesor; [FIX] Mismo caso que en registrarPago(): solo limpiar 'gasto-empleado' si es un
+- 🟠 `877d9a4` (2026-08-18) — *"Update print statement from 'Hello' to 'Goodbye'"* → [NEW] Cierre de caja automático: Pagos + Ventas de contado − Gastos, se recalcula solo -->; [NEW] las ventas de contado del día entran en el cierre automático; [NEW] CIERRE DE CAJA AUTOMÁTICO --------------------------------------------------------; función(es) nueva(s): `actualizarCierreCajaAuto()`
+- 🟠 `d12865e` (2026-08-28) — *"Update print statement from 'Hello' to 'Goodbye'"* → [NEW] Cierre de caja automático también visible en la pestaña Gastos, igual que en Pagos -->; [NEW] Ahora hay una barra en Pagos y otra en Gastos: se actualizan todas las que existan en el DOM
+- 🟠 `00ecdd5` (2026-08-28) — *"Update index.html"* → [NEW] las ventas de contado del día entran en el cierre automático; [NEW] Liquidación de efectivo por asesor: cuánto efectivo debe entregar cada ruta hoy.; sección(es): , Liquidación de efectivo por asesor; función(es) nueva(s): `renderLiquidacion()`
+- 🟠 `8a68b83` (2026-08-28) — *"Update print statement from 'Hello' to 'Goodbye'"* → [NEW] PDF de la Liquidación de Efectivo — mismo estilo visual que el PDF de pedidos.; sección(es): Registro total de pagos, Liquidación de efectivo por asesor; función(es) nueva(s): `_calcularLiquidacion()`, `renderLiquidacion()`, `_buildLiquidacionPDF()`, `descargarPDFLiquidacion()`
+- 🟠 `430a9e7` (2026-08-28) — *"Update index.html"* → contexto: `padding: 2rem 1rem 4rem; -webkit-text-size-adjust: 100%;`; línea añadida: `overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;`; (1 file changed, 6 insertions(+), 3 deletions(-))
+- 🟠 `85c506b` (2026-08-28) — *"Update print statement from 'Hello' to 'Goodbye'"* → contexto: `padding: 2rem 1rem 4rem; -webkit-text-size-adjust: 100%;`; línea añadida: `display: grid; grid-template-columns: repeat(4, 1fr);`; (1 file changed, 12 insertions(+), 8 deletions(-))
+- 🟠 `2dad9e4` (2026-08-28) — *"Update index.html"* → sección(es): Registro total de gastos
+- 🟢 `4400ef3` (2026-08-28) — Escape HTML in notas textarea
+- 🟠 `027c5a8` (2026-08-28) — *"Update index.html"* → contexto: `function _renderResumenDiaContenido(){`; línea añadida: `/* [ELIMINADO] Los cuadros de Ingresos/Egresos/Total en caja se quitaron de aquí — esa`; (1 file changed, 3 insertions(+), 10 deletions(-))
+- 🟠 `e9fdd79` (2026-08-28) — *"Update print statement from 'Hello' to 'Goodbye'"* → [NEW] resguardo por si llega un formapago fuera de las 4 opciones conocidas; [NEW] resguardo por si llega una forma fuera de las 3 conocidas; [NEW] "Total a entregar — paso a paso": misma cuenta que arriba, pero mostrada
+- 🟠 `e43c493` (2026-08-29) — *"Update print statement from 'Hello' to 'Goodbye'"* → [NEW] Mismos datos del bloque "Total a entregar — paso a paso" que ya se ve en; [NEW] Caja gris "TOTAL A ENTREGAR — PASO A PASO", igual formato que el mensaje de WhatsApp
+- 🟠 `2f27495` (2026-08-29) — *"Update print statement from 'Hello' to 'Goodbye'"* → contexto: `function _renderResumenDiaContenido(){`; línea añadida: `const fp=po.map(([nom,p])=>`<tr><td>${escHTML(nom)}</td><td>${p.cantidad%1===0?parseInt(p.`; (1 file changed, 2 insertions(+), 2 deletions(-))
+- 🟠 `a9928d7` (2026-08-29) — *"Change greeting from 'Hello' to 'Goodbye'"* → [FIX] Sin internet, el primer intento "rápido" (enableHighAccuracy:false) depende de; función(es) nueva(s): `resetGpsBadge()`
+- 🟢 `992fd55` (2026-08-29) — Refactor service worker for caching and sync
+- 🟢 `b63b917` (2026-08-29) — Rename sw (2).js to sw.js
+- 🟠 `2b929c6` (2026-08-29) — *"Update sw.js"* → [NEW] Cloud Functions — usado por la gestión de asesores (restablecer contraseña; [NEW] Persistencia offline nativa de Firestore — reemplaza el IndexedDB/cola manual; [FIX] Fecha LOCAL (no UTC) — con .toISOString() en Ecuador (UTC-5), después de; [NEW] se llena en vivo desde Firestore (usuarios) — ver _iniciarListenerAsesoresRutas(); sección(es): Productos, Empleado responsable, Datos del cliente; función(es) nueva(s): `_emailDeUsuario()`, `_fechaLocalHoy()`, `generarTokenSesion()`, `escHTML()`, `esValorSeguro()`
+- 🟠 `0a08ea2` (2026-08-29) — *"Update print statement from 'Hello' to 'Goodbye'"* → [FIX] Antes siempre decía "Usuario o contraseña incorrectos" sin importar la causa
+- 🟠 `a3d9b92` (2026-08-31) — *"Update fmt.Println message from 'Hello' to 'Goodbye'"* → [FIX] Igual que confirmarEnvio(): sin internet, la promesa de Firestore .add() NO se; [NEW] resguardo por si llega una forma fuera de las 3 conocidas; [FIX] Mismo problema y misma solución que en registrarPago(): sin internet, un await
+- 🟠 `c91008d` (2026-08-31) — *"Update index.html"* → contexto: `font-size: 13px; font-weight: 600; color: #1565c0;`; línea añadida: `.reg-lista { margin-top: 1rem; border-radius: var(--radius); overflow-x: auto; overflow-y:`; (1 file changed, 1 insertion(+), 1 deletion(-))
+- 🟠 `c00f0dd` (2026-09-02) — *"Update print statement from 'Hello' to 'Goodbye'"* → [NEW] Ticket angosto (48mm) para impresoras térmicas de recibo, ej. MPR-200.; función(es) nueva(s): `_buildTicketHTML()`, `_abrirVentanaTicket()`, `imprimirTicketAsesor()`, `imprimirTicketDesde()`
+- 🟠 `7f5c844` (2026-09-02) — *"Update print statement from 'Hello' to 'Goodbye'"* → contexto: `function _abrirVentanaTicket(contenido){`; línea añadida: `body{font-family:'Courier New',monospace;width:46mm;padding:1mm;color:#000;font-size:9px;l`; (1 file changed, 4 insertions(+), 4 deletions(-))
+- 🟠 `6d23f10` (2026-09-02) — *"Update print statement from 'Hello' to 'Goodbye'"* → contexto: `function _buildPDF(doc,d){`; línea añadida: `p.regalias.forEach(r=>{ doc.text(`+ Promo: ${r.nombre} x${r.cantidad}`,margin+6,y+4); y+=5`; (1 file changed, 4 insertions(+), 3 deletions(-))
+- 🟠 `6fd091b` (2026-09-02) — *"Update print statement from 'Hello' to 'Goodbye'"* → [NEW] solo el administrador puede eliminar pagos; [NEW] solo el administrador puede eliminar gastos
+- 🟠 `2b9c190` (2026-09-02) — *"Update index.html"* → contexto: `function _buildTicketHTML(d){`; línea añadida: `body{font-family:'Courier New',monospace;width:46mm;padding:1mm;color:#000;font-size:11px;`; (1 file changed, 5 insertions(+), 7 deletions(-))
+- 🟢 `18d9161` (2026-09-02) — Enhance import header normalization for Excel/CSV
+- 🟢 `0b1a660` (2026-09-02) — Normalize Excel date format in import process
+- 🟢 `3081f11` (2026-09-02) — Implement function to delete all imported orders
+- 🟢 `21895f6` (2026-09-02) — Add functionality to delete imported orders
+- 🟢 `024c2f6` (2026-09-02) — Implement payment filter for order details
+- 🟢 `a2cab36` (2026-09-02) — Refactor dashboard buttons and add payment filter
+- 🟢 `2fb4e70` (2026-09-02) — Add checklist dropdown filter for 'Pago' in orders
+- 🟢 `c377075` (2026-09-02) — Add date filters to dashboard
+- 🟢 `3b48cb0` (2026-09-02) — Enhance date filtering and dashboard initialization
+- 🟠 `f47c094` (2026-09-02) — *"Update print statement from 'Hello' to 'Goodbye'"* → [NEW] autocompletar Teléfono/Dirección al elegir un cliente ya registrado; [NEW] Logo Aqua Luan en base64 para insertarlo directo en los PDFs (jsPDF) sin; [NEW] Autocompletar Teléfono/Dirección/Precio al elegir un cliente ya registrado, tanto para; [NEW] si ya hay un producto elegido, sugiere su precio para este cliente; función(es) nueva(s): `_autocompletarClienteSeleccionado()`, `_autocompletarPrecioProducto()`
+- 🟢 `c30c04d` (2026-09-03) — Add danger zone for resetting all data
+- 🟢 `382f71e` (2026-09-03) — Implement complete collection deletion feature
+- 🟠 `b9c6947` (2026-09-03) — *"Update dashboard.html"* → contexto: `<span class="filter-label">Filtrar por fecha</span>`; línea añadida: `<button class="btn-filter" id="btnReiniciarTodoTop" style="background:#a93226" onclick="re`; (1 file changed, 1 insertion(+))
+- 🟢 `7dfe9a5` (2026-09-03) — Add top reset button and update reset logic
+- 🟢 `4b5ec2e` (2026-09-03) — Remove reset data section from dashboard
+- 🟢 `c28b589` (2026-09-03) — Implement data reset functionality and UI updates
+- 🟠 `b5459db` (2026-09-03) — *"Update print statement from 'Hello' to 'Goodbye'"* → contexto: `-<!DOCTYPE html>`; línea añadida: `/* Service Worker de Luan Aqua — guarda copia de la app (HTML, manifest, logo, íconos)`; (1 file changed, 58 insertions(+), 2371 deletions(-))
+- 🟢 `18cf454` (2026-09-03) — Change button action to iniciarListenersDashboard
+- 🟠 `0d9019d` (2026-09-03) — *"Update dashboard.js"* → [FIX] Antes esto traía TODA la colección completa (todos los pedidos/pagos/gastos; [NEW] _id agregado para poder editar/eliminar; función(es) nueva(s): `filtrarHoy()`, `limpiarFiltro()`
+- 🟢 `27af04f` (2026-09-03) — Fix missing newline at end of dashboard.js
+- 🟢 `6796ef2` (2026-09-03) — Fix missing newline at end of dashboard.html
+- 🟢 `716095f` (2026-09-03) — Fix missing newline at end of dashboard.html
+- 🟢 `5b1d5e3` (2026-09-03) — Rename 'Luan Aqua' to 'Aqua Luan' in dashboard.js
+- 🟠 `755d903` (2026-09-03) — *"Update dashboard.html"* → contexto: `<head>`; línea añadida: `<title>Dashboard — Aqua Luan</title>`; (1 file changed, 3 insertions(+), 8 deletions(-))
+- 🟢 `a745fe0` (2026-09-03) — Remove function to delete imported orders
+- 🟢 `0ede1e5` (2026-09-03) — Update real-time badge text in dashboard
+- 🟠 `0749974` (2026-09-03) — *"Update index.html"* → contexto: `function cerrarResumenModal(){ document.getElementById('resumenModalOverlay').cl`; línea añadida: `v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Resume`; (1 file changed, 1 insertion(+), 1 deletion(-))
+- 🟢 `092eb67` (2026-09-03) — Improve asesor filter for case insensitivity
+- 🟢 `4c4c93b` (2026-09-03) — Enhance pedido deletion process with inventory handling
+- 🟢 `bdf3874` (2026-09-03) — Implement password change and recovery for admin
+- 🟢 `7a59ae0` (2026-09-03) — Add password change button and forgot password link
+- 🟢 `1da94d0` (2026-09-03) — Refactor add function to accept parameters
+- 🟢 `31ffe90` (2026-09-03) — Fix missing newline at end of dashboard.html
+- 🟠 `3e802fb` (2026-09-03) — *"Update index.html"* → [NEW] Recuperar contraseña del admin por correo real. Solo funciona
+- 🟢 `a04936e` (2026-09-03) — Update password link color and fix HTML closing tag
+- 🟠 `97aa838` (2026-09-03) — *"Update print statement from 'Hello' to 'Goodbye'"* → contexto: `body { padding: 1rem 0.75rem 3rem; }`; línea añadida: `<a href="#" onclick="olvidoPasswordAdmin();return false;" style="font-size:12px;color:var(`; (1 file changed, 1 insertion(+), 1 deletion(-))
+- 🟢 `4df9916` (2026-09-03) — Add lazy loading and optimize Firestore queries
+- 🟠 `08e1614` (2026-09-04) — *"Update print statement from 'Hello' to 'Goodbye'"* → [NEW] hora exacta en que se genera la venta, para el ticket térmico
+- 🟠 `4142646` (2026-09-04) — *"Change 'Hello World' to 'Goodbye World'"* → [NEW] Si no viene la hora (pedidos ya existentes, guardada solo desde este cambio),
+- 🟠 `4df863b` (2026-09-04) — *"Update print statement from 'Hello' to 'Goodbye'"* → [NEW] recupera la hora real desde creadoEn para TODOS los pedidos de hoy, incluso los creados antes de este cambio
+- 🟠 `27f3320` (2026-09-04) — *"Update dashboard.js"* → [FIX] usa el ID real del pedido cuando existe, para no fusionar 2 pedidos distintos del mismo cliente el mismo día; [FIX] usa el ID real del pedido cuando existe
+- 🟠 `42a6138` (2026-09-04) — *"Change greeting from 'Hello World' to 'Goodbye World'"* → [NEW] Resumen impreso de TODOS los pedidos del asesor en el día (sesión actual),; función(es) nueva(s): `_buildResumenDiaPDF()`, `imprimirResumenDia()`
+- 🟠 `1ad87d3` (2026-09-04) — *"Update print statement from 'Hello' to 'Goodbye'"* → contexto: `<meta name="viewport" content="width=device-width, initial-scale=1.0">`; línea añadida: `║ AQUA LUAN — Sistema de Pedidos (Firebase Edition — Fase 1) ║`; (1 file changed, 45 insertions(+), 26 deletions(-))
+- 🟠 `34cd068` (2026-09-04) — *"Update dashboard.js"* → [NEW] carga perezosa; [NEW] resetea la carga perezosa al salir; [NEW] Auditoría — quién modificó/eliminó qué, cuándo, y el detalle antes/después.; [NEW] Para las ediciones de pedidos (que se guardan un registro por CAMPO; función(es) nueva(s): `_iniciarListenerAuditoria()`, `detenerListenerAuditoria()`
+- 🟢 `4aed39e` (2026-09-04) — Add auditing section Commit messageto dashboard
+- 🟠 `c1cc358` (2026-09-04) — *"Update print statement from 'Hello' to 'Goodbye'"* → [NEW] Botón pequeño de imprimir comprobante, en Pagos y Gastos; [NEW] Registro de auditoría — mismo helper que usa el Dashboard; [NEW] Comprobantes individuales de Pago y Gasto — mismo estilo visual del PDF; función(es) nueva(s): `_dibujarEncabezadoComprobante()`, `imprimirPago()`, `imprimirGasto()`, `imprimirReportePagos()`, `imprimirReporteGastos()`
+- 🟠 `9960dd7` (2026-09-04) — *"Update print statement from 'Hello' to 'Goodbye'"* → [NEW] Bloquea el acceso a esta app (registro de ventas) para la cuenta; [NEW] Mismo bloqueo que en doLogin — si la sesión de una Secretaria
+- 🟢 `ed8118e` (2026-09-04) — Fix advisor and client selection rendering issues
+- 🟢 `71bb729` (2026-09-05) — Implement shortcuts for 'Pagos' and 'Gastos' sections
+- 🟢 `bd9e132` (2026-09-05) — Add buttons for quick access to payments and expenses
+- 🟢 `d7e483f` (2026-09-05) — Update navigation buttons in dashboard.html
+- 🟠 `85146ce` (2026-09-05) — *"Update dashboard.js"* → contexto: `function switchSeccionDash(sec){`; (1 file changed, 11 deletions(-))
+- 🟢 `3e532ea` (2026-09-05) — Refactor payments and expenses section in dashboard
+- 🟠 `6709173` (2026-09-05) — *"Update dashboard.js"* → [NEW] Reemplaza a exportarPagosPDF() + exportarGastosPDF() por separado —; función(es) nueva(s): `exportarPagosGastosPDF()`
+- 🟢 `cb5fc7b` (2026-09-05) — Add cash liquidation section for advisors
+- 🟢 `9c98b95` (2026-09-05) — Implement cash liquidation feature in dashboard
+- 🟢 `0189099` (2026-09-05) — Optimize renderLiquidacionDash call based on visibility
+- 🟢 `0fd8d60` (2026-09-05) — Fix missing newline at end of dashboard.html
+- 🟢 `3d6862e` (2026-09-05) — Include all sold products in chart data
+- 🟢 `4c76893` (2026-09-05) — Rename chart title from 'Productos más vendidos' to 'Productos vendidos'
+- 🟠 `f9622fb` (2026-09-06) — *"Update fmt.Println to print 'Goodbye World'"* → [NEW] Ticket térmico (48mm) para un PAGO — mismo patrón que _buildTicketHTML(); función(es) nueva(s): `_buildTicketPagoHTML()`, `imprimirPagoTermico()`
+- 🟠 `826dd06` (2026-09-07) — *"Update print statement from 'Hello' to 'Goodbye'"* → [NEW] Abono en efectivo para ventas a crédito — ej. venta de $30, abono $20,; [NEW] recupera la hora real desde creadoEn para TODOS los pedidos de hoy, incluso los creados antes de este cambio; [NEW] Abono parcial en Contado o Crédito: muestra el campo cuando Forma de pago es; [NEW] Abono parcial en Contado o Crédito — valida que no sea mayor al total.; función(es) nueva(s): `_permiteAbono()`, `_actualizarVisibilidadAbono()`, `_actualizarInfoAbono()`
+- 🟢 `3676266` (2026-09-07) — Enhance dashboard with partial payment details
+- 🟢 `6ed926c` (2026-09-07) — Implement product sales breakdown for advisors
+- 🟠 `f05fabe` (2026-09-07) — *"Update dashboard.js"* → cambio menor no reconstruible automáticamente (Update dashboard.js)
+- 🟢 `bc9064e` (2026-09-07) — Refactor dashboard to filter by selected Asesor
+- 🟠 `98a1ca1` (2026-09-07) — *"Update fmt.Println message from 'Hello' to 'Goodbye'"* → [FIX] venta con abono parcial (Contado o Crédito); [FIX] El abono ya se registra por separado como un "Pago" en efectivo
+- 🟠 `382e100` (2026-09-07) — *"Update dashboard.js"* → [FIX] RUTA_COLORS de arriba usa nombres en "Título" (ej. "Jefferson"), pero el; función(es) nueva(s): `colorDeAsesor()`
+- 🟢 `16a0825` (2026-09-07) — Correct total cash calculation logic in dashboard
+- 🟢 `6f7f5b5` (2026-09-07) — Optimize xlsx script loading for dashboard
+- 🟢 `46194d6` (2026-09-07) — Add logo URL and update print header layout
+- 🟢 `d363b18` (2026-09-07) — Fix product accumulation logic in dashboard.js
+- 🟠 `93d72ec` (2026-09-07) — *"Update dashboard.html"* → [NEW] Notas Adicionales — pedidos con notas/observaciones registradas
+- 🟢 `030ec2c` (2026-09-07) — Implement renderNotasAdicionalesDash function
+- 🟢 `5bcb622` (2026-09-07) — Add 'Notas Adicionales' section to dashboard
+- 🟢 `895293a` (2026-09-07) — Implement lazy refresh for Notas Adicionales section
+- 🟠 `46364dd` (2026-09-07) — *"Update dashboard.js"* → [FIX] Se quitaron las tarjetas de Ingresos/Egresos/Total en Caja — ahora; [NEW] URL absoluta del logo — esta ventana se abre en blanco, sin el
+- 🟠 `10e4b5d` (2026-09-07) — *"Update dashboard.js"* → [FIX] LA PANTALLA SE CONGELABA porque los 3 listeners de arriba (pedidos,; [FIX] ver comentario en la función; [NEW] _id agregado para poder editar/eliminar; función(es) nueva(s): `_recalcularTodosLosDatosDebounced()`
+- 🟢 `7e88dc9` (2026-09-07) — Set Firebase Auth persistence to LOCAL to prevent freezing
+- 🟠 `0c579b8` (2026-09-07) — *"Update fmt.Println message from 'Hello' to 'Goodbye'"* → [FIX] Mismo ajuste que en dashboard.js: el authDomain de Firebase
+- 🟢 `8cde9da` (2026-09-07) — Improve chart rendering and data caching
+- 🟢 `dd9ddc8` (2026-09-07) — Improve caching and rendering for client data
+- 🟢 `36741a8` (2026-09-08) — Refactor payment handling for multiple payment formats
+- 🟠 `ab7030a` (2026-09-08) — *"Update print statement from 'Hello' to 'Goodbye'"* → sección(es): Forma de pago; función(es) nueva(s): `_elegirFormaPago()`, `_actualizarMontoCreditoUI()`
+- 🟠 `bdcae5e` (2026-09-08) — *"Update index.html"* → función(es) nueva(s): `_armarPagoMultiple()`
+- 🟠 `12bb4a1` (2026-09-08) — *"Update sw.js"* → contexto: `Firestore (db.enablePersistence en index.html). Este archivo solo se encarga de`; línea añadida: `const CACHE_NAME = 'luan-aqua-shell-v3';`; (1 file changed, 1 insertion(+), 1 deletion(-))
+- 🟢 `552b3bc` (2026-09-08) — Update inventory listener and add new sections
+- 🟠 `bbaa643` (2026-09-08) — *"Update index.html"* → función(es) nueva(s): `_leerMontosPago()`, `_armarPagoDesdeUI()`, `_armarPagoMultiple()`, `_actualizarMontoCreditoUI()`, `_actualizarVisibilidadAbono()`
+- 🟠 `1b56a65` (2026-09-08) — *"Update index.html"* → [NEW] recupera la hora real desde creadoEn para TODOS los pedidos de hoy, incluso los creados antes de este cambio; función(es) nueva(s): `_textoDesglosePago()`, `_desplegarCamposPago()`
+- 🟠 `cd45c8c` (2026-09-08) — *"Update index.html"* → cambio menor no reconstruible automáticamente (Update index.html)
+- 🟢 `9dfb8fb` (2026-09-08) — Implement secondary Firebase and payment breakdown
