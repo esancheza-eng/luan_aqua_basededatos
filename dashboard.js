@@ -56,6 +56,14 @@ function escHTML(str) {
 }
 /* [NEW] Instancia secundaria de Firebase — permite crear la cuenta de Secretaria sin
    cerrar la sesión del admin (crear un usuario normalmente inicia sesión con él). */
+function _textoDesgloseFila(r){
+  const cred=parseFloat(r['CREDITO_PENDIENTE']||0);
+  if (r['PAGOS_DESGLOSE'] && r['PAGOS_DESGLOSE'].length) {
+    const partes=r['PAGOS_DESGLOSE'].map(pg => `${pg.forma} $${(parseFloat(pg.monto)||0).toFixed(2)}`).join(' + ');
+    return cred>0.004 ? partes + ' + Crédito $' + cred.toFixed(2) : partes;
+  }
+  return r['FORMA DE PAGO'] || '-';
+}
 const _secondaryAppDash = firebase.initializeApp(firebaseConfig, 'secondaryDash');
 const _secondaryAuthDash = _secondaryAppDash.auth();
 
@@ -1238,14 +1246,13 @@ function renderTabla(pedidos) {
     const totalVal = parseFloat(r['TOTAL PEDIDO ($)']||0);
     const tieneSaldo = creditoPend > 0.004 && totalVal > 0;
     let detallePago = '';
-    if (tieneSaldo) {
-      if (r['PAGOS_DESGLOSE'] && r['PAGOS_DESGLOSE'].length) {
-        const partes = r['PAGOS_DESGLOSE'].map(pg => `${pg.forma} $${(parseFloat(pg.monto)||0).toFixed(2)}`).join(' + ');
-        detallePago = `<div style="font-size:10px;color:var(--muted);margin-top:2px;white-space:nowrap">${partes}</div><div style="font-size:10px;color:var(--red);white-space:nowrap">Saldo crédito $${creditoPend.toFixed(2)}</div>`;
-      } else {
-        const abonoVal = parseFloat(r['ABONO']||0);
-        detallePago = `<div style="font-size:10px;color:var(--red);margin-top:2px;white-space:nowrap">Abono $${abonoVal.toFixed(2)} · Saldo $${creditoPend.toFixed(2)}</div>`;
-      }
+    if (r['PAGOS_DESGLOSE'] && r['PAGOS_DESGLOSE'].length) {
+      const partes = r['PAGOS_DESGLOSE'].map(pg => `${pg.forma} $${(parseFloat(pg.monto)||0).toFixed(2)}`).join(' + ');
+      detallePago = `<div style="font-size:10px;color:var(--muted);margin-top:2px;white-space:nowrap">${partes}</div>`;
+      if (tieneSaldo) detallePago += `<div style="font-size:10px;color:var(--red);white-space:nowrap">Saldo crédito $${creditoPend.toFixed(2)}</div>`;
+    } else if (tieneSaldo) {
+      const abonoVal = parseFloat(r['ABONO']||0);
+      detallePago = `<div style="font-size:10px;color:var(--red);margin-top:2px;white-space:nowrap">Abono $${abonoVal.toFixed(2)} · Saldo $${creditoPend.toFixed(2)}</div>`;
     }
     const pago  = r['FORMA DE PAGO'] ? `<span class="badge badge-teal">${r['FORMA DE PAGO']}</span>${detallePago}` : '';
     /* [NEW] Botón Editar — solo funciona si la fila trae el id real del pedido en Firestore
@@ -1672,7 +1679,7 @@ function exportarClientePDF() {
         <td style="text-align:center">${r['CANTIDAD']||'-'}</td>
         <td style="text-align:right">$${valorTotal.toFixed(2)}</td>
         <td style="text-align:right;font-weight:700">${totalPedido}</td>
-        <td>${r['FORMA DE PAGO']||'-'}</td>
+        <td>${escHTML(_textoDesgloseFila(r))}</td>
       </tr>`;
     }).join('');
     totalGeneralTodos += totalCliente;
@@ -2446,7 +2453,7 @@ function exportarPagosGastosPDF() {
   const filasPagos = pagos.map(r => `<tr>
     <td>${escHTML(r['CLIENTE']||'-')}</td>
     <td>${(r['ASESOR / RUTA']||'').split(':')[1]?.trim()||r['ASESOR / RUTA']||'-'}</td>
-    <td>${r['FORMA DE PAGO']||'-'}</td>
+    <td>${escHTML(_textoDesgloseFila(r))}</td>
     <td>${limpiarFecha(r['FECHA'])}</td>
     <td style="text-align:right">$${(parseFloat(r['TOTAL PEDIDO ($)'])||0).toFixed(2)}</td>
   </tr>`).join('');
@@ -2554,7 +2561,7 @@ function exportarDetallePDF() {
       <td style="text-align:right">${precioUnit}</td>
       <td style="text-align:right">$${parseFloat(r['SUBTOTAL']||0).toFixed(2)}</td>
       <td style="text-align:right;font-weight:700">${total}</td>
-      <td>${r['FORMA DE PAGO']||'-'}</td>
+      <td>${escHTML(_textoDesgloseFila(r))}</td>
     </tr>`;
   }).join('');
 
@@ -2614,7 +2621,7 @@ function exportarExcel() {
   const datos=datosNotasFiltrados.length>0?datosNotasFiltrados:todosLosDatos.filter(r=>r['PRODUCTO']&&r['PRODUCTO']!=='');
   if(!datos.length){ alert('No hay datos para exportar. Aplica los filtros primero.'); return; }
   const headers=['ASESOR / RUTA','CLIENTE','PRODUCTO','PRECIO UNIT.','CANTIDAD','SUBTOTAL','TOTAL PEDIDO ($)','FORMA DE PAGO','FECHA','TELÉFONO','DIRECCIÓN'];
-  const filas=datos.map(r=>headers.map(h=>{ const str=String(r[h]!==undefined?r[h]:'').replace(/"/g,'""'); return str.includes(',')||str.includes('"')||str.includes('\n')?`"${str}"`:str; }).join(','));
+  const filas=datos.map(r=>headers.map(h=>{ const raw=h==='FORMA DE PAGO'?_textoDesgloseFila(r):(r[h]!==undefined?r[h]:''); const str=String(raw).replace(/"/g,'""'); return str.includes(',')||str.includes('"')||str.includes('\n')?`"${str}"`:str; }).join(','));
   const csv='\uFEFF'+headers.join(',')+'\n'+filas.join('\n');
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
   const url=URL.createObjectURL(blob);
