@@ -503,6 +503,11 @@ function renderLiquidacionDash(){
     cont.innerHTML='';
     if(emptyMsg) emptyMsg.style.display='block';
     document.getElementById('liquidacionDashTotalValor').textContent='$0.00';
+    const ref0=document.getElementById('liqEntregaTotalRef');
+    if(ref0) ref0.textContent='$0.00';
+    _liqTotalEntregarCache=0;
+    _cargarEntregaLiquidacion();
+    _actualizarCuadreEntrega();
     return;
   }
   if(emptyMsg) emptyMsg.style.display='none';
@@ -568,6 +573,11 @@ function renderLiquidacionDash(){
     </div>`;
   }).join('');
   document.getElementById('liquidacionDashTotalValor').textContent = '$'+totalGeneral.toFixed(2);
+  const ref=document.getElementById('liqEntregaTotalRef');
+  if(ref) ref.textContent='$'+totalGeneral.toFixed(2);
+  _liqTotalEntregarCache=totalGeneral;
+  _cargarEntregaLiquidacion();
+  _actualizarCuadreEntrega();
 }
 /* [NEW] Notas Adicionales — sección independiente en el menú lateral. Muestra
    los pedidos del período filtrado (fecha del Dashboard) que traen alguna
@@ -672,6 +682,111 @@ function imprimirNotasAdicionalesDash(){
   </body></html>`);
   v.document.close();
 }
+
+let _liqTotalEntregarCache=0, _liqEntregaTimer=null, _liqEntregaCargando=false;
+function _idEntregaLiquidacion(){
+  const desde=document.getElementById('filtroFecha')?.value||fechaHoy();
+  const hasta=document.getElementById('filtroFechaHasta')?.value||desde;
+  return desde+'_'+hasta;
+}
+function _leerEntregaLiquidacionUI(){
+  const n=id=>{ const el=document.getElementById(id); const v=parseFloat(String(el?.value||'').replace(',','.')); return isNaN(v)?0:v; };
+  return {
+    efectivo:{marcado:!!document.getElementById('liqChkEfectivo')?.checked, monto:n('liqMontoEfectivo')},
+    deposito:{marcado:!!document.getElementById('liqChkDeposito')?.checked, monto:n('liqMontoDeposito')},
+    transferencia:{marcado:!!document.getElementById('liqChkTransferencia')?.checked, monto:n('liqMontoTransferencia')},
+    faltante1:n('liqFaltante1'), faltante2:n('liqFaltante2'), faltante3:n('liqFaltante3')
+  };
+}
+function _actualizarCuadreEntrega(){
+  const el=document.getElementById('liqEntregaCuadre');
+  if(!el) return;
+  const u=_leerEntregaLiquidacionUI();
+  const suma=(u.efectivo.marcado?u.efectivo.monto:0)+(u.deposito.marcado?u.deposito.monto:0)+(u.transferencia.marcado?u.transferencia.monto:0)+u.faltante1+u.faltante2+u.faltante3;
+  const tot=_liqTotalEntregarCache||0;
+  const diff=tot-suma;
+  if(suma===0 && !u.efectivo.marcado && !u.deposito.marcado && !u.transferencia.marcado){
+    el.textContent=''; return;
+  }
+  if(Math.abs(diff)<0.009){
+    el.style.color='#0f7c38';
+    el.textContent='Cuadra con el total a entregar ($'+tot.toFixed(2)+').';
+  } else if(diff>0){
+    el.style.color='#c0392b';
+    el.textContent='Falta registrar $'+diff.toFixed(2)+' para cuadrar el total.';
+  } else {
+    el.style.color='#c0392b';
+    el.textContent='La suma supera el total por $'+Math.abs(diff).toFixed(2)+'.';
+  }
+}
+async function _cargarEntregaLiquidacion(){
+  if(typeof db==='undefined' || !db) return;
+  const id=_idEntregaLiquidacion();
+  _liqEntregaCargando=true;
+  try{
+    const snap=await db.collection('cierresLiquidacion').doc(id).get();
+    const d=snap.exists?snap.data():{};
+    const setN=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=(v?Number(v).toFixed(2):''); };
+    const chk=(id,v)=>{ const el=document.getElementById(id); if(el) el.checked=!!v; };
+    chk('liqChkEfectivo', d.efectivo?.marcado);
+    chk('liqChkDeposito', d.deposito?.marcado);
+    chk('liqChkTransferencia', d.transferencia?.marcado);
+    setN('liqMontoEfectivo', d.efectivo?.monto);
+    setN('liqMontoDeposito', d.deposito?.monto);
+    setN('liqMontoTransferencia', d.transferencia?.monto);
+    setN('liqFaltante1', d.faltante1);
+    setN('liqFaltante2', d.faltante2);
+    setN('liqFaltante3', d.faltante3);
+    const st=document.getElementById('liqEntregaStatus');
+    if(st) st.textContent=snap.exists?'Entrega guardada para este período.':'Sin entrega registrada aún.';
+  }catch(err){
+    console.warn('cierresLiquidacion lectura:', err);
+    const st=document.getElementById('liqEntregaStatus');
+    if(st) st.textContent='No se pudo leer la entrega (revisa reglas de Firestore para cierresLiquidacion).';
+  }
+  _liqEntregaCargando=false;
+  _actualizarCuadreEntrega();
+}
+function _guardarEntregaLiquidacionDebounced(){
+  _actualizarCuadreEntrega();
+  clearTimeout(_liqEntregaTimer);
+  _liqEntregaTimer=setTimeout(_guardarEntregaLiquidacion, 600);
+}
+async function _guardarEntregaLiquidacion(){
+  _actualizarCuadreEntrega();
+  if(_liqEntregaCargando) return;
+  if(typeof db==='undefined' || !db) return;
+  const st=document.getElementById('liqEntregaStatus');
+  try{
+    const u=_leerEntregaLiquidacionUI();
+    await db.collection('cierresLiquidacion').doc(_idEntregaLiquidacion()).set({
+      ...u,
+      totalEntregar:_liqTotalEntregarCache||0,
+      desde:document.getElementById('filtroFecha')?.value||'',
+      hasta:document.getElementById('filtroFechaHasta')?.value||'',
+      actualizadoEn:firebase.firestore.FieldValue.serverTimestamp(),
+      actualizadoPor: (typeof ADMIN_ACTUAL!=='undefined' && ADMIN_ACTUAL)? (ADMIN_ACTUAL.nombre||ADMIN_ACTUAL.email||''): ''
+    }, {merge:true});
+    if(st) st.textContent='Entrega guardada.';
+  }catch(err){
+    console.warn('cierresLiquidacion escritura:', err);
+    if(st) st.textContent='No se pudo guardar. Agrega la regla de Firestore de cierresLiquidacion.';
+  }
+}
+function _htmlEntregaLiquidacionPrint(){
+  const u=_leerEntregaLiquidacionUI();
+  const fila=(ok,nom,monto)=>`<div class="ruta-linea"><span>${ok?'☑':'☐'} ${nom}</span><b>$${(monto||0).toFixed(2)}</b></div>`;
+  return `<div class="ruta-block">
+    <div class="ruta-header"><span>FORMA DE ENTREGA (TODAS LAS RUTAS)</span><span>$${_liqTotalEntregarCache.toFixed(2)}</span></div>
+    ${fila(u.efectivo.marcado,'Efectivo',u.efectivo.monto)}
+    ${fila(u.deposito.marcado,'Depósito',u.deposito.monto)}
+    ${fila(u.transferencia.marcado,'Transferencia',u.transferencia.monto)}
+    <div class="ruta-linea"><span>Faltante 1</span><b>$${u.faltante1.toFixed(2)}</b></div>
+    <div class="ruta-linea"><span>Faltante 2</span><b>$${u.faltante2.toFixed(2)}</b></div>
+    <div class="ruta-linea"><span>Faltante 3</span><b>$${u.faltante3.toFixed(2)}</b></div>
+  </div>`;
+}
+
 function imprimirLiquidacionDash(){
   const porAsesor = _calcularLiquidacionDash();
   const asesores = Object.keys(porAsesor).sort((a,b)=>a.localeCompare(b,'es'));
@@ -774,10 +889,11 @@ function imprimirLiquidacionDash(){
     <span>TOTAL EFECTIVO A ENTREGAR HOY (TODAS LAS RUTAS)</span>
     <span>$${totalGeneral.toFixed(2)}</span>
   </div>
+  ${_htmlEntregaLiquidacionPrint()}
   <div class="firmas-box">
     <div class="firma-linea"><div class="raya">&nbsp;</div>Firma secretaria</div>
     <div class="firma-linea"><div class="raya">&nbsp;</div>Firma asesor</div>
-    <div class="firma-linea"><div class="raya">&nbsp;</div>Firma chofer</div>
+    <div class="firma-linea"><div class="raya">&nbsp;</div>Firma ayudante</div>
   </div>
   <script>
     /* [FIX] Antes esto dependía 100% de window.onload, que espera a que cargue
