@@ -656,16 +656,6 @@ body { padding: 1rem 0.75rem 3rem; }
     <div class="offline-dot"></div>
     <span>Sin internet — Los pedidos se guardarán localmente y se sincronizarán automáticamente cuando haya conexión.</span>
   </div>
-  <!-- [NEW] Aviso de reconexión con Firestore — distinto del offlineBanner de arriba:
-       ese detecta cuando el propio navegador pierde internet (navigator.onLine); este
-       detecta cuando Firestore específicamente falla/reintenta (ej. wifi "conectado"
-       pero con muy mala señal, sin caerse del todo). Antes esto solo se veía en la
-       consola del navegador (F12), así que en el celular la app podía parecer
-       "congelada" sin ninguna pista visible de qué estaba pasando. */
-  <div class="offline-banner" id="connErrorBanner" style="border-color:#e57373;background:#fdecea">
-    <div class="offline-dot" style="background:#e53935;box-shadow:0 0 0 3px rgba(229,57,53,0.25)"></div>
-    <span>Problemas de conexión con el servidor. Reintentando…</span>
-  </div>
 
   <div class="header">
     <div class="logo-wrap">
@@ -752,6 +742,10 @@ body { padding: 1rem 0.75rem 3rem; }
         <label for="direccion">Direccion</label>
         <input type="text" id="direccion" placeholder="Calle, numero, sector" autocomplete="off" maxlength="200">
       </div>
+      <div class="field" style="margin-bottom:0">
+        <label for="notas">Notas adicionales</label>
+        <textarea id="notas" placeholder="Observaciones, condiciones de pago, entregas..." maxlength="500"></textarea>
+      </div>
     </div>
 
     <div class="card">
@@ -789,10 +783,6 @@ body { padding: 1rem 0.75rem 3rem; }
       <div class="total-row">
         <span class="total-label">Total general</span>
         <span class="total-value" id="totalGeneral">$0.00</span>
-      </div>
-      <div class="field" style="margin-bottom:0">
-        <label for="notas">Notas adicionales</label>
-        <textarea id="notas" placeholder="Observaciones, condiciones de pago, entregas..." maxlength="500"></textarea>
       </div>
       <div class="section-title" style="margin-top:1.25rem">Forma de pago</div>
       <div class="pago-opciones" role="radiogroup" aria-label="Forma de pago">
@@ -1326,14 +1316,13 @@ let _unsubProductos=null, _productosDocIds={};
 function _iniciarListenerProductos(){
   if(_unsubProductos){_unsubProductos();_unsubProductos=null;}
   _unsubProductos=db.collection('productos').orderBy('nombre').onSnapshot(snap=>{
-    _marcarConexionOk();
     _productosDocIds={};
     const nombres=[];
     snap.forEach(d=>{ const data=d.data(); if(data.activo!==false){ nombres.push(data.nombre); _productosDocIds[data.nombre]=d.id; } });
     LISTAS_BLANCAS.productos=nombres;
     renderOpcionesProductoSelect();
     if(document.getElementById('np-eliminar-select'))poblarSelectEliminarProducto(); // [FIX] antes no se refrescaba
-  },err=>{console.error('listener productos:',err);_marcarConexionError();});
+  },err=>console.error('listener productos:',err));
 }
 /* [NEW] Repuebla el <select> de Ventas con el catálogo en vivo, conservando la selección si sigue existiendo */
 function renderOpcionesProductoSelect(){
@@ -1342,15 +1331,6 @@ function renderOpcionesProductoSelect(){
   const valorActual=sel.value;
   sel.innerHTML='<option value="">-- Selecciona --</option>'+LISTAS_BLANCAS.productos.map(n=>`<option value="${escHTML(n)}">${escHTML(n)}</option>`).join('');
   if(LISTAS_BLANCAS.productos.includes(valorActual))sel.value=valorActual;
-}
-/* [NEW] Ver nota junto a #connErrorBanner en el HTML. */
-function _marcarConexionError(){
-  const b=document.getElementById('connErrorBanner');
-  if(b)b.classList.add('show');
-}
-function _marcarConexionOk(){
-  const b=document.getElementById('connErrorBanner');
-  if(b)b.classList.remove('show');
 }
 function _horaDeTimestamp(ts){
   try{ const ms=ts?.toMillis?ts.toMillis():Date.now(); return new Date(ms).toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'}); }
@@ -1367,7 +1347,6 @@ function _iniciarListenersDelDia(u){
   let qGastos=db.collection('gastos').where('fecha','==',hoy);
   if(!u.esAdmin){ qPedidos=qPedidos.where('empleado','==',u.ruta); qPagos=qPagos.where('empleado','==',u.ruta); qGastos=qGastos.where('empleado','==',u.ruta); }
   _unsubPedidosHoy=qPedidos.onSnapshot(snap=>{
-    _marcarConexionOk();
     const hist=snap.docs.map(d=>{ const r=d.data(); return {id:d.id,nombre:r.cliente,total:r.total,fecha:r.fecha,empleado:r.empleado,formapago:r.formapago,telefono:r.telefono,direccion:r.direccion,notas:r.notas,productos:r.productos||[],gps:r.gps||null,abono:r.abono||0,pagos:r.pagos||[],creditoPendiente:r.creditoPendiente||0,hora:r.hora||_horaDeTimestamp(r.creadoEn),_ts:r.creadoEn?.toMillis?.()||0}; }).sort((a,b)=>b._ts-a._ts); // [NEW] recupera la hora real desde creadoEn para TODOS los pedidos de hoy, incluso los creados antes de este cambio
     sessionStorage.setItem('aqualuan-historial',JSON.stringify(hist));
     const contHist=document.getElementById('content-historial');
@@ -1378,23 +1357,21 @@ function _iniciarListenersDelDia(u){
     const resumenAbierto=document.getElementById('resumenModalOverlay');
     if(resumenAbierto&&resumenAbierto.classList.contains('open'))_renderResumenDiaContenido();
     actualizarCierreCajaAuto(); renderLiquidacion(); // [NEW] las ventas de contado del día entran en el cierre automático
-  },err=>{console.error('listener pedidos:',err);_marcarConexionError();});
+  },err=>console.error('listener pedidos:',err));
   _unsubPagosHoy=qPagos.onSnapshot(snap=>{
-    _marcarConexionOk();
     listaPagos=snap.docs.map(d=>{ const r=d.data(); return {id:d.id,...r,hora:_horaDeTimestamp(r.creadoEn),_ts:r.creadoEn?.toMillis?.()||0}; }).sort((a,b)=>b._ts-a._ts);
     renderPagos(); actualizarResumenPagos();
     const rAbierto=document.getElementById('resumenModalOverlay'); // [FIX] refresco en vivo del Resumen del Día
     if(rAbierto&&rAbierto.classList.contains('open'))_renderResumenDiaContenido();
     actualizarCierreCajaAuto(); renderLiquidacion(); // [NEW]
-  },err=>{console.error('listener pagos:',err);_marcarConexionError();});
+  },err=>console.error('listener pagos:',err));
   _unsubGastosHoy=qGastos.onSnapshot(snap=>{
-    _marcarConexionOk();
     listaGastos=snap.docs.map(d=>{ const r=d.data(); return {id:d.id,...r,hora:_horaDeTimestamp(r.creadoEn),_ts:r.creadoEn?.toMillis?.()||0}; }).sort((a,b)=>b._ts-a._ts);
     renderGastos(); actualizarResumenGastos();
     const rAbierto2=document.getElementById('resumenModalOverlay'); // [FIX] refresco en vivo del Resumen del Día
     if(rAbierto2&&rAbierto2.classList.contains('open'))_renderResumenDiaContenido();
     actualizarCierreCajaAuto(); renderLiquidacion(); // [NEW]
-  },err=>{console.error('listener gastos:',err);_marcarConexionError();});
+  },err=>console.error('listener gastos:',err));
 }
 /* [NEW] Catálogo de rutas/asesores en tiempo real — reemplaza la lista fija de
    LISTAS_BLANCAS.empleado. Solo el admin necesita elegir manualmente la ruta al
@@ -1404,12 +1381,11 @@ function _iniciarListenerAsesoresRutas(){
   if(_unsubAsesoresRutas){_unsubAsesoresRutas();_unsubAsesoresRutas=null;}
   if(!usuarioActual||!usuarioActual.esAdmin)return;
   _unsubAsesoresRutas=db.collection('usuarios').where('esAdmin','==',false).onSnapshot(snap=>{
-    _marcarConexionOk();
     const rutas=snap.docs.map(d=>d.data().ruta).filter(Boolean).sort();
     LISTAS_BLANCAS.empleado=rutas;
     LISTAS_BLANCAS.empleadoGasto=[...rutas,'Administración'];
     renderSelectsRutasAdmin();
-  },err=>{console.error('listener rutas:',err);_marcarConexionError();});
+  },err=>console.error('listener rutas:',err));
 }
 /* [NEW] Repuebla los 3 <select> de Ruta/Asesor con las rutas reales, solo si el admin
    los tiene visibles (si es un asesor con la ruta bloqueada, no hay <select> que tocar) */
