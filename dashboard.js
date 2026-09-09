@@ -626,7 +626,7 @@ function imprimirNotasAdicionalesDash(){
   // [NEW] URL absoluta del logo — esta ventana se abre en blanco, sin el
   // dashboard como base, así que una ruta relativa no cargaría.
   const logoUrl = location.origin + '/logo-luanaqua.png';
-  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Notas Adicionales — Aqua Luan — ${fecha}</title>
+  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Notas Adicionales — ${asesorLabel} — Aqua Luan — ${fecha}</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
@@ -648,7 +648,7 @@ function imprimirNotasAdicionalesDash(){
   <div class="print-header">
     <img src="${logoUrl}" alt="Aqua Luan" onerror="this.style.display='none'">
     <div>
-      <h1>NOTAS ADICIONALES</h1>
+      <h1>NOTAS ADICIONALES — ${escHTML(asesorLabel)}</h1>
       <p>Fecha: ${fecha} · Asesor: ${escHTML(asesorLabel)} · Generado: ${new Date().toLocaleString('es-EC')}</p>
     </div>
   </div>
@@ -676,6 +676,8 @@ function imprimirLiquidacionDash(){
   const porAsesor = _calcularLiquidacionDash();
   const asesores = Object.keys(porAsesor).sort((a,b)=>a.localeCompare(b,'es'));
   const fecha = _textoRangoFecha();
+  const asesorSel = document.getElementById('filtroAsesor') ? document.getElementById('filtroAsesor').value : '';
+  const asesorLabel = asesorSel.split(':')[1]?.trim() || 'Todas las rutas';
   let totalGeneral = 0;
   const bloques = asesores.map(nombre=>{
     const d = porAsesor[nombre];
@@ -730,7 +732,7 @@ function imprimirLiquidacionDash(){
   // dashboard como base, así que una ruta relativa no cargaría. Mismo patrón
   // que ya se usa en Pagos y Gastos / Detalle de Pedidos.
   const logoUrl = location.origin + '/logo-luanaqua.png';
-  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Liquidación de Efectivo — Aqua Luan — ${fecha}</title>
+  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Liquidación de Efectivo — ${asesorLabel} — Aqua Luan — ${fecha}</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
@@ -763,7 +765,7 @@ function imprimirLiquidacionDash(){
   <div class="print-header">
     <img src="${logoUrl}" alt="Aqua Luan" onerror="this.style.display='none'">
     <div>
-      <h1>LIQUIDACIÓN DE EFECTIVO POR ASESOR</h1>
+      <h1>LIQUIDACIÓN DE EFECTIVO — ${escHTML(asesorLabel)}</h1>
       <p>Fecha: ${fecha} · Generado: ${new Date().toLocaleString('es-EC')}</p>
     </div>
   </div>
@@ -1769,6 +1771,13 @@ function exportarClientePDF() {
   const porCliente = {};
   items.forEach(r => { const c = r['CLIENTE']||'Sin nombre'; if (!porCliente[c]) porCliente[c] = []; porCliente[c].push(r); });
 
+  // [NEW] Si se seleccionó un solo cliente, el título muestra su nombre en vez
+  // del genérico "Detalle de Clientes" — así el PDF/pestaña se identifica por
+  // la selección real, no por el nombre de la sección.
+  const tituloSeleccion = clientesSeleccionados.length === 1
+    ? clientesSeleccionados[0]
+    : `Detalle de Clientes (${clientesSeleccionados.length})`;
+
   let totalGeneralTodos = 0;
   const bloquesHtml = clientesSeleccionados.filter(c => porCliente[c]).map(cliente => {
     let totalCliente = 0;
@@ -1799,7 +1808,7 @@ function exportarClientePDF() {
   }).join('');
 
   const v = window.open('', '_blank', 'width=800,height=900');
-  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Detalle de Clientes — Aqua Luan</title>
+  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${escHTML(tituloSeleccion)} — Aqua Luan</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
@@ -1824,7 +1833,7 @@ function exportarClientePDF() {
     @media print{body{padding:12px;} thead{display:table-header-group;}}
   </style></head><body>
   <div class="print-header">
-    <h1>🔍 Detalle de Clientes — Aqua Luan</h1>
+    <h1>🔍 ${escHTML(tituloSeleccion)}</h1>
     <p>${clientesSeleccionados.length} cliente(s) · Asesor: ${asesorLabel} · Fecha: ${fecha} · Generado: ${new Date().toLocaleString('es-EC')}</p>
   </div>
   ${bloquesHtml}
@@ -2094,8 +2103,11 @@ function _imprimirClientesPDF(clientesArr) {
       <table><thead><tr><th>Producto</th><th>Cant.</th><th>Subtotal</th><th>Pago</th></tr></thead><tbody>${filas}</tbody></table>
     </div>`;
   }).join('<hr>');
+  // [NEW] Título de pestaña según la selección real: nombre del cliente si es
+  // uno solo, o cantidad si son varios — en vez del genérico "Clientes".
+  const tituloSeleccion = clientesArr.length === 1 ? clientesArr[0].nombre : `Clientes (${clientesArr.length})`;
   const v = window.open('', '_blank', 'width=800,height=900');
-  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Clientes — Aqua Luan</title>
+  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${escHTML(tituloSeleccion)} — Aqua Luan</title>
   <style>
     body{font-family:Arial,sans-serif;color:#1a3a5c;padding:24px}
     h2{font-family:Georgia,serif;font-size:20px;margin-bottom:2px}
@@ -2546,6 +2558,8 @@ function exportarPagosGastosPDF() {
   const gastos = gastosDetalleActuales || [];
   if (!pagos.length && !gastos.length) { alert('No hay pagos ni gastos para exportar. Aplica los filtros primero.'); return; }
   const fecha = _textoRangoFecha();
+  const asesorSel = document.getElementById('filtroAsesor') ? document.getElementById('filtroAsesor').value : '';
+  const asesorLabel = asesorSel.split(':')[1]?.trim() || 'Todas las rutas';
   const totalPagos = pagos.reduce((s,r) => s + (parseFloat(r['TOTAL PEDIDO ($)'])||0), 0);
   const totalGastos = gastos.reduce((s,r) => s + Math.abs(parseFloat(r['TOTAL PEDIDO ($)'])||0), 0);
   const filasPagos = pagos.map(r => `<tr>
@@ -2568,7 +2582,7 @@ function exportarPagosGastosPDF() {
   // [NEW] URL absoluta del logo — esta ventana se abre en blanco, sin el
   // dashboard como base, así que una ruta relativa no cargaría.
   const logoUrl = location.origin + '/logo-luanaqua.png';
-  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Pagos y Gastos — Aqua Luan — ${fecha}</title>
+  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Pagos y Gastos — ${asesorLabel} — Aqua Luan — ${fecha}</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
@@ -2598,7 +2612,7 @@ function exportarPagosGastosPDF() {
   <div class="print-header">
     <img src="${logoUrl}" alt="Aqua Luan" onerror="this.style.display='none'">
     <div>
-      <h1>💳 Pagos y Gastos — Aqua Luan</h1>
+      <h1>💳 Pagos y Gastos — ${escHTML(asesorLabel)}</h1>
       <p>Fecha: ${fecha} · ${pagos.length} pago(s) · ${gastos.length} gasto(s) · Generado: ${new Date().toLocaleString('es-EC')}</p>
     </div>
   </div>
@@ -2660,7 +2674,7 @@ function exportarDetallePDF() {
   const logoUrl = location.origin + '/logo-luanaqua.png';
 
   const v = window.open('', '_blank', 'width=1000,height=900');
-  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Detalle de Pedidos — Aqua Luan — ${fecha}</title>
+  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Detalle de Pedidos — ${asesorLabel} — Aqua Luan — ${fecha}</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
@@ -2685,7 +2699,7 @@ function exportarDetallePDF() {
   <div class="print-header">
     <img src="${logoUrl}" alt="Aqua Luan" onerror="this.style.display='none'">
     <div>
-      <h1>📋 Detalle de Pedidos — Aqua Luan</h1>
+      <h1>📋 Detalle de Pedidos — ${escHTML(asesorLabel)}</h1>
       <p>Fecha: ${fecha} · Asesor: ${asesorLabel} · ${datos.length} línea(s) · Generado: ${new Date().toLocaleString('es-EC')}</p>
     </div>
   </div>
