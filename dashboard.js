@@ -609,10 +609,10 @@ function renderNotasAdicionalesDash(){
   if(emptyMsg) emptyMsg.style.display = 'none';
   tbody.innerHTML = pedidosConNota.map(p => `
     <tr>
-      <td style="white-space:nowrap;color:var(--muted)">${escHTML(p.fecha||'-')}</td>
+      <td style="white-space:nowrap;font-weight:700;color:var(--navy)">${escHTML(p.fecha||'-')}</td>
       <td style="font-weight:700;color:var(--navy)">${escHTML(p.empleado||'-')}</td>
-      <td style="font-weight:600">${escHTML(p.cliente||'-')}</td>
-      <td style="font-style:italic;color:var(--muted)">📝 ${escHTML(p.notas)}</td>
+      <td style="font-weight:700;color:var(--navy)">${escHTML(p.cliente||'-')}</td>
+      <td style="font-weight:700;color:var(--navy)">📝 ${escHTML(p.notas)}</td>
     </tr>`).join('');
 }
 /* [NEW] Imprimir Notas Adicionales — mismo patrón (logo + firmas) que
@@ -627,10 +627,10 @@ function imprimirNotasAdicionalesDash(){
     .filter(p => !asesorSel || (p.empleado||'') === asesorSel)
     .sort((a,b) => (b.creadoEn?.toMillis?.() || 0) - (a.creadoEn?.toMillis?.() || 0));
   const filas = pedidosConNota.map(p => `<tr>
-    <td>${escHTML(p.fecha||'-')}</td>
-    <td>${escHTML(p.empleado||'-')}</td>
-    <td>${escHTML(p.cliente||'-')}</td>
-    <td>${escHTML(p.notas||'-')}</td>
+    <td style="font-weight:700;color:#1a3a5c">${escHTML(p.fecha||'-')}</td>
+    <td style="font-weight:700;color:#1a3a5c">${escHTML(p.empleado||'-')}</td>
+    <td style="font-weight:700;color:#1a3a5c">${escHTML(p.cliente||'-')}</td>
+    <td style="font-weight:700;color:#1a3a5c">${escHTML(p.notas||'-')}</td>
   </tr>`).join('');
   const v = window.open('', '_blank', 'width=900,height=900');
   // [NEW] URL absoluta del logo — esta ventana se abre en blanco, sin el
