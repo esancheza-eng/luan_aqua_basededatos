@@ -567,7 +567,7 @@ body { padding: 1rem 0.75rem 3rem; }
     <div class="modal-handle"></div>
     <div class="modal-title" id="modalTituloId">Confirmar pedido</div>
     <div class="modal-subtitle" id="modal-subtitle-text">Revisa todos los datos antes de guardar</div>
-    <div class="modal-offline-note" id="modalOfflineNote">⚠️ Sin conexión a internet. El pedido se guardará localmente y se enviará a Google Drive automáticamente cuando haya conexión.</div>
+    <div class="modal-offline-note" id="modalOfflineNote">⚠️ Sin conexión a internet. El pedido se guardará en el celular y se sincronizará solo al volver la señal.</div>
     <table class="modal-table">
       <tr><td>Asesor / Ruta</td><td id="m-empleado">-</td></tr>
       <tr><td>Forma de pago</td><td id="m-formapago">-</td></tr>
@@ -800,7 +800,7 @@ body { padding: 1rem 0.75rem 3rem; }
         Imprimir ticket (impresora térmica)
       </button>
       <div class="drive-progress" id="driveProgress">
-        <div class="progress-label"><span id="progressText">Subiendo PDF a Drive...</span><span id="progressPct">0%</span></div>
+        <div class="progress-label"><span id="progressText">Preparando PDF...</span><span id="progressPct">0%</span></div>
         <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progressFill"></div></div>
         <div class="progress-link" id="progressLink"></div>
       </div>
@@ -1692,7 +1692,7 @@ async function abrirModal(){
   dataPendiente={empleado,formapago:pagoMulti.formapago,formapagoOrigen:formapago||pagoMulti.formapago,nombre,telefono,fecha,direccion,notas,productos:[...productos],total:total.toFixed(2),abono,pagos:pagoMulti.pagos,creditoPendiente:pagoMulti.creditoPendiente,gps:null,hora:new Date().toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit',hour12:true})};
   const offline=!navigator.onLine;
   document.getElementById('modalOfflineNote').classList.toggle('show',offline);
-  document.getElementById('modal-subtitle-text').textContent=offline?'Sin internet — se guardará localmente':'Revisa todos los datos antes de enviar a Google Drive';
+  document.getElementById('modal-subtitle-text').textContent=offline?'Sin internet — se guardará en el celular':'Revisa todos los datos antes de guardar';
   document.getElementById('m-empleado').textContent=empleado;
   document.getElementById('m-formapago').textContent=_textoDesglosePago(pagoMulti);
   /* [NEW] Muestra Abono/Saldo en el modal cuando quedó un saldo pendiente a crédito. */
