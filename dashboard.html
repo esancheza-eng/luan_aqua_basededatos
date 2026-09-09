@@ -361,6 +361,23 @@
             <span style="font-size:11px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.6)">💵 Total efectivo a entregar (todas las rutas)</span>
             <span id="liquidacionDashTotalValor" style="font-family:'DM Serif Display',serif;font-size:1.6rem;color:#4ec9a0">$0.00</span>
           </div>
+          <div id="liqEntregaBox" style="margin:0 1.25rem 1.25rem;padding:16px 18px;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius)">
+            <div style="font-size:11px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--navy);margin-bottom:10px">Forma de entrega de la liquidación (todas las rutas)</div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Oficina marca cómo llegó el dinero. El total lo calcula el sistema; aquí solo se registra la entrega.</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding:8px 10px;background:#fff;border-radius:8px;border:1px solid var(--border)">
+              <span style="font-weight:800">Total a entregar</span>
+              <span id="liqEntregaTotalRef" style="font-weight:800;color:var(--teal)">$0.00</span>
+            </div>
+            <label style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><input type="checkbox" id="liqChkEfectivo" onchange="_guardarEntregaLiquidacion()"><span style="min-width:130px;font-weight:700">Efectivo</span><input type="text" id="liqMontoEfectivo" placeholder="0.00" inputmode="decimal" style="flex:1;height:36px;border:1.5px solid var(--border);border-radius:8px;padding:0 10px" oninput="_guardarEntregaLiquidacionDebounced()"></label>
+            <label style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><input type="checkbox" id="liqChkDeposito" onchange="_guardarEntregaLiquidacion()"><span style="min-width:130px;font-weight:700">Depósito</span><input type="text" id="liqMontoDeposito" placeholder="0.00" inputmode="decimal" style="flex:1;height:36px;border:1.5px solid var(--border);border-radius:8px;padding:0 10px" oninput="_guardarEntregaLiquidacionDebounced()"></label>
+            <label style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><input type="checkbox" id="liqChkTransferencia" onchange="_guardarEntregaLiquidacion()"><span style="min-width:130px;font-weight:700">Transferencia</span><input type="text" id="liqMontoTransferencia" placeholder="0.00" inputmode="decimal" style="flex:1;height:36px;border:1.5px solid var(--border);border-radius:8px;padding:0 10px" oninput="_guardarEntregaLiquidacionDebounced()"></label>
+            <div style="height:8px"></div>
+            <label style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><span style="min-width:154px;font-weight:700">Faltante 1</span><input type="text" id="liqFaltante1" placeholder="0.00" inputmode="decimal" style="flex:1;height:36px;border:1.5px solid var(--border);border-radius:8px;padding:0 10px" oninput="_guardarEntregaLiquidacionDebounced()"></label>
+            <label style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><span style="min-width:154px;font-weight:700">Faltante 2</span><input type="text" id="liqFaltante2" placeholder="0.00" inputmode="decimal" style="flex:1;height:36px;border:1.5px solid var(--border);border-radius:8px;padding:0 10px" oninput="_guardarEntregaLiquidacionDebounced()"></label>
+            <label style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><span style="min-width:154px;font-weight:700">Faltante 3</span><input type="text" id="liqFaltante3" placeholder="0.00" inputmode="decimal" style="flex:1;height:36px;border:1.5px solid var(--border);border-radius:8px;padding:0 10px" oninput="_guardarEntregaLiquidacionDebounced()"></label>
+            <div id="liqEntregaCuadre" style="font-size:12px;margin-top:8px;font-weight:700"></div>
+            <div style="font-size:11px;color:var(--muted);margin-top:6px" id="liqEntregaStatus"></div>
+          </div>
         </div>
         <!-- cierra seccion-liquidacionDash -->
         </div>
