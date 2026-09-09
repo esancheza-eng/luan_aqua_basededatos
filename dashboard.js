@@ -121,8 +121,29 @@ let pedidosDetalleActuales = [];
 let _pedidosTablaFiltrados = []; // [NEW] subconjunto de pedidosDetalleActuales tras aplicar el filtro de Pago, solo para la tabla de Detalle de Pedidos y su export a PDF
 
 /* [NEW] Editar Pedido — identidad del admin actual (para el historial de cambios) */
-let ADMIN_ACTUAL = { uid: null, nombre: 'Admin' };
+let ADMIN_ACTUAL = { uid: null, nombre: 'Admin', usuario: '' };
 let ROL_ACTUAL = null; // [NEW] 'admin' | 'secretaria' — controla qué secciones y botones se muestran
+
+function etiquetaUsuarioSesion(){
+  if (ROL_ACTUAL === 'admin') return 'Administración';
+  const usuario = (ADMIN_ACTUAL && ADMIN_ACTUAL.usuario) || '';
+  const nombre = (ADMIN_ACTUAL && ADMIN_ACTUAL.nombre) || usuario || 'Secretaria';
+  if (usuario && nombre && nombre.toLowerCase() !== String(usuario).toLowerCase()) {
+    return `Secretaria · ${nombre} (${usuario})`.trim();
+  }
+  return `Secretaria · ${nombre}`.trim();
+}
+function lineaImpresoPor(){
+  return 'Impreso por: ' + etiquetaUsuarioSesion();
+}
+function actorAuditoria(){
+  return etiquetaUsuarioSesion() || (ADMIN_ACTUAL && (ADMIN_ACTUAL.nombre || ADMIN_ACTUAL.usuario)) || 'sistema';
+}
+
+function pintarUsuarioHeader(){
+  const el = document.getElementById('usuarioSesionBadge');
+  if (el) el.textContent = etiquetaUsuarioSesion() || '—';
+}
 /* [NEW] Editar Pedido — catálogo de productos en caché para que el modal abra al instante */
 let _productosCache = [];
 let _unsubProductosDash = null;
@@ -136,7 +157,12 @@ let editandoPedidoActual = null;
 ════════════════════════════════════════ */
 /* [NEW] Menú lateral del panel administrativo — cambia entre secciones sin mezclarlas */
 let _yaCargado = { eliminados:false, inventario:false, roles:false, pedidosweb:false, auditoria:false }; // [NEW] carga perezosa
+const SECCIONES_SECRETARIA = ['pedidos','caja','liquidacionDash','notasAdicionalesDash'];
+
 function switchSeccionDash(sec){
+  if (ROL_ACTUAL === 'secretaria' && !SECCIONES_SECRETARIA.includes(sec)) {
+    sec = 'pedidos';
+  }
   document.querySelectorAll('.dash-section').forEach(el => el.classList.toggle('active', el.id === 'seccion-'+sec));
   document.querySelectorAll('.dash-nav-item').forEach(el => el.classList.toggle('active', el.dataset.section === sec));
   // [NEW] Carga perezosa: estas 4 pestañas no tienen filtro de fecha (leen la
@@ -205,9 +231,10 @@ async function doLogin() {
       return;
     }
     ROL_ACTUAL = perfil.esAdmin === true ? 'admin' : 'secretaria'; // [NEW]
-    ADMIN_ACTUAL = { uid: cred.user.uid, nombre: perfil.nombre || user }; // para el historial de cambios
+    ADMIN_ACTUAL = { uid: cred.user.uid, nombre: perfil.nombre || user, usuario: perfil.usuario || user };
     document.getElementById('loginOverlay').classList.add('hidden');
     document.getElementById('loginError').classList.remove('show');
+    pintarUsuarioHeader();
     iniciar();
   }catch(err){
     console.error(err);
@@ -295,8 +322,9 @@ auth.onAuthStateChanged(async (user)=>{
       const perfil = perfilDoc.exists ? perfilDoc.data() : null;
       if(perfil && (perfil.esAdmin===true || perfil.esSecretaria===true)){
         ROL_ACTUAL = perfil.esAdmin===true ? 'admin' : 'secretaria'; // [NEW]
-        ADMIN_ACTUAL = { uid: user.uid, nombre: perfil.nombre || (ROL_ACTUAL==='admin'?'Admin':'Secretaria') }; // para el historial de cambios
+        ADMIN_ACTUAL = { uid: user.uid, nombre: perfil.nombre || (ROL_ACTUAL==='admin'?'Admin':'Secretaria'), usuario: perfil.usuario || '' };
         document.getElementById('loginOverlay').classList.add('hidden');
+        pintarUsuarioHeader();
         iniciar();
       } else {
         await auth.signOut();
@@ -659,7 +687,7 @@ function imprimirNotasAdicionalesDash(){
     <img src="${logoUrl}" alt="Aqua Luan" onerror="this.style.display='none'">
     <div>
       <h1>NOTAS ADICIONALES — ${escHTML(asesorLabel)}</h1>
-      <p>Fecha: ${fecha} · Asesor: ${escHTML(asesorLabel)} · Generado: ${new Date().toLocaleString('es-EC')}</p>
+      <p>Fecha: ${fecha} · Asesor: ${escHTML(asesorLabel)} · Generado: ${new Date().toLocaleString('es-EC')} · ${escHTML(lineaImpresoPor())}</p>
     </div>
   </div>
   <table>
@@ -838,9 +866,13 @@ async function _guardarEntregaLiquidacion(){
       desde:document.getElementById('filtroFecha')?.value||'',
       hasta:document.getElementById('filtroFechaHasta')?.value||'',
       actualizadoEn:firebase.firestore.FieldValue.serverTimestamp(),
-      actualizadoPor: (typeof ADMIN_ACTUAL!=='undefined' && ADMIN_ACTUAL)? (ADMIN_ACTUAL.nombre||ADMIN_ACTUAL.email||''): ''
+      actualizadoPor: (typeof actorAuditoria==='function') ? actorAuditoria() : ((ADMIN_ACTUAL && (ADMIN_ACTUAL.nombre||ADMIN_ACTUAL.usuario))||'')
     }, {merge:true});
     if(st) st.textContent='Entrega guardada.';
+    if (typeof _registrarAuditoria === 'function') {
+      _registrarAuditoria('liquidacion', 'edición', _idEntregaLiquidacion(),
+        'Entrega de liquidación actualizada por ' + actorAuditoria());
+    }
   }catch(err){
     console.warn('cierresLiquidacion escritura:', err);
     if(st) st.textContent='No se pudo guardar. Agrega la regla de Firestore de cierresLiquidacion.';
@@ -952,7 +984,7 @@ function imprimirLiquidacionDash(){
     <img src="${logoUrl}" alt="Aqua Luan" onerror="this.style.display='none'">
     <div>
       <h1>LIQUIDACIÓN DE EFECTIVO — ${escHTML(asesorLabel)}</h1>
-      <p>Fecha: ${fecha} · Generado: ${new Date().toLocaleString('es-EC')}</p>
+      <p>Fecha: ${fecha} · Generado: ${new Date().toLocaleString('es-EC')} · ${escHTML(lineaImpresoPor())}</p>
     </div>
   </div>
   ${bloques || '<p style="color:#888;font-style:italic">No hay ventas, pagos ni gastos registrados en este período.</p>'}
@@ -1041,17 +1073,21 @@ function iniciar() {
 /* [NEW] Oculta las secciones y botones que son solo para Admin cuando entra Secretaria */
 function aplicarRestriccionesRol(){
   const esSecretaria = ROL_ACTUAL === 'secretaria';
-  ['navEliminados','navInventario','navRoles','navImportar','navUsuarios','navPedidosWeb','navAuditoria'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = esSecretaria ? 'none' : '';
+  document.querySelectorAll('.dash-nav-item').forEach(el => {
+    const sec = el.dataset.section;
+    if (!sec) return;
+    el.style.display = (esSecretaria && !SECCIONES_SECRETARIA.includes(sec)) ? 'none' : '';
   });
+  const tabRutas = document.getElementById('tabRutas');
+  if (tabRutas) tabRutas.style.display = esSecretaria ? 'none' : '';
+  document.querySelectorAll('.btn-cierre-dia').forEach(btn => {
+    if ((btn.textContent || '').includes('Cierre')) btn.style.display = esSecretaria ? 'none' : '';
+  });
+  pintarUsuarioHeader();
   if (esSecretaria) {
-    // Si por alguna razón queda una de esas secciones activa, regresa a Resumen General
-    const seccionActivaOculta = ['eliminados','inventario','roles','importar','usuarios','pedidosweb'].some(s => {
-      const sec = document.getElementById('seccion-'+s);
-      return sec && sec.classList.contains('active');
-    });
-    if (seccionActivaOculta) switchSeccionDash('resumen');
+    const activa = document.querySelector('.dash-section.active');
+    const activaId = activa && activa.id ? activa.id.replace('seccion-','') : '';
+    if (!SECCIONES_SECRETARIA.includes(activaId)) switchSeccionDash('pedidos');
   }
 }
 function fechaHoy() {
@@ -1384,7 +1420,7 @@ function renderPagosGastosDetalle(pagos, gastos) {
   } else {
     const filas = pagos.map(r => {
       const monto = parseFloat(r['TOTAL PEDIDO ($)'])||0;
-      const accionesPago = (r['_pagoId'] && ROL_ACTUAL === 'admin') ? `<button class="btn-editar-fila" onclick="abrirEditarPago('${r['_pagoId']}')" title="Editar este pago">✏ Editar</button><button class="btn-eliminar-fila" onclick="eliminarPagoDash('${r['_pagoId']}')" title="Eliminar este pago">🗑 Eliminar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>'; /* [NEW] Secretaria no ve Editar/Eliminar */
+      const accionesPago = (r['_pagoId'] && (ROL_ACTUAL === 'admin' || ROL_ACTUAL === 'secretaria')) ? `<button class="btn-editar-fila" onclick="abrirEditarPago('${r['_pagoId']}')" title="Editar este pago">✏ Editar</button><button class="btn-eliminar-fila" onclick="eliminarPagoDash('${r['_pagoId']}')" title="Eliminar este pago">🗑 Eliminar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>'; /* [NEW] Secretaria no ve Editar/Eliminar */
       return `<tr>
         <td style="font-weight:600">${escHTML(r['CLIENTE']||'-')}</td>
         <td style="font-size:12px">${(r['ASESOR / RUTA']||'').split(':')[1]?.trim()||r['ASESOR / RUTA']||'-'}</td>
@@ -1404,7 +1440,7 @@ function renderPagosGastosDetalle(pagos, gastos) {
     const filas = gastos.map(r => {
       const monto = Math.abs(parseFloat(r['TOTAL PEDIDO ($)'])||0);
       const desc = r['NOTAS'] || r['CLIENTE'] || r['DIRECCIÓN'] || '-'; // [NOTA] ver aviso más abajo sobre esta columna
-      const accionesGasto = (r['_gastoId'] && ROL_ACTUAL === 'admin') ? `<button class="btn-editar-fila" onclick="abrirEditarGasto('${r['_gastoId']}')" title="Editar este gasto">✏ Editar</button><button class="btn-eliminar-fila" onclick="eliminarGastoDash('${r['_gastoId']}')" title="Eliminar este gasto">🗑 Eliminar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>'; /* [NEW] Secretaria no ve Editar/Eliminar */
+      const accionesGasto = (r['_gastoId'] && (ROL_ACTUAL === 'admin' || ROL_ACTUAL === 'secretaria')) ? `<button class="btn-editar-fila" onclick="abrirEditarGasto('${r['_gastoId']}')" title="Editar este gasto">✏ Editar</button><button class="btn-eliminar-fila" onclick="eliminarGastoDash('${r['_gastoId']}')" title="Eliminar este gasto">🗑 Eliminar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>'; /* [NEW] Secretaria no ve Editar/Eliminar */
       return `<tr>
         <td style="font-weight:600">${escHTML(desc)}</td>
         <td style="font-size:12px">${(r['ASESOR / RUTA']||'').split(':')[1]?.trim()||r['ASESOR / RUTA']||'-'}</td>
@@ -1548,7 +1584,7 @@ function renderTabla(pedidos) {
     const pago  = r['FORMA DE PAGO'] ? `<span class="badge badge-teal">${r['FORMA DE PAGO']}</span>${detallePago}` : '';
     /* [NEW] Botón Editar — solo funciona si la fila trae el id real del pedido en Firestore
        (las filas de pagos/gastos no lo traen, pero renderTabla solo recibe pedidos con producto) */
-    const accion = (r['_pedidoId'] && ROL_ACTUAL === 'admin') ? `<button class="btn-editar-fila" onclick="abrirEditarPedido('${r['_pedidoId']}')" title="Editar este pedido">✏ Editar</button><button class="btn-eliminar-fila" onclick="eliminarPedidoCompleto('${r['_pedidoId']}')" title="Eliminar este pedido permanentemente">🗑 Eliminar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>'; /* [NEW] Secretaria no ve Editar/Eliminar */
+    const accion = (r['_pedidoId'] && (ROL_ACTUAL === 'admin' || ROL_ACTUAL === 'secretaria')) ? `<button class="btn-editar-fila" onclick="abrirEditarPedido('${r['_pedidoId']}')" title="Editar este pedido">✏ Editar</button><button class="btn-eliminar-fila" onclick="eliminarPedidoCompleto('${r['_pedidoId']}')" title="Eliminar este pedido permanentemente">🗑 Eliminar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>'; /* [NEW] Secretaria no ve Editar/Eliminar */
     return `<tr>
       <td style="white-space:nowrap;font-size:12px">${limpiarFecha(r['FECHA'])}</td>
       <td style="white-space:nowrap;font-size:12px;color:var(--muted)">${escHTML(r['HORA REGISTRO']||'-')}</td>
@@ -1687,7 +1723,7 @@ function actualizarTablaCentral(datos) {
     const gps   = r['LINK GPS'] ? `<a href="${r['LINK GPS']}" target="_blank" style="color:var(--teal);font-weight:700;font-size:11px">📍 Ver</a>` : '<span style="color:var(--muted);font-size:11px">—</span>';
     const total = r['TOTAL PEDIDO ($)'] ? `<strong style="color:var(--teal)">$${parseFloat(r['TOTAL PEDIDO ($)']).toFixed(2)}</strong>` : '';
     const pago  = r['FORMA DE PAGO'] ? `<span class="badge badge-teal">${r['FORMA DE PAGO']}</span>` : '';
-    const accion = (r['_pedidoId'] && ROL_ACTUAL === 'admin') ? `<button class="btn-editar-fila" onclick="abrirEditarPedido('${r['_pedidoId']}')" title="Editar este pedido">✏ Editar</button><button class="btn-eliminar-fila" onclick="eliminarPedidoCompleto('${r['_pedidoId']}')" title="Eliminar este pedido permanentemente">🗑 Eliminar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>'; /* [NEW] Secretaria no ve Editar/Eliminar */
+    const accion = (r['_pedidoId'] && (ROL_ACTUAL === 'admin' || ROL_ACTUAL === 'secretaria')) ? `<button class="btn-editar-fila" onclick="abrirEditarPedido('${r['_pedidoId']}')" title="Editar este pedido">✏ Editar</button><button class="btn-eliminar-fila" onclick="eliminarPedidoCompleto('${r['_pedidoId']}')" title="Eliminar este pedido permanentemente">🗑 Eliminar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>'; /* [NEW] Secretaria no ve Editar/Eliminar */
     return `<tr>
       <td style="white-space:nowrap;font-size:12px">${limpiarFecha(r['FECHA'])}</td>
       <td style="white-space:nowrap;font-size:12px;color:var(--muted)">${escHTML(r['HORA REGISTRO']||'-')}</td>
@@ -2021,7 +2057,7 @@ function exportarClientePDF() {
   </style></head><body>
   <div class="print-header">
     <h1>🔍 ${escHTML(tituloSeleccion)}</h1>
-    <p>${clientesSeleccionados.length} cliente(s) · Asesor: ${asesorLabel} · Fecha: ${fecha} · Generado: ${new Date().toLocaleString('es-EC')}</p>
+    <p>${clientesSeleccionados.length} cliente(s) · Asesor: ${asesorLabel} · Fecha: ${fecha} · Generado: ${new Date().toLocaleString('es-EC')} · ${escHTML(lineaImpresoPor())}</p>
   </div>
   ${bloquesHtml}
   ${clientesSeleccionados.length > 1 ? `<div class="total-final"><span>TOTAL GENERAL (${clientesSeleccionados.length} clientes)</span><b>$${totalGeneralTodos.toFixed(2)}</b></div>` : ''}
@@ -2307,7 +2343,7 @@ function _imprimirClientesPDF(clientesArr) {
     th{background:#1a3a5c;color:#fff;padding:8px 10px;text-align:left}
     td{padding:7px 10px;border-bottom:1px solid #eee}
     hr{border:none;border-top:2px dashed #ccc;margin:24px 0}
-  </style></head><body>${bloques}<script>window.onload=function(){window.print();}<\/script></body></html>`);
+  </style></head><body><p style="font-size:12px;color:#888;margin-bottom:12px">${escHTML(lineaImpresoPor())} · ${new Date().toLocaleString('es-EC')}</p>${bloques}<script>window.onload=function(){window.print();}<\/script></body></html>`);
   v.document.close();
 }
 
@@ -2730,7 +2766,7 @@ function imprimirCierre() {
     .btn-cerrar-cierre,.btn-print-cierre{display:none!important;}
     @media print{body{padding:16px;} .cierre-asesor-block{page-break-inside:avoid;}}
   </style></head><body>
-  <div class="print-header"><h1>📅 Cierre del Día — Aqua Luan</h1><p>Fecha: ${fecha} · Generado: ${new Date().toLocaleString('es-EC')}</p></div>
+  <div class="print-header"><h1>📅 Cierre del Día — Aqua Luan</h1><p>Fecha: ${fecha} · Generado: ${new Date().toLocaleString('es-EC')} · ${escHTML(lineaImpresoPor())}</p></div>
   ${cuerpo}
   <script>window.onload=function(){window.print();}<\/script>
   </body></html>`);
@@ -2800,7 +2836,7 @@ function exportarPagosGastosPDF() {
     <img src="${logoUrl}" alt="Aqua Luan" onerror="this.style.display='none'">
     <div>
       <h1>💳 Pagos y Gastos — ${escHTML(asesorLabel)}</h1>
-      <p>Fecha: ${fecha} · ${pagos.length} pago(s) · ${gastos.length} gasto(s) · Generado: ${new Date().toLocaleString('es-EC')}</p>
+      <p>Fecha: ${fecha} · ${pagos.length} pago(s) · ${gastos.length} gasto(s) · Generado: ${new Date().toLocaleString('es-EC')} · ${escHTML(lineaImpresoPor())}</p>
     </div>
   </div>
   <div class="seccion-title" style="color:#1565c0">💰 Pagos registrados</div>
@@ -2887,7 +2923,7 @@ function exportarDetallePDF() {
     <img src="${logoUrl}" alt="Aqua Luan" onerror="this.style.display='none'">
     <div>
       <h1>📋 Detalle de Pedidos — ${escHTML(asesorLabel)}</h1>
-      <p>Fecha: ${fecha} · Asesor: ${asesorLabel} · ${datos.length} línea(s) · Generado: ${new Date().toLocaleString('es-EC')}</p>
+      <p>Fecha: ${fecha} · Asesor: ${asesorLabel} · ${datos.length} línea(s) · Generado: ${new Date().toLocaleString('es-EC')} · ${escHTML(lineaImpresoPor())}</p>
     </div>
   </div>
   <table>
@@ -3141,7 +3177,7 @@ async function guardarEdicionPedido(){
         lote.set(ref, {
           tipo: 'pedido', accion: 'edición', registroId: editandoPedidoActual._id, // [NEW] campos genéricos para la pestaña de Auditoría
           pedidoId: editandoPedidoActual._id,
-          usuarioAdmin: ADMIN_ACTUAL.nombre || ADMIN_ACTUAL.uid || 'admin',
+          usuarioAdmin: actorAuditoria(), usuarioUid: (ADMIN_ACTUAL && ADMIN_ACTUAL.uid) || null, usuarioLogin: (ADMIN_ACTUAL && ADMIN_ACTUAL.usuario) || '',
           fecha: fechaHoy(),
           hora: new Date().toLocaleTimeString('es-EC'),
           campo: c.campo,
@@ -3181,7 +3217,7 @@ async function _registrarAuditoria(tipo, accion, registroId, detalle){
   try{
     await db.collection('historialCambios').add({
       tipo, accion, registroId: registroId || null, detalle: detalle || '',
-      usuarioAdmin: ADMIN_ACTUAL.nombre || ADMIN_ACTUAL.uid || 'admin',
+      usuarioAdmin: actorAuditoria(), usuarioUid: (ADMIN_ACTUAL && ADMIN_ACTUAL.uid) || null, usuarioLogin: (ADMIN_ACTUAL && ADMIN_ACTUAL.usuario) || '',
       fecha: fechaHoy(),
       hora: new Date().toLocaleTimeString('es-EC'),
       creadoEn: firebase.firestore.FieldValue.serverTimestamp()
@@ -3203,7 +3239,7 @@ async function eliminarPedidoCompleto(pedidoId){
     await db.collection('pedidosEliminados').doc(pedidoId).set({
       ...datosOriginales,
       pedidoIdOriginal: pedidoId,
-      eliminadoPor: ADMIN_ACTUAL.nombre || ADMIN_ACTUAL.uid || 'admin',
+      eliminadoPor: actorAuditoria(),
       fechaEliminacion: fechaHoy(),
       horaEliminacion: new Date().toLocaleTimeString('es-EC'),
       eliminadoEn: firebase.firestore.FieldValue.serverTimestamp()
@@ -3658,6 +3694,7 @@ async function guardarEdicionPagoGasto(){
         fecha: document.getElementById('epgFecha').value, ref: document.getElementById('epgRef').value.trim()
       });
     }
+    await _registrarAuditoria(tipo, 'edición', id, (tipo==='pago'?'Pago':'Gasto') + ' editado por ' + actorAuditoria() + ' — monto $' + monto.toFixed(2));
     mostrarToastEdicion(tipo === 'pago' ? '✅ Pago actualizado correctamente.' : '✅ Gasto actualizado correctamente.');
     cerrarEditarPagoGasto();
   }catch(err){
@@ -3673,6 +3710,7 @@ async function eliminarPagoDash(id){
   if(!confirm(`¿Eliminar el pago de "${p?.cliente||'este cliente'}" ($${(parseFloat(p?.monto)||0).toFixed(2)})? Esta acción no se puede deshacer.`)) return;
   try{
     await db.collection('pagos').doc(id).delete();
+    await _registrarAuditoria('pago', 'eliminación', id, 'Pago eliminado por ' + actorAuditoria());
     mostrarToastEdicion('🗑 Pago eliminado correctamente.');
   }catch(err){ console.error(err); alert('❌ No se pudo eliminar el pago: ' + err.message); }
 }
@@ -3682,6 +3720,7 @@ async function eliminarGastoDash(id){
   if(!confirm(`¿Eliminar el gasto "${g?.desc||g?.categoria||'este gasto'}" ($${(parseFloat(g?.monto)||0).toFixed(2)})? Esta acción no se puede deshacer.`)) return;
   try{
     await db.collection('gastos').doc(id).delete();
+    await _registrarAuditoria('gasto', 'eliminación', id, 'Gasto eliminado por ' + actorAuditoria());
     mostrarToastEdicion('🗑 Gasto eliminado correctamente.');
   }catch(err){ console.error(err); alert('❌ No se pudo eliminar el gasto: ' + err.message); }
 }
