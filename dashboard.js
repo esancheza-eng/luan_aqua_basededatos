@@ -2473,10 +2473,6 @@ function exportarPagosGastosPDF() {
   const fecha = _textoRangoFecha();
   const totalPagos = pagos.reduce((s,r) => s + (parseFloat(r['TOTAL PEDIDO ($)'])||0), 0);
   const totalGastos = gastos.reduce((s,r) => s + Math.abs(parseFloat(r['TOTAL PEDIDO ($)'])||0), 0);
-  const neto = totalPagos - totalGastos;
-  const porForma = {};
-  pagos.forEach(r => { const f = r['FORMA DE PAGO'] || 'Sin especificar'; porForma[f] = (porForma[f]||0) + (parseFloat(r['TOTAL PEDIDO ($)'])||0); });
-  const resumenForma = Object.entries(porForma).sort(([,a],[,b]) => b-a).map(([f,v]) => `<span style="display:inline-block;background:#e8f0fd;border-radius:100px;padding:5px 14px;font-size:11px;font-weight:700;color:#0d47a1;margin:2px">${f}: $${v.toFixed(2)}</span>`).join('');
   const filasPagos = pagos.map(r => `<tr>
     <td>${escHTML(r['CLIENTE']||'-')}</td>
     <td>${(r['ASESOR / RUTA']||'').split(':')[1]?.trim()||r['ASESOR / RUTA']||'-'}</td>
@@ -2506,7 +2502,6 @@ function exportarPagosGastosPDF() {
     .print-header img{height:46px;width:auto;}
     .print-header h1{font-family:'DM Serif Display',serif;font-size:22px;color:#1a3a5c;}
     .print-header p{font-size:12px;color:#888;margin-top:4px;}
-    .resumen-forma{text-align:center;margin-bottom:18px;}
     .seccion-title{font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;margin:22px 0 8px;}
     table{width:100%;border-collapse:collapse;font-size:12px;}
     thead th{padding:9px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#fff;}
@@ -2519,9 +2514,6 @@ function exportarPagosGastosPDF() {
     .total-row-pagos td{padding:12px;border-top:2px solid #1565c0;}
     .total-row-gastos{background:#fdecea;font-weight:800;color:#a93226;}
     .total-row-gastos td{padding:12px;border-top:2px solid #c0392b;}
-    .neto-box{background:#1a3a5c;border-radius:12px;padding:16px 20px;margin-top:24px;display:flex;align-items:center;justify-content:space-between;}
-    .neto-label{font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.6);}
-    .neto-value{font-family:'DM Serif Display',serif;font-size:26px;color:${neto>=0?'#4ec9a0':'#f48fb1'};}
     .firmas{display:flex;justify-content:space-between;gap:30px;margin-top:70px;page-break-inside:avoid;}
     .firmas .firma{flex:1;text-align:center;}
     .firmas .firma-linea{border-top:1.5px solid #1a3a5c;margin-bottom:6px;}
@@ -2535,7 +2527,6 @@ function exportarPagosGastosPDF() {
       <p>Fecha: ${fecha} · ${pagos.length} pago(s) · ${gastos.length} gasto(s) · Generado: ${new Date().toLocaleString('es-EC')}</p>
     </div>
   </div>
-  <div class="resumen-forma">${resumenForma}</div>
   <div class="seccion-title" style="color:#1565c0">💰 Pagos registrados</div>
   <table class="tabla-pagos">
     <thead><tr><th>Cliente</th><th>Asesor</th><th>Forma de Pago</th><th>Fecha</th><th>Monto</th></tr></thead>
@@ -2552,10 +2543,6 @@ function exportarPagosGastosPDF() {
       <tr class="total-row-gastos"><td colspan="3" style="text-align:right">TOTAL GASTOS</td><td style="text-align:right">$${totalGastos.toFixed(2)}</td></tr>
     </tbody>
   </table>
-  <div class="neto-box">
-    <span class="neto-label">Total en caja (Pagos − Gastos)</span>
-    <span class="neto-value">$${neto.toFixed(2)}</span>
-  </div>
   <div class="firmas">
     <div class="firma"><div class="firma-linea">&nbsp;</div><div class="firma-label">Firma Secretaria</div></div>
     <div class="firma"><div class="firma-linea">&nbsp;</div><div class="firma-label">Firma Asesor</div></div>
