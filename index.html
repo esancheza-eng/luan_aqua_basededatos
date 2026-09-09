@@ -461,24 +461,6 @@ background: #fff8e1; border: 1px solid #ffc107; border-radius: var(--radius);
 padding: 10px 14px; margin-bottom: 12px; text-align: center;
 }
 .login-bloqueo.show { display: block; }
-/* [NEW] Aviso de pestaña duplicada — ver nota junto a enablePersistence más abajo */
-.multitab-overlay {
-display: none; position: fixed; inset: 0; z-index: 1000;
-background: rgba(10,30,60,0.55); align-items: center; justify-content: center; padding: 1rem;
-}
-.multitab-overlay.show { display: flex; animation: fadeIn 0.2s ease; }
-.multitab-box {
-background: #fff; border-radius: var(--radius-lg); box-shadow: var(--shadow);
-padding: 2rem 1.75rem; width: 100%; max-width: 360px; text-align: center;
-}
-.multitab-box .multitab-icon { font-size: 2rem; margin-bottom: 0.75rem; }
-.multitab-box h3 { font-family: 'DM Sans', sans-serif; font-size: 1.05rem; font-weight: 700; color: var(--navy); margin-bottom: 0.5rem; }
-.multitab-box p { font-size: 13px; color: var(--muted); line-height: 1.5; margin-bottom: 1.25rem; }
-.multitab-box button {
-background: var(--navy); color: #fff; border: none; border-radius: 100px;
-padding: 10px 22px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 700;
-cursor: pointer;
-}
 @media (max-width: 480px) {
 body { padding: 1rem 0.75rem 3rem; }
 .grid-2, .grid-3 { grid-template-columns: 1fr; }
@@ -554,10 +536,16 @@ body { padding: 1rem 0.75rem 3rem; }
   font-size: 13px; font-weight: 700; color: var(--navy);
   cursor: pointer; letter-spacing: 0.02em; user-select: none;
 }
-.pago-opt input[type="radio"] {
-  width: 18px; height: 18px; margin: 0; padding: 0;
-  accent-color: var(--teal); cursor: pointer; flex-shrink: 0;
+.pago-opt input { position:absolute; opacity:0; pointer-events:none; }
+.pago-dot {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid #c5d0d8; background: #fff;
+  flex-shrink: 0; box-sizing: border-box; transition: background .15s, border-color .15s, box-shadow .15s;
 }
+.pago-opt.activo-contado .pago-dot { background:#0a7c6e; border-color:#0a7c6e; box-shadow:0 0 0 3px rgba(10,124,110,.18); }
+.pago-opt.activo-transferencia .pago-dot { background:#1565c0; border-color:#1565c0; box-shadow:0 0 0 3px rgba(21,101,192,.18); }
+.pago-opt.activo-cheque .pago-dot { background:#e67e22; border-color:#e67e22; box-shadow:0 0 0 3px rgba(230,126,34,.18); }
+.pago-opt.activo-credito .pago-dot { background:#c0392b; border-color:#c0392b; box-shadow:0 0 0 3px rgba(192,57,43,.18); }
 .pago-credito-monto { color: var(--muted); font-weight: 700; margin-left: 2px; }
 .pago-credito-monto.debe { color: #e23d3d; }
 .pago-montos { margin-top: 12px; display: none; flex-direction: column; gap: 10px; }
@@ -640,16 +628,6 @@ body { padding: 1rem 0.75rem 3rem; }
 
 <!-- Aviso expiración -->
 <div id="avisoSesion" style="display:none;position:fixed;bottom:20px;right:20px;background:#fff8e1;border:1.5px solid #ffc107;border-radius:12px;padding:12px 18px;font-size:13px;font-weight:600;color:#795c00;z-index:200;box-shadow:0 4px 20px rgba(0,0,0,0.15)"></div>
-
-<!-- [NEW] Aviso de pestaña duplicada (ver enablePersistence más abajo) -->
-<div class="multitab-overlay" id="multitabOverlay">
-  <div class="multitab-box">
-    <div class="multitab-icon">⚠️</div>
-    <h3>Ya tienes esta app abierta</h3>
-    <p>Detectamos otra pestaña de Aqua Luan abierta en este navegador. Para evitar que los pedidos se traben o dupliquen, usa solo una pestaña a la vez.</p>
-    <button onclick="location.reload()">Cerrar esta pestaña y reintentar</button>
-  </div>
-</div>
 
 <div class="container">
   <div class="offline-banner" id="offlineBanner">
@@ -738,13 +716,9 @@ body { padding: 1rem 0.75rem 3rem; }
           <input type="date" id="fecha">
         </div>
       </div>
-      <div class="field">
+      <div class="field" style="margin-bottom:0">
         <label for="direccion">Direccion</label>
         <input type="text" id="direccion" placeholder="Calle, numero, sector" autocomplete="off" maxlength="200">
-      </div>
-      <div class="field" style="margin-bottom:0">
-        <label for="notas">Notas adicionales</label>
-        <textarea id="notas" placeholder="Observaciones, condiciones de pago, entregas..." maxlength="500"></textarea>
       </div>
     </div>
 
@@ -785,11 +759,11 @@ body { padding: 1rem 0.75rem 3rem; }
         <span class="total-value" id="totalGeneral">$0.00</span>
       </div>
       <div class="section-title" style="margin-top:1.25rem">Forma de pago</div>
-      <div class="pago-opciones" role="radiogroup" aria-label="Forma de pago">
-        <label class="pago-opt"><input type="radio" name="pagoOpt" value="Contado" onchange="_elegirFormaPago(this.value)"> 💵 CONTADO</label>
-        <label class="pago-opt"><input type="radio" name="pagoOpt" value="Transferencia" onchange="_elegirFormaPago(this.value)"> 🏦 TRANSFERENCIA</label>
-        <label class="pago-opt"><input type="radio" name="pagoOpt" value="Cheque" onchange="_elegirFormaPago(this.value)"> 📄 CHEQUE</label>
-        <label class="pago-opt"><input type="radio" name="pagoOpt" value="Crédito" onchange="_elegirFormaPago(this.value)"> 📋 CRÉDITO <span class="pago-credito-monto" id="pagoCreditoMonto">$0.00</span></label>
+      <div class="pago-opciones" role="group" aria-label="Forma de pago">
+        <label class="pago-opt" data-pago="Contado" onclick="_elegirFormaPago('Contado');return false;"><span class="pago-dot"></span> 💵 CONTADO</label>
+        <label class="pago-opt" data-pago="Transferencia" onclick="_elegirFormaPago('Transferencia');return false;"><span class="pago-dot"></span> 🏦 TRANSFERENCIA</label>
+        <label class="pago-opt" data-pago="Cheque" onclick="_elegirFormaPago('Cheque');return false;"><span class="pago-dot"></span> 📄 CHEQUE</label>
+        <label class="pago-opt" data-pago="Crédito" onclick="_elegirFormaPago('Crédito');return false;"><span class="pago-dot"></span> 📋 CRÉDITO <span class="pago-credito-monto" id="pagoCreditoMonto">$0.00</span></label>
       </div>
       <div class="pago-montos" id="pagoMontos">
         <div class="pago-monto-row" id="rowMontoContado" style="display:none"><label>💵 Contado</label><input type="text" id="montoContado" placeholder="0.00" inputmode="decimal" autocomplete="off" maxlength="12" oninput="filtrarInputMonto(this);_actualizarDesglosePago()"></div>
@@ -805,6 +779,10 @@ body { padding: 1rem 0.75rem 3rem; }
     </div>
 
     <div class="card">
+      <div class="field">
+        <label for="notas">Notas adicionales</label>
+        <textarea id="notas" placeholder="Observaciones, condiciones de pago, entregas..." maxlength="500"></textarea>
+      </div>
       <button class="btn" id="btnGuardar" onclick="abrirModal()">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.5 10v2a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 12v-2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M8 2v7M5.5 6.5 8 9l2.5-2.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
         Guardar registro
@@ -1108,16 +1086,7 @@ const cloudFns = firebase.functions();
 // [NEW] Persistencia offline nativa de Firestore — reemplaza el IndexedDB/cola manual
 // que se usaba con Google Sheets. Firestore guarda los cambios localmente cuando no hay
 // internet y los sincroniza solo apenas vuelve la conexión, sin código adicional.
-db.enablePersistence({synchronizeTabs:true}).catch(err=>{
-  console.warn('Persistencia offline no disponible:',err.code);
-  /* [NEW] 'failed-precondition' = ya hay otra pestaña de esta misma app abierta
-     compitiendo por la persistencia offline (IndexedDB). Antes esto solo se
-     registraba en consola y la pestaña se quedaba trabada en silencio; ahora
-     se lo avisamos al usuario con una acción clara en vez de dejarlo adivinar. */
-  if(err.code === 'failed-precondition'){
-    document.getElementById('multitabOverlay').classList.add('show');
-  }
-});
+db.enablePersistence({synchronizeTabs:true}).catch(err=>{ console.warn('Persistencia offline no disponible:',err.code); });
 const DOMINIO_LOGIN = '@luanaqua.app'; // el "usuario" corto se convierte a este correo interno para Firebase Auth
 
 function _emailDeUsuario(usuario){
@@ -1530,18 +1499,40 @@ function _armarPagoMultiple(formapago,total,abono){
   return _armarPagoDesdeUI(total);
 }
 let _pagosAbiertos=new Set();
+function _pintarPuntosPago(){
+  const mapa={Contado:'activo-contado',Transferencia:'activo-transferencia',Cheque:'activo-cheque','Crédito':'activo-credito'};
+  document.querySelectorAll('.pago-opt').forEach(lab=>{
+    Object.values(mapa).forEach(c=>lab.classList.remove(c));
+    const v=lab.getAttribute('data-pago');
+    if(v==='Crédito'){
+      if(!_pagosAbiertos.size && document.getElementById('formapago')?.value==='Crédito') lab.classList.add('activo-credito');
+    } else if(_pagosAbiertos.has(v)){
+      lab.classList.add(mapa[v]);
+    }
+  });
+}
 function _elegirFormaPago(valor){
   const sel=document.getElementById('formapago');
-  if(sel) sel.value=valor||'';
-  document.querySelectorAll('input[name="pagoOpt"]').forEach(r=>{ r.checked=_pagosAbiertos.has(r.value) || r.value===valor; });
+  const idsInput={Contado:'montoContado',Transferencia:'montoTransferencia',Cheque:'montoCheque'};
   if(valor==='Crédito'){
-    _pagosAbiertos.clear();
-    document.querySelectorAll('input[name="pagoOpt"]').forEach(r=>{ r.checked=r.value==='Crédito'; });
-    ['montoContado','montoTransferencia','montoCheque'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+    if(!_pagosAbiertos.size && sel && sel.value==='Crédito'){
+      if(sel) sel.value='';
+    } else {
+      _pagosAbiertos.clear();
+      ['montoContado','montoTransferencia','montoCheque'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+      if(sel) sel.value='Crédito';
+    }
   } else if(valor==='Contado'||valor==='Transferencia'||valor==='Cheque'){
-    _pagosAbiertos.add(valor);
-    document.querySelectorAll('input[name="pagoOpt"]').forEach(r=>{ r.checked=_pagosAbiertos.has(r.value); });
+    if(_pagosAbiertos.has(valor)){
+      _pagosAbiertos.delete(valor);
+      const inp=document.getElementById(idsInput[valor]);
+      if(inp) inp.value='';
+    } else {
+      _pagosAbiertos.add(valor);
+    }
+    if(sel) sel.value=[..._pagosAbiertos][0]||'';
   }
+  _pintarPuntosPago();
   _desplegarCamposPago(valor);
   _actualizarDesglosePago();
 }
@@ -1874,7 +1865,9 @@ function limpiarSoloFormulario(){
   ['formapago','nombre','telefono','direccion','notas'].forEach(id=>document.getElementById(id).value='');
   document.querySelectorAll('input[name="pagoOpt"]').forEach(r=>{ r.checked=false; });
   ['montoContado','montoTransferencia','montoCheque','abono'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  _pagosAbiertos.clear();
   _desplegarCamposPago('');
+  if(typeof _pintarPuntosPago==='function') _pintarPuntosPago();
   _actualizarDesglosePago();
   productos=[]; renderLista();
   const hoy=new Date(),yyyy=hoy.getFullYear(),mm=String(hoy.getMonth()+1).padStart(2,'0'),dd=String(hoy.getDate()).padStart(2,'0');
@@ -2009,24 +2002,6 @@ function _calcularLiquidacion(){
   }; return porAsesor[nombre]; };
   hist.forEach(p=>{
     const d=getAsesor(p.empleado||'Sin asignar'); const tot=parseFloat(p.total||0);
-    /* [FIX] NUEVO FORMATO DE PAGO MÚLTIPLE — el asesor puede marcar varias formas de
-       pago a la vez (ej. Contado + Transferencia + Cheque + Crédito). Antes, estos
-       pedidos llegaban aquí con formapago='Mixto' y, como no calzaba con ninguno de
-       los 4 casos de abajo, TODO el total cayía en "Sin clasificar" — la app de
-       pedidos mostraba $0 en Ventas al contado aunque el asesor sí hubiera cobrado
-       parte en efectivo. Mismo fix ya aplicado en el Dashboard (_calcularLiquidacionDash);
-       replicado aquí para que ambas pantallas coincidan siempre. */
-    if(p.pagos!==null && p.pagos!==undefined){
-      (p.pagos||[]).forEach(pg=>{
-        const monto=parseFloat(pg.monto||0);
-        if(pg.forma==='Contado') d.ventasContado+=monto;
-        else if(pg.forma==='Transferencia') d.ventasTransferencia+=monto;
-        else if(pg.forma==='Cheque') d.ventasCheque+=monto;
-        else d.ventasOtras+=monto;
-      });
-      d.ventasCredito+=parseFloat(p.creditoPendiente||0);
-    } else {
-    // --- Compatibilidad con pedidos creados ANTES del pago múltiple (campo 'abono') ---
     const abono=parseFloat(p.abono||0); // [FIX] venta con abono parcial (Contado o Crédito)
     if(abono>0 && abono<tot){
       // [FIX] El abono ya se registra por separado como un "Pago" en efectivo
@@ -2046,7 +2021,6 @@ function _calcularLiquidacion(){
     else if(p.formapago==='Transferencia') d.ventasTransferencia+=tot;
     else if(p.formapago==='Cheque') d.ventasCheque+=tot;
     else d.ventasOtras+=tot; // [NEW] resguardo por si llega un formapago fuera de las 4 opciones conocidas
-    }
   });
   listaPagos.forEach(p=>{
     const d=getAsesor(p.empleado||'Sin asignar');
@@ -2621,8 +2595,8 @@ function _buildTicketHTML(d){
   <div class="t-line"></div>
   <table class="t-tbl"><tr><td>Pedido:</td><td class="t-r">${fechaStr}</td></tr>
   ${horaTicket?`<tr><td>Hora:</td><td class="t-r">${escHTML(horaTicket)}</td></tr>`:''}
-  <tr><td>Ruta:</td><td class="t-r">${escHTML(d.empleado||'-')}</td></tr></table>
-  ${((d.pagos&&d.pagos.length)||parseFloat(d.creditoPendiente)>0)?'':`<div class="t-pago-row"><span class="t-bold">Pago: </span><span class="t-pago-val">${escHTML(_textoDesglosePago(d))}</span></div>`}
+  <tr><td>Ruta:</td><td class="t-r">${escHTML(d.empleado||'-')}</td></tr>
+  <tr><td>Pago:</td><td class="t-r t-pago-val">${escHTML(_textoDesglosePago(d))}</td></tr></table>
   <div class="t-line"></div>
   <div class="t-bold">CLIENTE: ${escHTML(d.nombre||'-')}</div>
   ${d.telefono?`<div class="t-small">Tel: ${escHTML(d.telefono)}</div>`:''}
@@ -2687,13 +2661,6 @@ function _abrirVentanaTicket(contenido){
   .t-regalo{font-size:10px;font-weight:700;font-style:italic;padding-left:4px !important;}
   .t-total td{font-size:14px;font-weight:700;padding-top:2px !important;}
   .t-pago-val{font-size:14px !important;}
-  /* [NEW] Antes esta línea compartía tabla con Pedido/Hora/Ruta y heredaba
-     white-space:nowrap + width:1% (pensado para valores cortos como fechas).
-     Con varias formas de pago combinadas (ej. Contado + Transferencia +
-     Cheque + Crédito) el texto no cabía en una sola línea y se salía del
-     ancho del ticket. Como bloque aparte, ahora sí hace salto de línea
-     normal dentro del ancho de 46mm. */
-  .t-pago-row{white-space:normal;word-break:break-word;margin:1px 0;}
   </style></head><body>${contenido}<script>window.onload=function(){window.print();}<\/script></body></html>`);
   v.document.close();
 }
