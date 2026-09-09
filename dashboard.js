@@ -599,6 +599,7 @@ function renderNotasAdicionalesDash(){
   if(emptyMsg) emptyMsg.style.display = 'none';
   tbody.innerHTML = pedidosConNota.map(p => `
     <tr>
+      <td style="white-space:nowrap;color:var(--muted)">${escHTML(p.fecha||'-')}</td>
       <td style="font-weight:700;color:var(--navy)">${escHTML(p.empleado||'-')}</td>
       <td style="font-weight:600">${escHTML(p.cliente||'-')}</td>
       <td style="font-style:italic;color:var(--muted)">📝 ${escHTML(p.notas)}</td>
@@ -616,6 +617,7 @@ function imprimirNotasAdicionalesDash(){
     .filter(p => !asesorSel || (p.empleado||'') === asesorSel)
     .sort((a,b) => (b.creadoEn?.toMillis?.() || 0) - (a.creadoEn?.toMillis?.() || 0));
   const filas = pedidosConNota.map(p => `<tr>
+    <td>${escHTML(p.fecha||'-')}</td>
     <td>${escHTML(p.empleado||'-')}</td>
     <td>${escHTML(p.cliente||'-')}</td>
     <td>${escHTML(p.notas||'-')}</td>
@@ -651,9 +653,9 @@ function imprimirNotasAdicionalesDash(){
     </div>
   </div>
   <table>
-    <thead><tr><th>Asesor</th><th>Cliente</th><th>Nota</th></tr></thead>
+    <thead><tr><th>Fecha</th><th>Asesor</th><th>Cliente</th><th>Nota</th></tr></thead>
     <tbody>
-      ${filas || '<tr><td colspan="3" style="text-align:center;color:#888">No hay notas adicionales registradas en este período.</td></tr>'}
+      ${filas || '<tr><td colspan="4" style="text-align:center;color:#888">No hay notas adicionales registradas en este período.</td></tr>'}
     </tbody>
   </table>
   <div class="firmas">
