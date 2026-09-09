@@ -579,8 +579,15 @@ function renderNotasAdicionalesDash(){
   const tabla = document.getElementById('notasAdicionalesTabla');
   const emptyMsg = document.getElementById('notasAdicionalesEmptyMsg');
   if(!tbody) return;
+  // [FIX] Antes esta sección ignoraba el selector "Asesor" del filtro general del
+  // Dashboard — siempre mostraba las notas de TODAS las rutas, aunque el usuario
+  // hubiera elegido una en el dropdown. La fecha sí se respetaba (_pedidosRaw ya
+  // viene filtrado por fecha desde la consulta a Firestore), pero el asesor no.
+  // Mismo patrón que _calcularLiquidacionDash().
+  const asesorSel = document.getElementById('filtroAsesor') ? document.getElementById('filtroAsesor').value : '';
   const pedidosConNota = _pedidosRaw
     .filter(p => (p.notas||'').trim() !== '')
+    .filter(p => !asesorSel || (p.empleado||'') === asesorSel)
     .sort((a,b) => (b.creadoEn?.toMillis?.() || 0) - (a.creadoEn?.toMillis?.() || 0));
   if(!pedidosConNota.length){
     tbody.innerHTML = '';
@@ -596,6 +603,72 @@ function renderNotasAdicionalesDash(){
       <td style="font-weight:600">${escHTML(p.cliente||'-')}</td>
       <td style="font-style:italic;color:var(--muted)">📝 ${escHTML(p.notas)}</td>
     </tr>`).join('');
+}
+/* [NEW] Imprimir Notas Adicionales — mismo patrón (logo + firmas) que
+   imprimirLiquidacionDash(), respetando los mismos filtros de fecha y asesor
+   que ya aplica renderNotasAdicionalesDash(). */
+function imprimirNotasAdicionalesDash(){
+  const fecha = _textoRangoFecha();
+  const asesorSel = document.getElementById('filtroAsesor') ? document.getElementById('filtroAsesor').value : '';
+  const asesorLabel = asesorSel.split(':')[1]?.trim() || 'Todos';
+  const pedidosConNota = _pedidosRaw
+    .filter(p => (p.notas||'').trim() !== '')
+    .filter(p => !asesorSel || (p.empleado||'') === asesorSel)
+    .sort((a,b) => (b.creadoEn?.toMillis?.() || 0) - (a.creadoEn?.toMillis?.() || 0));
+  const filas = pedidosConNota.map(p => `<tr>
+    <td>${escHTML(p.empleado||'-')}</td>
+    <td>${escHTML(p.cliente||'-')}</td>
+    <td>${escHTML(p.notas||'-')}</td>
+  </tr>`).join('');
+  const v = window.open('', '_blank', 'width=900,height=900');
+  // [NEW] URL absoluta del logo — esta ventana se abre en blanco, sin el
+  // dashboard como base, así que una ruta relativa no cargaría.
+  const logoUrl = location.origin + '/logo-luanaqua.png';
+  v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Notas Adicionales — Aqua Luan — ${fecha}</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'DM Sans',sans-serif;color:#1a3a5c;padding:24px;background:#fff;}
+    .print-header{display:flex;align-items:center;justify-content:center;gap:14px;text-align:center;margin-bottom:16px;padding-bottom:16px;border-bottom:2px solid #1a3a5c;}
+    .print-header img{height:46px;width:auto;}
+    .print-header h1{font-family:'DM Serif Display',serif;font-size:20px;color:#1a3a5c;}
+    .print-header p{font-size:11px;color:#888;margin-top:3px;}
+    table{width:100%;border-collapse:collapse;font-size:12px;}
+    thead th{padding:9px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#fff;background:#1a3a5c;}
+    tbody td{padding:9px 12px;border-bottom:1px solid #eee;}
+    tbody tr:nth-child(even){background:#f7fafb;}
+    .firmas{display:flex;justify-content:space-between;gap:30px;margin-top:70px;page-break-inside:avoid;}
+    .firmas .firma{flex:1;text-align:center;}
+    .firmas .firma-linea{border-top:1.5px solid #1a3a5c;margin-bottom:6px;}
+    .firmas .firma-label{font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#1a3a5c;}
+    @media print{body{padding:12px;} thead{display:table-header-group;} .firmas{margin-top:60px;}}
+  </style></head><body>
+  <div class="print-header">
+    <img src="${logoUrl}" alt="Aqua Luan" onerror="this.style.display='none'">
+    <div>
+      <h1>NOTAS ADICIONALES</h1>
+      <p>Fecha: ${fecha} · Asesor: ${escHTML(asesorLabel)} · Generado: ${new Date().toLocaleString('es-EC')}</p>
+    </div>
+  </div>
+  <table>
+    <thead><tr><th>Asesor</th><th>Cliente</th><th>Nota</th></tr></thead>
+    <tbody>
+      ${filas || '<tr><td colspan="3" style="text-align:center;color:#888">No hay notas adicionales registradas en este período.</td></tr>'}
+    </tbody>
+  </table>
+  <div class="firmas">
+    <div class="firma"><div class="firma-linea">&nbsp;</div><div class="firma-label">Firma Secretaria</div></div>
+    <div class="firma"><div class="firma-linea">&nbsp;</div><div class="firma-label">Firma Asesor</div></div>
+    <div class="firma"><div class="firma-linea">&nbsp;</div><div class="firma-label">Firma Ayudante</div></div>
+  </div>
+  <script>
+    var _impresoNotas=false;
+    function _intentarImprimirNotas(){ if(_impresoNotas)return; _impresoNotas=true; window.print(); }
+    window.onload=_intentarImprimirNotas;
+    setTimeout(_intentarImprimirNotas,1200);
+  <\/script>
+  </body></html>`);
+  v.document.close();
 }
 function imprimirLiquidacionDash(){
   const porAsesor = _calcularLiquidacionDash();
