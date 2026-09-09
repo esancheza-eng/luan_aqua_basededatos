@@ -651,12 +651,17 @@ function imprimirLiquidacionDash(){
     </div>`;
   }).join('');
   const v = window.open('', '_blank', 'width=900,height=900');
+  // [NEW] URL absoluta del logo — esta ventana se abre en blanco, sin el
+  // dashboard como base, así que una ruta relativa no cargaría. Mismo patrón
+  // que ya se usa en Pagos y Gastos / Detalle de Pedidos.
+  const logoUrl = location.origin + '/logo-luanaqua.png';
   v.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Liquidación de Efectivo — Aqua Luan — ${fecha}</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
     body{font-family:'DM Sans',sans-serif;color:#1a3a5c;padding:24px;background:#fff;}
-    .print-header{margin-bottom:16px;padding-bottom:16px;border-bottom:2px solid #1a3a5c;}
+    .print-header{display:flex;align-items:center;justify-content:center;gap:14px;text-align:center;margin-bottom:16px;padding-bottom:16px;border-bottom:2px solid #1a3a5c;}
+    .print-header img{height:46px;width:auto;}
     .print-header h1{font-family:'DM Serif Display',serif;font-size:20px;color:#1a3a5c;}
     .print-header p{font-size:11px;color:#888;margin-top:3px;}
     .ruta-block{background:#f0f5f8;border-radius:8px;margin-bottom:14px;padding:12px 14px;}
@@ -675,16 +680,27 @@ function imprimirLiquidacionDash(){
     .total-general{background:#1a3a5c;border-radius:10px;padding:14px 18px;margin-top:8px;display:flex;justify-content:space-between;align-items:center;}
     .total-general span:first-child{font-size:11px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.6);}
     .total-general span:last-child{font-family:'DM Serif Display',serif;font-size:22px;color:#4ec9a0;}
+    .firmas-box{display:flex;justify-content:space-between;gap:20px;margin-top:48px;}
+    .firma-linea{flex:1;text-align:center;font-size:11px;color:#1a3a5c;}
+    .firma-linea .raya{border-top:1px solid #1a3a5c;margin-bottom:6px;}
     @media print{body{padding:12px;}}
   </style></head><body>
   <div class="print-header">
-    <h1>LIQUIDACIÓN DE EFECTIVO POR ASESOR</h1>
-    <p>Fecha: ${fecha} · Generado: ${new Date().toLocaleString('es-EC')}</p>
+    <img src="${logoUrl}" alt="Aqua Luan" onerror="this.style.display='none'">
+    <div>
+      <h1>LIQUIDACIÓN DE EFECTIVO POR ASESOR</h1>
+      <p>Fecha: ${fecha} · Generado: ${new Date().toLocaleString('es-EC')}</p>
+    </div>
   </div>
   ${bloques || '<p style="color:#888;font-style:italic">No hay ventas, pagos ni gastos registrados en este período.</p>'}
   <div class="total-general">
     <span>TOTAL EFECTIVO A ENTREGAR HOY (TODAS LAS RUTAS)</span>
     <span>$${totalGeneral.toFixed(2)}</span>
+  </div>
+  <div class="firmas-box">
+    <div class="firma-linea"><div class="raya">&nbsp;</div>Firma secretaria</div>
+    <div class="firma-linea"><div class="raya">&nbsp;</div>Firma asesor</div>
+    <div class="firma-linea"><div class="raya">&nbsp;</div>Firma ayudante</div>
   </div>
   <script>window.onload=function(){window.print();}<\/script>
   </body></html>`);
