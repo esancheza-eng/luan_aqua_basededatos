@@ -40,6 +40,7 @@
     <img width="130" src="logo-luanaqua.png" alt="Aqua Luan" style="display:block">
     <div>
       <div class="header-sub">Dashboard de Supervisión</div>
+      <div id="usuarioSesionBadge" style="font-size:11px;font-weight:700;color:#9fd6c8;margin-top:2px;letter-spacing:0.02em">—</div>
     </div>
   </div>
   <div class="header-center">
@@ -82,11 +83,11 @@
         </div>
         <div class="dash-shell">
           <nav class="dash-nav">
-            <button class="dash-nav-item active" data-section="resumen" onclick="switchSeccionDash('resumen')">📊 Resumen General</button>
-            <button class="dash-nav-item" data-section="pedidos" onclick="switchSeccionDash('pedidos')">📋 Detalle de Pedidos</button>
-            <button class="dash-nav-item" data-section="cliente" onclick="switchSeccionDash('cliente')">🔍 Consultar por Cliente</button>
-            <button class="dash-nav-item" data-section="caja" onclick="switchSeccionDash('caja')">💳 Cuadre de Caja</button>
-            <button class="dash-nav-item" data-section="reporteAsesor" onclick="switchSeccionDash('reporteAsesor')">👤 Reporte por Asesor</button>
+            <button class="dash-nav-item active" data-section="resumen" id="navResumen" onclick="switchSeccionDash('resumen')">📊 Resumen General</button>
+            <button class="dash-nav-item" data-section="pedidos" id="navPedidos" onclick="switchSeccionDash('pedidos')">📋 Detalle de Pedidos</button>
+            <button class="dash-nav-item" data-section="cliente" id="navCliente" onclick="switchSeccionDash('cliente')">🔍 Consultar por Cliente</button>
+            <button class="dash-nav-item" data-section="caja" id="navCaja" onclick="switchSeccionDash('caja')">💳 Cuadre de Caja</button>
+            <button class="dash-nav-item" data-section="reporteAsesor" id="navReporteAsesor" onclick="switchSeccionDash('reporteAsesor')">👤 Reporte por Asesor</button>
             <button class="dash-nav-item" data-section="eliminados" id="navEliminados" onclick="switchSeccionDash('eliminados')">🗑 Pedidos Eliminados</button>
             <button class="dash-nav-item" data-section="inventario" id="navInventario" onclick="switchSeccionDash('inventario')">📦 Inventario</button>
             <button class="dash-nav-item" data-section="roles" id="navRoles" onclick="switchSeccionDash('roles')">💵 Roles de Pago</button>
