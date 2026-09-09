@@ -850,7 +850,7 @@ function _htmlEntregaLiquidacionPrint(){
   const u=_leerEntregaLiquidacionUI();
   const fila=(ok,nom,monto)=>`<div class="ruta-linea"><span>${ok?'☑':'☐'} ${nom}</span><b>$${(monto||0).toFixed(2)}</b></div>`;
   return `<div class="ruta-block">
-    <div class="ruta-header"><span>FORMA DE ENTREGA (TODAS LAS RUTAS)</span><span>$${_liqTotalEntregarCache.toFixed(2)}</span></div>
+    <div class="ruta-header"><span>FORMA DE ENTREGA</span><span>$${_liqTotalEntregarCache.toFixed(2)}</span></div>
     ${fila(u.efectivo.marcado,'Efectivo',u.efectivo.monto)}
     ${fila(u.deposito.marcado,'Depósito',u.deposito.monto)}
     ${fila(u.transferencia.marcado,'Transferencia',u.transferencia.monto)}
@@ -863,7 +863,7 @@ function imprimirLiquidacionDash(){
   const asesores = Object.keys(porAsesor).sort((a,b)=>a.localeCompare(b,'es'));
   const fecha = _textoRangoFecha();
   const asesorSel = document.getElementById('filtroAsesor') ? document.getElementById('filtroAsesor').value : '';
-  const asesorLabel = asesorSel.split(':')[1]?.trim() || 'Todas las rutas';
+  const asesorLabel = asesorSel.split(':')[1]?.trim() || 'General';
   let totalGeneral = 0;
   const bloques = asesores.map(nombre=>{
     const d = porAsesor[nombre];
@@ -957,7 +957,7 @@ function imprimirLiquidacionDash(){
   </div>
   ${bloques || '<p style="color:#888;font-style:italic">No hay ventas, pagos ni gastos registrados en este período.</p>'}
   <div class="total-general">
-    <span>TOTAL EFECTIVO A ENTREGAR HOY (TODAS LAS RUTAS)</span>
+    <span>TOTAL EFECTIVO A ENTREGAR HOY</span>
     <span>$${totalGeneral.toFixed(2)}</span>
   </div>
   ${_htmlEntregaLiquidacionPrint()}
