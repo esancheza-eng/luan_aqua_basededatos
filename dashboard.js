@@ -700,9 +700,20 @@ function imprimirLiquidacionDash(){
   <div class="firmas-box">
     <div class="firma-linea"><div class="raya">&nbsp;</div>Firma secretaria</div>
     <div class="firma-linea"><div class="raya">&nbsp;</div>Firma asesor</div>
-    <div class="firma-linea"><div class="raya">&nbsp;</div>Firma ayudante</div>
+    <div class="firma-linea"><div class="raya">&nbsp;</div>Firma chofer</div>
   </div>
-  <script>window.onload=function(){window.print();}<\/script>
+  <script>
+    /* [FIX] Antes esto dependía 100% de window.onload, que espera a que cargue
+       TODO — incluida la fuente externa de Google Fonts. Con señal débil/inestable,
+       esa petición externa puede quedarse esperando indefinidamente y el print()
+       nunca se dispara: la pestaña se queda "cargando" para siempre, dando la
+       sensación de que la app se congeló. Ahora se imprime con lo primero que
+       ocurra: la carga completa, o un máximo de 1.2s de espera. */
+    var _impresoLiquidacion=false;
+    function _intentarImprimirLiquidacion(){ if(_impresoLiquidacion)return; _impresoLiquidacion=true; window.print(); }
+    window.onload=_intentarImprimirLiquidacion;
+    setTimeout(_intentarImprimirLiquidacion,1200);
+  <\/script>
   </body></html>`);
   v.document.close();
 }
