@@ -250,6 +250,7 @@ async function doLogin() {
    la contraseña actual (reautenticación). No usa correos reales porque
    el login usa un dominio interno (@luanaqua.app) que nadie recibe. */
 async function cambiarMiPassword(){
+  if (ROL_ACTUAL === 'secretaria') { alert('La secretaria no cambia la contraseña desde aquí. Solicítelo a Administración.'); return; }
   const user = firebase.auth().currentUser;
   if(!user){ alert('No hay sesión activa.'); return; }
 
@@ -1176,8 +1177,11 @@ function aplicarRestriccionesRol(){
   const tabRutas = document.getElementById('tabRutas');
   if (tabRutas) tabRutas.style.display = esSecretaria ? 'none' : '';
   document.querySelectorAll('.btn-cierre-dia').forEach(btn => {
-    if ((btn.textContent || '').includes('Cierre')) btn.style.display = esSecretaria ? 'none' : '';
+    const t = (btn.textContent || '');
+    if (t.includes('Cierre') || t.includes('Contraseña')) btn.style.display = esSecretaria ? 'none' : '';
   });
+  const btnPass = document.getElementById('btnMiPassword');
+  if (btnPass) btnPass.style.display = esSecretaria ? 'none' : '';
   pintarUsuarioHeader();
   if (esSecretaria) {
     switchTab('dashboard');
