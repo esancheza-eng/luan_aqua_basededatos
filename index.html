@@ -1174,7 +1174,7 @@ async function doLogin(){
     if(perfil.esSecretaria === true){
       // No hacer signOut: mismo dominio + misma Auth que el Dashboard.
       mostrarErrorLogin('Esta pantalla es solo para asesores. Tu usuario de Secretaria entra en el Dashboard.');
-      setTimeout(function(){ location.href = 'dashboard.html'; }, 900);
+      setTimeout(function(){ location.href = 'https://sistemaaqualuan.elhyai.com'; }, 900);
       return;
     }
     document.getElementById('loginPass').value='';
@@ -1247,7 +1247,7 @@ auth.onAuthStateChanged(async (user)=>{
       // se restaura sola (recarga de página), también se cierra aquí.
       if(perfil.esSecretaria === true){
         mostrarErrorLogin('Esta pantalla es solo para asesores. Tu usuario de Secretaria entra en el Dashboard.');
-        setTimeout(function(){ location.href = 'dashboard.html'; }, 600);
+        setTimeout(function(){ location.href = 'https://sistemaaqualuan.elhyai.com'; }, 600);
         return;
       }
       usuarioActual={ uid:user.uid, nombre:perfil.nombre, rol:perfil.rol||(perfil.esAdmin?'ADMIN':'OPERADOR'), ruta:perfil.ruta||null, esAdmin:!!perfil.esAdmin };
