@@ -1172,8 +1172,9 @@ async function doLogin(){
     // no aquí. Antes se colaba como si fuera asesor y veía el campo de
     // Ruta/Asesor bloqueado y vacío, porque no tiene ninguna ruta asignada.
     if(perfil.esSecretaria === true){
-      await auth.signOut();
-      mostrarErrorLogin('Esta app es para asesores de ruta. Tu cuenta de Secretaria tiene acceso de consulta desde el Dashboard administrativo — pide el enlace al administrador.');
+      // No hacer signOut: mismo dominio + misma Auth que el Dashboard.
+      mostrarErrorLogin('Esta pantalla es solo para asesores. Tu usuario de Secretaria entra en el Dashboard.');
+      setTimeout(function(){ location.href = 'dashboard.html'; }, 900);
       return;
     }
     document.getElementById('loginPass').value='';
@@ -1245,8 +1246,8 @@ auth.onAuthStateChanged(async (user)=>{
       // [NEW] Mismo bloqueo que en doLogin — si la sesión de una Secretaria
       // se restaura sola (recarga de página), también se cierra aquí.
       if(perfil.esSecretaria === true){
-        await auth.signOut();
-        mostrarErrorLogin('Esta app es para asesores de ruta. Tu cuenta de Secretaria tiene acceso de consulta desde el Dashboard administrativo — pide el enlace al administrador.');
+        mostrarErrorLogin('Esta pantalla es solo para asesores. Tu usuario de Secretaria entra en el Dashboard.');
+        setTimeout(function(){ location.href = 'dashboard.html'; }, 600);
         return;
       }
       usuarioActual={ uid:user.uid, nombre:perfil.nombre, rol:perfil.rol||(perfil.esAdmin?'ADMIN':'OPERADOR'), ruta:perfil.ruta||null, esAdmin:!!perfil.esAdmin };
