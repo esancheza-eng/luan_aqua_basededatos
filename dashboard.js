@@ -196,6 +196,7 @@ function switchSeccionDash(sec){
   if (sec === 'cliente' && typeof poblarClienteSelect === 'function') poblarClienteSelect(_clienteSelectPedidosCache);
 }
 function switchTab(tab) {
+  if (ROL_ACTUAL === 'secretaria' && tab === 'rutas') tab = 'dashboard';
   document.getElementById('viewDashboard').classList.toggle('active', tab === 'dashboard');
   document.getElementById('viewRutas').classList.toggle('active', tab === 'rutas');
   document.getElementById('tabDashboard').classList.toggle('active', tab === 'dashboard');
@@ -341,11 +342,38 @@ auth.onAuthStateChanged(async (user)=>{
     detenerListenerPedidosWeb(); // [NEW]
     detenerListenerAuditoria(); // [NEW]
     _yaCargado = { eliminados:false, inventario:false, roles:false, pedidosweb:false, auditoria:false }; // [NEW] resetea la carga perezosa al salir
+    ROL_ACTUAL = null;
+    ADMIN_ACTUAL = { uid: null, nombre: '', usuario: '' };
+    const badge = document.getElementById('usuarioSesionBadge');
+    if (badge) badge.textContent = '—';
     document.getElementById('loginOverlay').classList.remove('hidden');
     document.getElementById('loginUser').value = '';
     document.getElementById('loginPass').value = '';
   }
 });
+
+async function _resyncSesionDashboard(){
+  const user = auth.currentUser;
+  if(!user){
+    ROL_ACTUAL = null;
+    ADMIN_ACTUAL = { uid: null, nombre: '', usuario: '' };
+    pintarUsuarioHeader();
+    return;
+  }
+  try{
+    const perfilDoc = await db.collection('usuarios').doc(user.uid).get();
+    const perfil = perfilDoc.exists ? perfilDoc.data() : null;
+    if(!perfil) return;
+    ROL_ACTUAL = perfil.esAdmin===true ? 'admin' : (perfil.esSecretaria===true ? 'secretaria' : ROL_ACTUAL);
+    ADMIN_ACTUAL = { uid: user.uid, nombre: perfil.nombre || '', usuario: perfil.usuario || '' };
+    pintarUsuarioHeader();
+    if (typeof aplicarRestriccionesRol === 'function') aplicarRestriccionesRol();
+  }catch(e){ console.warn('resync sesión', e); }
+}
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState==='visible') _resyncSesionDashboard();
+});
+window.addEventListener('pageshow', function(){ _resyncSesionDashboard(); });
 
 /* ════════════════════════════════════════
    INICIAR
@@ -1085,6 +1113,7 @@ function aplicarRestriccionesRol(){
   });
   pintarUsuarioHeader();
   if (esSecretaria) {
+    switchTab('dashboard');
     const activa = document.querySelector('.dash-section.active');
     const activaId = activa && activa.id ? activa.id.replace('seccion-','') : '';
     if (!SECCIONES_SECRETARIA.includes(activaId)) switchSeccionDash('pedidos');
