@@ -1149,7 +1149,8 @@ function detenerListenerRolesHistorial(){ if(_unsubRolesHist){_unsubRolesHist();
 function iniciar() {
   const hoy = fechaHoy();
   document.getElementById('filtroFecha').value = hoy;
-  document.getElementById('filtroFechaHasta').value = hoy; // [NEW] por defecto, mismo día en "desde" y "hasta"
+  document.getElementById('filtroFechaHasta').value = hoy;
+  _topeFechaHoy();
   iniciarListenersDashboard(); // [NEW] tiempo real — reemplaza el polling cada 60s
   _iniciarListenerAsesoresDash(); // [NEW] filtro de asesor real, en vivo
   _iniciarListenerProductosDash(); // [NEW] catálogo de productos para el modal Editar Pedido
@@ -1188,6 +1189,25 @@ function aplicarRestriccionesRol(){
 function fechaHoy() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function _esRegistroDeHoy(fecha){
+  const raw = String(fecha||'').trim();
+  if(!raw) return false;
+  const iso = raw.slice(0,10);
+  return iso === fechaHoy();
+}
+function _btnEliminarSiHoy(fecha, htmlEliminar){
+  return _esRegistroDeHoy(fecha) ? htmlEliminar : '';
+}
+function _topeFechaHoy(){
+  const hoy = fechaHoy();
+  const f = document.getElementById('filtroFecha');
+  const h = document.getElementById('filtroFechaHasta');
+  [f,h].forEach(el => { if(el) el.max = hoy; });
+  if (h && h.value && h.value > hoy) h.value = hoy;
+  if (f && f.value && f.value > hoy) f.value = hoy;
+  if (f && h && f.value && h.value && f.value > h.value) f.value = h.value;
+  return hoy;
 }
 
 /* [FIX] Convierte "7:59:52 p. m." / "8:00 a. m." / "19:59:52" a minutos desde medianoche (0-1439).
@@ -1344,11 +1364,16 @@ function iniciarListenersDashboard() {
      funcionando igual: al dejar ambos campos vacíos, no se agrega ningún .where() de
      fecha y se trae el histórico completo, como antes (esperable que tarde más, porque
      ahí sí se está pidiendo todo a propósito). */
+  const hoyTop = _topeFechaHoy();
   const desde = document.getElementById('filtroFecha').value;
-  const hasta = document.getElementById('filtroFechaHasta').value;
+  let hasta = document.getElementById('filtroFechaHasta').value || hoyTop;
+  if (!hasta || hasta > hoyTop) hasta = hoyTop;
+  if (document.getElementById('filtroFechaHasta') && !document.getElementById('filtroFechaHasta').disabled) {
+    document.getElementById('filtroFechaHasta').value = hasta;
+  }
   let qPedidos = db.collection('pedidos'), qPagos = db.collection('pagos'), qGastos = db.collection('gastos');
   if (desde) { qPedidos = qPedidos.where('fecha','>=',desde); qPagos = qPagos.where('fecha','>=',desde); qGastos = qGastos.where('fecha','>=',desde); }
-  if (hasta) { qPedidos = qPedidos.where('fecha','<=',hasta); qPagos = qPagos.where('fecha','<=',hasta); qGastos = qGastos.where('fecha','<=',hasta); }
+  qPedidos = qPedidos.where('fecha','<=',hasta); qPagos = qPagos.where('fecha','<=',hasta); qGastos = qGastos.where('fecha','<=',hasta);
   _unsubPedidosAll = qPedidos.onSnapshot(snap => {
     /* [FIX] Se quitó el orderBy('creadoEn','desc') del lado de Firestore — ese ordenamiento
        EXCLUÍA por completo cualquier pedido que aún no tuviera confirmado su creadoEn en el
@@ -1381,7 +1406,7 @@ async function cargarDatos(mostrarSpinner = true) {
    FILTROS DASHBOARD
 ════════════════════════════════════════ */
 function filtrarHoy() { const hoy = fechaHoy(); document.getElementById('filtroFecha').value = hoy; document.getElementById('filtroFechaHasta').value = hoy; iniciarListenersDashboard(); }
-function limpiarFiltro() { document.getElementById('filtroFecha').value = ''; document.getElementById('filtroFechaHasta').value = ''; if (document.getElementById('filtroAsesor')) document.getElementById('filtroAsesor').value = ''; iniciarListenersDashboard(); }
+function limpiarFiltro() { document.getElementById('filtroFecha').value = ''; document.getElementById('filtroFechaHasta').value = fechaHoy(); if (document.getElementById('filtroAsesor')) document.getElementById('filtroAsesor').value = ''; iniciarListenersDashboard(); }
 /* [NEW] Texto legible del rango de fecha actualmente filtrado, para usar en encabezados de PDF */
 function _textoRangoFecha() {
   const desde = document.getElementById('filtroFecha').value;
@@ -1460,8 +1485,8 @@ function renderDashboard() {
   const seccionResumenVisible = document.getElementById('seccion-resumen')?.classList.contains('active');
   if (seccionResumenVisible) renderCharts(pedidos, pedidosConTotal);
   pedidosDetalleActuales = pedidos;
-  _pedidosTablaFiltrados = _filtrarPorPagoChecklist(pedidos); // [NEW]
-  renderFiltroPagoDropdown(pedidos); // [NEW] opciones del checklist -- siempre sobre el set completo, para no perder checkboxes de formas de pago ocultas
+  _pedidosTablaFiltrados = _filtrarPorPagoChecklist(pedidos);
+  renderFiltroPagoDropdown(pedidos);
   renderTabla(_pedidosTablaFiltrados);
   // [FIX] LA PANTALLA SE CONGELABA con muchos clientes acumulados: renderResumenPorCliente()
   // arma una tarjeta HTML completa por cada cliente único, y poblarClienteSelect() calcula
@@ -1515,7 +1540,8 @@ function renderPagosGastosDetalle(pagos, gastos) {
   } else {
     const filas = pagos.map(r => {
       const monto = parseFloat(r['TOTAL PEDIDO ($)'])||0;
-      const accionesPago = (r['_pagoId'] && (ROL_ACTUAL === 'admin' || ROL_ACTUAL === 'secretaria')) ? `<button class="btn-editar-fila" onclick="abrirEditarPago('${r['_pagoId']}')" title="Editar este pago">✏ Editar</button><button class="btn-eliminar-fila" onclick="eliminarPagoDash('${r['_pagoId']}')" title="Eliminar este pago">🗑 Eliminar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>'; /* [NEW] Secretaria no ve Editar/Eliminar */
+      const puedePago = r['_pagoId'] && (ROL_ACTUAL === 'admin' || ROL_ACTUAL === 'secretaria') && _esRegistroDeHoy(r['FECHA']||r['fecha']);
+      const accionesPago = puedePago ? `<button class="btn-editar-fila" onclick="abrirEditarPago('${r['_pagoId']}')" title="Editar este pago">✏ Editar</button><button class="btn-eliminar-fila" onclick="eliminarPagoDash('${r['_pagoId']}')" title="Eliminar este pago">🗑 Eliminar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>';
       return `<tr>
         <td style="font-weight:600">${escHTML(r['CLIENTE']||'-')}</td>
         <td style="font-size:12px">${(r['ASESOR / RUTA']||'').split(':')[1]?.trim()||r['ASESOR / RUTA']||'-'}</td>
@@ -1535,7 +1561,8 @@ function renderPagosGastosDetalle(pagos, gastos) {
     const filas = gastos.map(r => {
       const monto = Math.abs(parseFloat(r['TOTAL PEDIDO ($)'])||0);
       const desc = r['NOTAS'] || r['CLIENTE'] || r['DIRECCIÓN'] || '-'; // [NOTA] ver aviso más abajo sobre esta columna
-      const accionesGasto = (r['_gastoId'] && (ROL_ACTUAL === 'admin' || ROL_ACTUAL === 'secretaria')) ? `<button class="btn-editar-fila" onclick="abrirEditarGasto('${r['_gastoId']}')" title="Editar este gasto">✏ Editar</button><button class="btn-eliminar-fila" onclick="eliminarGastoDash('${r['_gastoId']}')" title="Eliminar este gasto">🗑 Eliminar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>'; /* [NEW] Secretaria no ve Editar/Eliminar */
+      const puedeGasto = r['_gastoId'] && (ROL_ACTUAL === 'admin' || ROL_ACTUAL === 'secretaria') && _esRegistroDeHoy(r['FECHA']||r['fecha']);
+      const accionesGasto = puedeGasto ? `<button class="btn-editar-fila" onclick="abrirEditarGasto('${r['_gastoId']}')" title="Editar este gasto">✏ Editar</button><button class="btn-eliminar-fila" onclick="eliminarGastoDash('${r['_gastoId']}')" title="Eliminar este gasto">🗑 Eliminar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>';
       return `<tr>
         <td style="font-weight:600">${escHTML(desc)}</td>
         <td style="font-size:12px">${(r['ASESOR / RUTA']||'').split(':')[1]?.trim()||r['ASESOR / RUTA']||'-'}</td>
@@ -1679,7 +1706,8 @@ function renderTabla(pedidos) {
     const pago  = r['FORMA DE PAGO'] ? `<span class="badge badge-teal">${r['FORMA DE PAGO']}</span>${detallePago}` : '';
     /* [NEW] Botón Editar — solo funciona si la fila trae el id real del pedido en Firestore
        (las filas de pagos/gastos no lo traen, pero renderTabla solo recibe pedidos con producto) */
-    const accion = (r['_pedidoId'] && (ROL_ACTUAL === 'admin' || ROL_ACTUAL === 'secretaria')) ? `<button class="btn-editar-fila" onclick="abrirEditarPedido('${r['_pedidoId']}')" title="Editar este pedido">✏ Editar</button><button class="btn-eliminar-fila" onclick="eliminarPedidoCompleto('${r['_pedidoId']}')" title="Eliminar este pedido permanentemente">🗑 Eliminar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>'; /* [NEW] Secretaria no ve Editar/Eliminar */
+    const puedeAB = r['_pedidoId'] && (ROL_ACTUAL === 'admin' || ROL_ACTUAL === 'secretaria') && _esRegistroDeHoy(r['FECHA']||r['fecha']);
+    const accion = puedeAB ? `<button class="btn-editar-fila" onclick="abrirEditarPedido('${r['_pedidoId']}')" title="Editar este pedido">✏ Editar</button><button class="btn-eliminar-fila" onclick="eliminarPedidoCompleto('${r['_pedidoId']}')" title="Eliminar este pedido">🗑 Eliminar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>';
     return `<tr>
       <td style="white-space:nowrap;font-size:12px">${limpiarFecha(r['FECHA'])}</td>
       <td style="white-space:nowrap;font-size:12px;color:var(--muted)">${escHTML(r['HORA REGISTRO']||'-')}</td>
@@ -1818,7 +1846,8 @@ function actualizarTablaCentral(datos) {
     const gps   = r['LINK GPS'] ? `<a href="${r['LINK GPS']}" target="_blank" style="color:var(--teal);font-weight:700;font-size:11px">📍 Ver</a>` : '<span style="color:var(--muted);font-size:11px">—</span>';
     const total = r['TOTAL PEDIDO ($)'] ? `<strong style="color:var(--teal)">$${parseFloat(r['TOTAL PEDIDO ($)']).toFixed(2)}</strong>` : '';
     const pago  = r['FORMA DE PAGO'] ? `<span class="badge badge-teal">${r['FORMA DE PAGO']}</span>` : '';
-    const accion = (r['_pedidoId'] && (ROL_ACTUAL === 'admin' || ROL_ACTUAL === 'secretaria')) ? `<button class="btn-editar-fila" onclick="abrirEditarPedido('${r['_pedidoId']}')" title="Editar este pedido">✏ Editar</button><button class="btn-eliminar-fila" onclick="eliminarPedidoCompleto('${r['_pedidoId']}')" title="Eliminar este pedido permanentemente">🗑 Eliminar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>'; /* [NEW] Secretaria no ve Editar/Eliminar */
+    const puedeAB = r['_pedidoId'] && (ROL_ACTUAL === 'admin' || ROL_ACTUAL === 'secretaria') && _esRegistroDeHoy(r['FECHA']||r['fecha']);
+    const accion = puedeAB ? `<button class="btn-editar-fila" onclick="abrirEditarPedido('${r['_pedidoId']}')" title="Editar este pedido">✏ Editar</button><button class="btn-eliminar-fila" onclick="eliminarPedidoCompleto('${r['_pedidoId']}')" title="Eliminar este pedido">🗑 Eliminar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>';
     return `<tr>
       <td style="white-space:nowrap;font-size:12px">${limpiarFecha(r['FECHA'])}</td>
       <td style="white-space:nowrap;font-size:12px;color:var(--muted)">${escHTML(r['HORA REGISTRO']||'-')}</td>
@@ -3062,6 +3091,7 @@ const FORMAS_PAGO_FIJAS = ['Contado','Crédito','Transferencia','Cheque'];
 
 function abrirEditarPedido(pedidoId){
   const p = _pedidosRaw.find(x => x._id === pedidoId);
+  if(p && !_esRegistroDeHoy(p.fecha||p.FECHA)){ alert('Solo se pueden editar pedidos del día de hoy.'); return; }
   if(!p){ alert('No se encontró el pedido — puede que otro admin lo haya eliminado.'); return; }
   // Copia editable e independiente, para no mutar los datos en vivo del listener mientras se edita
   editandoPedidoActual = JSON.parse(JSON.stringify(p));
@@ -3218,6 +3248,7 @@ function agregarRegaliaLinea(i){
    colección) y registra cada campo que cambió en historialCambios para auditoría. */
 async function guardarEdicionPedido(){
   if(!editandoPedidoActual) return;
+  if(!_esRegistroDeHoy(editandoPedidoActual.fecha||editandoPedidoActual.FECHA)){ alert('Solo se pueden editar pedidos del día de hoy.'); return; }
   if(!confirm('¿Está seguro que desea guardar los cambios de este pedido?')) return;
   const original = _pedidosRaw.find(x => x._id === editandoPedidoActual._id);
   if(!original){ alert('El pedido ya no existe.'); cerrarEditarPedido(); return; }
@@ -3323,6 +3354,7 @@ async function _registrarAuditoria(tipo, accion, registroId, detalle){
 async function eliminarPedidoCompleto(pedidoId){
   const p = _pedidosRaw.find(x => x._id === pedidoId);
   if(!p){ alert('No se encontró el pedido — puede que ya se haya eliminado.'); return; }
+  if(!_esRegistroDeHoy(p.fecha||p.FECHA)){ alert('Solo se pueden eliminar pedidos del día de hoy.'); return; }
 
   const clienteNombre = p.cliente || 'Sin nombre';
   const totalPedido = p.total != null ? `$${parseFloat(p.total).toFixed(2)}` : '$0.00';
@@ -3729,6 +3761,7 @@ let _editandoPagoGasto = null; // { tipo:'pago'|'gasto', id:'...' }
 function abrirEditarPago(id){
   const p = _pagosRaw.find(x => x._id === id);
   if(!p){ alert('No se encontró el pago — puede que ya se haya eliminado.'); return; }
+  if(!_esRegistroDeHoy(p.fecha||p.FECHA)){ alert('Solo se pueden editar pagos del día de hoy.'); return; }
   _editandoPagoGasto = { tipo:'pago', id };
   document.getElementById('editarPagoGastoTitulo').textContent = '✏ Editar Pago';
   const optionsForma = FORMAS_PAGO_COBRO.map(f => `<option value="${f}" ${p.forma===f?'selected':''}>${f}</option>`).join('');
@@ -3747,6 +3780,7 @@ function abrirEditarPago(id){
 function abrirEditarGasto(id){
   const g = _gastosRaw.find(x => x._id === id);
   if(!g){ alert('No se encontró el gasto — puede que ya se haya eliminado.'); return; }
+  if(!_esRegistroDeHoy(g.fecha||g.FECHA)){ alert('Solo se pueden editar gastos del día de hoy.'); return; }
   _editandoPagoGasto = { tipo:'gasto', id };
   document.getElementById('editarPagoGastoTitulo').textContent = '✏ Editar Gasto';
   document.getElementById('editarPagoGastoBody').innerHTML = `
@@ -3803,6 +3837,9 @@ async function guardarEdicionPagoGasto(){
 }
 
 async function eliminarPagoDash(id){
+  const pagoChk = (_pagosRaw||[]).find(x => x._id === id);
+  if(pagoChk && !_esRegistroDeHoy(pagoChk.fecha||pagoChk.FECHA)){ alert('Solo se pueden eliminar pagos del día de hoy.'); return; }
+
   const p = _pagosRaw.find(x => x._id === id);
   if(!confirm(`¿Eliminar el pago de "${p?.cliente||'este cliente'}" ($${(parseFloat(p?.monto)||0).toFixed(2)})? Esta acción no se puede deshacer.`)) return;
   try{
@@ -3814,6 +3851,7 @@ async function eliminarPagoDash(id){
 
 async function eliminarGastoDash(id){
   const g = _gastosRaw.find(x => x._id === id);
+  if(g && !_esRegistroDeHoy(g.fecha||g.FECHA)){ alert('Solo se pueden eliminar gastos del día de hoy.'); return; }
   if(!confirm(`¿Eliminar el gasto "${g?.desc||g?.categoria||'este gasto'}" ($${(parseFloat(g?.monto)||0).toFixed(2)})? Esta acción no se puede deshacer.`)) return;
   try{
     await db.collection('gastos').doc(id).delete();
