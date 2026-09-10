@@ -1374,6 +1374,7 @@ function aplicarUsuario(){
   document.getElementById('btnLogout').style.display='flex';
   document.getElementById('btnGestionAsesores').style.display=u.esAdmin?'flex':'none';
   document.getElementById('btnGestionProductos').style.display=u.esAdmin?'flex':'none';
+  document.getElementById('tab-liquidacion').style.display=u.esAdmin?'flex':'none'; /* [NEW] Liquid. solo visible para el administrador, no para los asesores de ruta */
   _iniciarListenersDelDia(u);
   _iniciarListenerProductos(); // [NEW] catálogo de productos en tiempo real
   _iniciarListenerAsesoresRutas(); // [NEW] rutas/asesores reales para los selects del admin
