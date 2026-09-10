@@ -562,8 +562,8 @@ function renderLiquidacionDash(){
     const ref0=document.getElementById('liqEntregaTotalRef');
     if(ref0) ref0.textContent='$0.00';
     _liqTotalEntregarCache=0;
-    _cargarEntregaLiquidacion();
-    _actualizarCuadreEntrega();
+    const boxGlobal0=document.getElementById('liqEntregaBox');
+    if(boxGlobal0) boxGlobal0.style.display='none';
     return;
   }
   if(emptyMsg) emptyMsg.style.display='none';
@@ -611,6 +611,7 @@ function renderLiquidacionDash(){
         ${sinClasificar>0?`<div style="display:flex;justify-content:space-between;padding:2px 0"><span>− Sin clasificar</span><span>$${sinClasificar.toFixed(2)}</span></div>`:''}
         <div style="display:flex;justify-content:space-between;padding-top:6px;margin-top:4px;border-top:1px solid var(--border);font-weight:800"><span>Total a Entregar</span><span style="color:${totalEntregar>=0?'#0f7c38':'#a93226'}">$${totalEntregar.toFixed(2)}</span></div>
       </div>
+      ${_htmlEntregaAsesorBox(nombre, totalEntregar)}
       ${prodsOrdenados.length ? `
       <div style="margin:0 16px 14px">
         <div class="cierre-section-label" style="margin-bottom:6px">📦 Productos vendidos por ${escHTML(nombre)}</div>
@@ -632,8 +633,9 @@ function renderLiquidacionDash(){
   const ref=document.getElementById('liqEntregaTotalRef');
   if(ref) ref.textContent='$'+totalGeneral.toFixed(2);
   _liqTotalEntregarCache=totalGeneral;
-  _cargarEntregaLiquidacion();
-  _actualizarCuadreEntrega();
+  const boxGlobal=document.getElementById('liqEntregaBox');
+  if(boxGlobal) boxGlobal.style.display='none';
+  asesores.forEach(nombre=>_cargarEntregaAsesor(nombre));
 }
 /* [NEW] Notas Adicionales — sección independiente en el menú lateral. Muestra
    los pedidos del período filtrado (fecha del Dashboard) que traen alguna
@@ -740,10 +742,35 @@ function imprimirNotasAdicionalesDash(){
 }
 
 let _liqTotalEntregarCache=0, _liqEntregaTimer=null, _liqEntregaCargando=false;
-function _idEntregaLiquidacion(){
+function _slugAsesorLiq(nombre){
+  return String(nombre||'general').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') || 'general';
+}
+function _idEntregaLiquidacion(asesor){
   const desde=document.getElementById('filtroFecha')?.value||fechaHoy();
   const hasta=document.getElementById('filtroFechaHasta')?.value||desde;
-  return desde+'_'+hasta;
+  const sl=_slugAsesorLiq(asesor||document.getElementById('filtroAsesor')?.value||'general');
+  return desde+'_'+hasta+'__'+sl;
+}
+function _boxEntregaAsesor(nombre){
+  const boxes=[...document.querySelectorAll('.liq-entrega-asesor')];
+  return boxes.find(b=>b.dataset.asesor===nombre) || null;
+}
+function _htmlEntregaAsesorBox(nombre, total){
+  const safe=String(nombre||'').replace(/\\/g,'\\').replace(/'/g,"\\'");
+  return `<div class="liq-entrega-asesor" data-asesor="${escHTML(nombre)}" data-total="${Number(total)||0}" style="margin:0 16px 14px;padding:14px 14px;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius)">
+    <div style="font-size:11px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--navy);margin-bottom:8px">Forma de entrega — ${escHTML(nombre)}</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:8px 10px;background:#fff;border-radius:8px;border:1px solid var(--border)">
+      <span style="font-weight:800">Total a entregar</span>
+      <span class="liq-ref-total" style="font-weight:800;color:var(--teal)">$${(Number(total)||0).toFixed(2)}</span>
+    </div>
+    <label style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><input type="checkbox" class="liq-chk-ef" onchange="_guardarEntregaAsesor('${safe}')"><span style="min-width:130px;font-weight:700">Efectivo</span><input type="text" class="liq-monto-ef" placeholder="0.00" inputmode="decimal" style="flex:1;height:36px;border:1.5px solid var(--border);border-radius:8px;padding:0 10px" oninput="_filtrarInputMontoLiq(this);_guardarEntregaAsesorDebounced('${safe}')"></label>
+    <label style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><input type="checkbox" class="liq-chk-dep" onchange="_guardarEntregaAsesor('${safe}')"><span style="min-width:130px;font-weight:700">Depósito</span><input type="text" class="liq-monto-dep" placeholder="0.00" inputmode="decimal" style="flex:1;height:36px;border:1.5px solid var(--border);border-radius:8px;padding:0 10px" oninput="_filtrarInputMontoLiq(this);_guardarEntregaAsesorDebounced('${safe}')"></label>
+    <label style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><input type="checkbox" class="liq-chk-tr" onchange="_guardarEntregaAsesor('${safe}')"><span style="min-width:130px;font-weight:700">Transferencia</span><input type="text" class="liq-monto-tr" placeholder="0.00" inputmode="decimal" style="flex:1;height:36px;border:1.5px solid var(--border);border-radius:8px;padding:0 10px" oninput="_filtrarInputMontoLiq(this);_guardarEntregaAsesorDebounced('${safe}')"></label>
+    <div class="liq-faltantes-lista"></div>
+    <button type="button" onclick="_agregarFaltanteAsesor(this)" style="margin:4px 0 8px;padding:8px 12px;border:1.5px dashed var(--border);background:#fff;border-radius:8px;font-weight:700;cursor:pointer;color:var(--navy)">+ Añadir faltante</button>
+    <div class="liq-entrega-cuadre" style="font-size:12px;margin-top:8px;font-weight:700"></div>
+    <div class="liq-entrega-status" style="font-size:11px;color:var(--muted);margin-top:6px"></div>
+  </div>`;
 }
 function _parseMontoLiq(raw){
   const s=String(raw||'').trim();
@@ -764,74 +791,74 @@ function _filtrarInputMontoLiq(el){
   if(partes.length>2) v=partes[0]+sep+partes.slice(1).join('');
   el.value=v;
 }
-function _leerEntregaLiquidacionUI(){
-  const n=id=>{
-    const el=document.getElementById(id);
+
+function _leerEntregaDesdeBox(box){
+  if(!box) return {invalido:true};
+  const n=sel=>{
+    const el=box.querySelector(sel);
     const p=_parseMontoLiq(el?.value);
     return p.ok?p.valor:NaN;
   };
-  return {
-    efectivo:{marcado:!!document.getElementById('liqChkEfectivo')?.checked, monto:n('liqMontoEfectivo')},
-    deposito:{marcado:!!document.getElementById('liqChkDeposito')?.checked, monto:n('liqMontoDeposito')},
-    transferencia:{marcado:!!document.getElementById('liqChkTransferencia')?.checked, monto:n('liqMontoTransferencia')},
-    faltantes:_leerFilasFaltanteLiq(),
-    invalido:['liqMontoEfectivo','liqMontoDeposito','liqMontoTransferencia']
-      .some(id=>!_parseMontoLiq(document.getElementById(id)?.value).ok)
-      || _leerFilasFaltanteLiq().some(f=>!f.montoOk)
-  };
-}
-function _leerFilasFaltanteLiq(){
-  return [...document.querySelectorAll('.liq-faltante-row')].map((row,i)=>{
+  const faltantes=[...box.querySelectorAll('.liq-faltante-row')].map(row=>{
     const p=_parseMontoLiq(row.querySelector('.liq-falt-monto')?.value);
     return {monto:p.ok?p.valor:NaN, montoOk:p.ok, motivo:(row.querySelector('.liq-falt-motivo')?.value||'').trim()};
   });
+  return {
+    efectivo:{marcado:!!box.querySelector('.liq-chk-ef')?.checked, monto:n('.liq-monto-ef')},
+    deposito:{marcado:!!box.querySelector('.liq-chk-dep')?.checked, monto:n('.liq-monto-dep')},
+    transferencia:{marcado:!!box.querySelector('.liq-chk-tr')?.checked, monto:n('.liq-monto-tr')},
+    faltantes,
+    invalido:[n('.liq-monto-ef'),n('.liq-monto-dep'),n('.liq-monto-tr')].some(v=>Number.isNaN(v)) || faltantes.some(f=>!f.montoOk)
+  };
 }
-function _htmlFilaFaltanteLiq(i,monto,motivo){
+function _htmlFilaFaltanteAsesor(i,monto,motivo){
   const val=monto?String(monto):'';
   return `<div class="liq-faltante-row" style="margin-bottom:8px">
     <div style="display:flex;align-items:center;gap:10px">
       <span style="min-width:90px;font-weight:700">Faltante ${i+1}</span>
-      <input type="text" class="liq-falt-monto" placeholder="0.00" inputmode="decimal" value="${val.replace(/"/g,'')}" style="width:110px;height:36px;border:1.5px solid var(--border);border-radius:8px;padding:0 10px" oninput="_filtrarInputMontoLiq(this);_guardarEntregaLiquidacionDebounced()">
-      <input type="text" class="liq-falt-motivo" placeholder="¿Por qué el faltante?" maxlength="120" value="${(motivo||'').replace(/"/g,'&quot;')}" style="flex:1;height:36px;border:1.5px solid var(--border);border-radius:8px;padding:0 10px" oninput="_guardarEntregaLiquidacionDebounced()">
-      ${i>0?`<button type="button" onclick="_quitarFaltanteLiq(this)" style="height:36px;padding:0 10px;border:none;background:#fdecea;color:#c0392b;border-radius:8px;font-weight:700;cursor:pointer">Quitar</button>`:''}
+      <input type="text" class="liq-falt-monto" placeholder="0.00" inputmode="decimal" value="${val.replace(/"/g,'')}" style="width:110px;height:36px;border:1.5px solid var(--border);border-radius:8px;padding:0 10px" oninput="_filtrarInputMontoLiq(this);_guardarEntregaDesdeFila(this)">
+      <input type="text" class="liq-falt-motivo" placeholder="Nombre / motivo" maxlength="120" value="${(motivo||'').replace(/"/g,'&quot;')}" style="flex:1;height:36px;border:1.5px solid var(--border);border-radius:8px;padding:0 10px" oninput="_guardarEntregaDesdeFila(this)">
+      ${i>0?`<button type="button" onclick="_quitarFaltanteAsesor(this)" style="height:36px;padding:0 10px;border:none;background:#fdecea;color:#c0392b;border-radius:8px;font-weight:700;cursor:pointer">Quitar</button>`:''}
     </div>
   </div>`;
 }
-function _renderFaltantesLiq(filas){
-  const box=document.getElementById('liqFaltantesLista');
+function _guardarEntregaDesdeFila(el){
+  const box=el.closest('.liq-entrega-asesor');
+  const nombre=box&&box.dataset.asesor;
+  if(nombre) _guardarEntregaAsesorDebounced(nombre);
+}
+function _agregarFaltanteAsesor(btn){
+  const box=btn.closest('.liq-entrega-asesor');
   if(!box) return;
-  const list=(filas&&filas.length)?filas:[{monto:'',motivo:''}];
-  box.innerHTML=list.map((f,i)=>_htmlFilaFaltanteLiq(i,f.monto,f.motivo)).join('');
-}
-function _agregarFaltanteLiq(){
-  const actual=_leerFilasFaltanteLiq().map(f=>({monto:f.montoOk&&f.monto?f.monto:'', motivo:f.motivo}));
+  const list=box.querySelector('.liq-faltantes-lista');
+  const actual=[...box.querySelectorAll('.liq-faltante-row')].map(row=>({
+    monto:row.querySelector('.liq-falt-monto')?.value||'',
+    motivo:row.querySelector('.liq-falt-motivo')?.value||''
+  }));
   actual.push({monto:'',motivo:''});
-  _renderFaltantesLiq(actual);
+  list.innerHTML=actual.map((f,i)=>_htmlFilaFaltanteAsesor(i,f.monto,f.motivo)).join('');
 }
-function _quitarFaltanteLiq(btn){
-  const rows=[...document.querySelectorAll('.liq-faltante-row')];
-  const idx=rows.indexOf(btn.closest('.liq-faltante-row'));
-  const actual=_leerFilasFaltanteLiq().map(f=>({monto:f.montoOk&&f.monto?f.monto:'', motivo:f.motivo}));
-  if(idx>=0) actual.splice(idx,1);
-  _renderFaltantesLiq(actual.length?actual:[{monto:'',motivo:''}]);
-  _guardarEntregaLiquidacionDebounced();
+function _quitarFaltanteAsesor(btn){
+  const box=btn.closest('.liq-entrega-asesor');
+  const row=btn.closest('.liq-faltante-row');
+  if(row) row.remove();
+  if(box&&box.dataset.asesor) _guardarEntregaAsesorDebounced(box.dataset.asesor);
 }
-
-function _actualizarCuadreEntrega(){
-  const el=document.getElementById('liqEntregaCuadre');
+function _actualizarCuadreBox(box){
+  const el=box.querySelector('.liq-entrega-cuadre');
   if(!el) return;
-  const u=_leerEntregaLiquidacionUI();
+  const u=_leerEntregaDesdeBox(box);
+  const tot=parseFloat(box.dataset.total||0)||0;
   if(u.invalido){
     el.style.color='#c0392b';
-    el.textContent='Hay un monto inválido (no uses dos comas ni dos puntos). Ejemplo: 44,01 o 44.01';
+    el.textContent='Hay un monto inválido.';
     return;
   }
   const suma=(u.efectivo.marcado?u.efectivo.monto:0)+(u.deposito.marcado?u.deposito.monto:0)+(u.transferencia.marcado?u.transferencia.monto:0)+(u.faltantes||[]).reduce((s,f)=>s+(f.montoOk?f.monto:0),0);
-  const tot=_liqTotalEntregarCache||0;
-  const diff=tot-suma;
   if(suma===0 && !u.efectivo.marcado && !u.deposito.marcado && !u.transferencia.marcado){
     el.textContent=''; return;
   }
+  const diff=tot-suma;
   if(Math.abs(diff)<0.009){
     el.style.color='#0f7c38';
     el.textContent='Cuadra con el total a entregar ($'+tot.toFixed(2)+').';
@@ -843,80 +870,85 @@ function _actualizarCuadreEntrega(){
     el.textContent='La suma supera el total por $'+Math.abs(diff).toFixed(2)+'.';
   }
 }
-async function _cargarEntregaLiquidacion(){
-  if(typeof db==='undefined' || !db) return;
-  const id=_idEntregaLiquidacion();
-  _liqEntregaCargando=true;
+async function _cargarEntregaAsesor(nombre){
+  const box=_boxEntregaAsesor(nombre);
+  if(!box || typeof db==='undefined') return;
   try{
-    const snap=await db.collection('cierresLiquidacion').doc(id).get();
+    const snap=await db.collection('cierresLiquidacion').doc(_idEntregaLiquidacion(nombre)).get();
     const d=snap.exists?snap.data():{};
-    const setN=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=(v?Number(v).toFixed(2):''); };
-    const chk=(id,v)=>{ const el=document.getElementById(id); if(el) el.checked=!!v; };
-    chk('liqChkEfectivo', d.efectivo?.marcado);
-    chk('liqChkDeposito', d.deposito?.marcado);
-    chk('liqChkTransferencia', d.transferencia?.marcado);
-    setN('liqMontoEfectivo', d.efectivo?.monto);
-    setN('liqMontoDeposito', d.deposito?.monto);
-    setN('liqMontoTransferencia', d.transferencia?.monto);
+    const setN=(sel,v)=>{ const el=box.querySelector(sel); if(el) el.value=(v?Number(v).toFixed(2):''); };
+    const chk=(sel,v)=>{ const el=box.querySelector(sel); if(el) el.checked=!!v; };
+    chk('.liq-chk-ef', d.efectivo?.marcado);
+    chk('.liq-chk-dep', d.deposito?.marcado);
+    chk('.liq-chk-tr', d.transferencia?.marcado);
+    setN('.liq-monto-ef', d.efectivo?.monto);
+    setN('.liq-monto-dep', d.deposito?.monto);
+    setN('.liq-monto-tr', d.transferencia?.monto);
     let filas=Array.isArray(d.faltantes)?d.faltantes.map(f=>({monto:f.monto||'',motivo:f.motivo||''})):[];
-    if(!filas.length && (d.faltante1||d.faltante2||d.faltante3)){
-      filas=[{monto:d.faltante1||'',motivo:''},{monto:d.faltante2||'',motivo:''},{monto:d.faltante3||'',motivo:''}].filter(f=>parseFloat(f.monto)>0);
-    }
-    _renderFaltantesLiq(filas.length?filas:[{monto:'',motivo:''}]);
-    const st=document.getElementById('liqEntregaStatus');
-    if(st) st.textContent=snap.exists?'Entrega guardada para este período.':'Sin entrega registrada aún.';
+    const list=box.querySelector('.liq-faltantes-lista');
+    if(list) list.innerHTML=(filas.length?filas:[{monto:'',motivo:''}]).map((f,i)=>_htmlFilaFaltanteAsesor(i,f.monto,f.motivo)).join('');
+    const st=box.querySelector('.liq-entrega-status');
+    if(st) st.textContent=snap.exists?'Entrega guardada de este asesor.':'Sin entrega registrada aún.';
+    _actualizarCuadreBox(box);
   }catch(err){
     console.warn('cierresLiquidacion lectura:', err);
-    const st=document.getElementById('liqEntregaStatus');
-    if(st) st.textContent='No se pudo leer la entrega (revisa reglas de Firestore para cierresLiquidacion).';
   }
-  _liqEntregaCargando=false;
-  _actualizarCuadreEntrega();
 }
-function _guardarEntregaLiquidacionDebounced(){
-  _actualizarCuadreEntrega();
-  clearTimeout(_liqEntregaTimer);
-  _liqEntregaTimer=setTimeout(_guardarEntregaLiquidacion, 600);
+const _liqTimers={};
+function _guardarEntregaAsesorDebounced(nombre){
+  const box=_boxEntregaAsesor(nombre);
+  if(box) _actualizarCuadreBox(box);
+  clearTimeout(_liqTimers[nombre]);
+  _liqTimers[nombre]=setTimeout(()=>_guardarEntregaAsesor(nombre), 600);
 }
-async function _guardarEntregaLiquidacion(){
-  _actualizarCuadreEntrega();
-  if(_liqEntregaCargando) return;
-  if(_leerEntregaLiquidacionUI().invalido) return;
-  if(typeof db==='undefined' || !db) return;
-  const st=document.getElementById('liqEntregaStatus');
+async function _guardarEntregaAsesor(nombre){
+  const box=_boxEntregaAsesor(nombre);
+  if(!box || typeof db==='undefined') return;
+  const u=_leerEntregaDesdeBox(box);
+  if(u.invalido) return;
+  const st=box.querySelector('.liq-entrega-status');
   try{
-    const u=_leerEntregaLiquidacionUI();
     const faltantes=(u.faltantes||[]).map(f=>({monto:f.montoOk?Number(f.monto)||0:0, motivo:f.motivo||''}));
-    await db.collection('cierresLiquidacion').doc(_idEntregaLiquidacion()).set({
+    const tot=parseFloat(box.dataset.total||0)||0;
+    await db.collection('cierresLiquidacion').doc(_idEntregaLiquidacion(nombre)).set({
+      asesor:nombre,
       efectivo:u.efectivo, deposito:u.deposito, transferencia:u.transferencia,
       faltantes,
-      totalEntregar:_liqTotalEntregarCache||0,
+      totalEntregar:tot,
       desde:document.getElementById('filtroFecha')?.value||'',
       hasta:document.getElementById('filtroFechaHasta')?.value||'',
       actualizadoEn:firebase.firestore.FieldValue.serverTimestamp(),
-      actualizadoPor: (typeof actorAuditoria==='function') ? actorAuditoria() : ((ADMIN_ACTUAL && (ADMIN_ACTUAL.nombre||ADMIN_ACTUAL.usuario))||'')
+      actualizadoPor: (typeof actorAuditoria==='function') ? actorAuditoria() : ''
     }, {merge:true});
     if(st) st.textContent='Entrega guardada.';
     if (typeof _registrarAuditoria === 'function') {
-      _registrarAuditoria('liquidacion', 'edición', _idEntregaLiquidacion(),
-        'Entrega de liquidación actualizada por ' + actorAuditoria());
+      _registrarAuditoria('liquidacion', 'edición', _idEntregaLiquidacion(nombre),
+        'Entrega de '+nombre+' por '+actorAuditoria());
     }
+    _actualizarCuadreBox(box);
   }catch(err){
     console.warn('cierresLiquidacion escritura:', err);
-    if(st) st.textContent='No se pudo guardar. Agrega la regla de Firestore de cierresLiquidacion.';
+    if(st) st.textContent='No se pudo guardar la entrega.';
   }
 }
 function _htmlEntregaLiquidacionPrint(){
-  const u=_leerEntregaLiquidacionUI();
-  const fila=(ok,nom,monto)=>`<div class="ruta-linea"><span>${ok?'☑':'☐'} ${nom}</span><b>$${(monto||0).toFixed(2)}</b></div>`;
-  return `<div class="ruta-block">
-    <div class="ruta-header"><span>FORMA DE ENTREGA</span><span>$${_liqTotalEntregarCache.toFixed(2)}</span></div>
-    ${fila(u.efectivo.marcado,'Efectivo',u.efectivo.monto)}
-    ${fila(u.deposito.marcado,'Depósito',u.deposito.monto)}
-    ${fila(u.transferencia.marcado,'Transferencia',u.transferencia.monto)}
-    ${(u.faltantes||[]).filter(f=>f.montoOk&&f.monto>0).map((f,i)=>`<div class="ruta-linea"><span>Faltante ${i+1}${f.motivo?' — '+escHTML(f.motivo):''}</span><b>$${f.monto.toFixed(2)}</b></div>`).join('')||'<div class="ruta-linea"><span>Faltantes</span><b>$0.00</b></div>'}
-  </div>`;
+  const boxes=[...document.querySelectorAll('.liq-entrega-asesor')];
+  if(!boxes.length) return '';
+  return boxes.map(box=>{
+    const u=_leerEntregaDesdeBox(box);
+    const nom=box.dataset.asesor||'';
+    const tot=parseFloat(box.dataset.total||0)||0;
+    const fila=(ok,n,monto)=>`<div class="ruta-linea"><span>${ok?'☑':'☐'} ${n}</span><b>$${(monto||0).toFixed(2)}</b></div>`;
+    return `<div class="ruta-block">
+      <div class="ruta-header"><span>FORMA DE ENTREGA — ${escHTML(nom)}</span><span>$${tot.toFixed(2)}</span></div>
+      ${fila(u.efectivo.marcado,'Efectivo',u.efectivo.monto)}
+      ${fila(u.deposito.marcado,'Depósito',u.deposito.monto)}
+      ${fila(u.transferencia.marcado,'Transferencia',u.transferencia.monto)}
+      ${(u.faltantes||[]).filter(f=>f.montoOk&&f.monto>0).map((f,i)=>`<div class="ruta-linea"><span>Faltante ${i+1}${f.motivo?' — '+escHTML(f.motivo):''}</span><b>$${f.monto.toFixed(2)}</b></div>`).join('')||'<div class="ruta-linea"><span>Faltantes</span><b>$0.00</b></div>'}
+    </div>`;
+  }).join('');
 }
+
 
 function imprimirLiquidacionDash(){
   const porAsesor = _calcularLiquidacionDash();
