@@ -763,15 +763,49 @@ function _htmlEntregaAsesorBox(nombre, total){
       <span style="font-weight:800">Total a entregar</span>
       <span class="liq-ref-total" style="font-weight:800;color:var(--teal)">$${(Number(total)||0).toFixed(2)}</span>
     </div>
-    <label style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><input type="checkbox" class="liq-chk-ef" onchange="_guardarEntregaAsesor('${safe}')"><span style="min-width:130px;font-weight:700">Efectivo</span><input type="text" class="liq-monto-ef" placeholder="0.00" inputmode="decimal" style="flex:1;height:36px;border:1.5px solid var(--border);border-radius:8px;padding:0 10px" oninput="_filtrarInputMontoLiq(this);_guardarEntregaAsesorDebounced('${safe}')"></label>
-    <label style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><input type="checkbox" class="liq-chk-dep" onchange="_guardarEntregaAsesor('${safe}')"><span style="min-width:130px;font-weight:700">Depósito</span><input type="text" class="liq-monto-dep" placeholder="0.00" inputmode="decimal" style="flex:1;height:36px;border:1.5px solid var(--border);border-radius:8px;padding:0 10px" oninput="_filtrarInputMontoLiq(this);_guardarEntregaAsesorDebounced('${safe}')"></label>
-    <label style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><input type="checkbox" class="liq-chk-tr" onchange="_guardarEntregaAsesor('${safe}')"><span style="min-width:130px;font-weight:700">Transferencia</span><input type="text" class="liq-monto-tr" placeholder="0.00" inputmode="decimal" style="flex:1;height:36px;border:1.5px solid var(--border);border-radius:8px;padding:0 10px" oninput="_filtrarInputMontoLiq(this);_guardarEntregaAsesorDebounced('${safe}')"></label>
+    <label style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><input type="checkbox" class="liq-chk-ef" onchange="_actualizarCuadreBox(this.closest('.liq-entrega-asesor'))"><span style="min-width:130px;font-weight:700">Efectivo</span><input type="text" class="liq-monto-ef" placeholder="0.00" inputmode="decimal" style="flex:1;height:36px;border:1.5px solid var(--border);border-radius:8px;padding:0 10px" oninput="_filtrarInputMontoLiq(this);_actualizarCuadreBox(this.closest('.liq-entrega-asesor'))"></label>
+    <label style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><input type="checkbox" class="liq-chk-dep" onchange="_actualizarCuadreBox(this.closest('.liq-entrega-asesor'))"><span style="min-width:130px;font-weight:700">Depósito</span><input type="text" class="liq-monto-dep" placeholder="0.00" inputmode="decimal" style="flex:1;height:36px;border:1.5px solid var(--border);border-radius:8px;padding:0 10px" oninput="_filtrarInputMontoLiq(this);_actualizarCuadreBox(this.closest('.liq-entrega-asesor'))"></label>
+    <label style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><input type="checkbox" class="liq-chk-tr" onchange="_actualizarCuadreBox(this.closest('.liq-entrega-asesor'))"><span style="min-width:130px;font-weight:700">Transferencia</span><input type="text" class="liq-monto-tr" placeholder="0.00" inputmode="decimal" style="flex:1;height:36px;border:1.5px solid var(--border);border-radius:8px;padding:0 10px" oninput="_filtrarInputMontoLiq(this);_actualizarCuadreBox(this.closest('.liq-entrega-asesor'))"></label>
     <div class="liq-faltantes-lista"></div>
-    <button type="button" onclick="_agregarFaltanteAsesor(this)" style="margin:4px 0 8px;padding:8px 12px;border:1.5px dashed var(--border);background:#fff;border-radius:8px;font-weight:700;cursor:pointer;color:var(--navy)">+ Añadir faltante</button>
+    <button type="button" class="liq-btn-add-falt" onclick="_agregarFaltanteAsesor(this)" style="display:none;margin:4px 0 8px;padding:8px 12px;border:1.5px dashed var(--border);background:#fff;border-radius:8px;font-weight:700;cursor:pointer;color:var(--navy)">+ Añadir faltante</button>
     <div class="liq-entrega-cuadre" style="font-size:12px;margin-top:8px;font-weight:700"></div>
     <div class="liq-entrega-status" style="font-size:11px;color:var(--muted);margin-top:6px"></div>
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+      <button type="button" class="liq-btn-editar" onclick="_editarEntregaAsesor('${safe}')" style="padding:8px 14px;border:none;border-radius:8px;background:var(--navy);color:#fff;font-weight:700;cursor:pointer">✏ Editar</button>
+      <button type="button" class="liq-btn-guardar" onclick="_confirmarGuardarEntregaAsesor('${safe}')" style="display:none;padding:8px 14px;border:none;border-radius:8px;background:#0f7c38;color:#fff;font-weight:700;cursor:pointer">💾 Guardar</button>
+      <button type="button" class="liq-btn-cancelar" onclick="_cancelarEntregaAsesor('${safe}')" style="display:none;padding:8px 14px;border:1.5px solid var(--border);border-radius:8px;background:#fff;font-weight:700;cursor:pointer">Cancelar</button>
+    </div>
   </div>`;
 }
+
+function _setEntregaEditable(box, on){
+  if(!box) return;
+  box.dataset.editando = on ? '1' : '0';
+  box.querySelectorAll('input').forEach(el => { el.disabled = !on; });
+  const add=box.querySelector('.liq-btn-add-falt');
+  const ed=box.querySelector('.liq-btn-editar');
+  const gu=box.querySelector('.liq-btn-guardar');
+  const ca=box.querySelector('.liq-btn-cancelar');
+  if(add) add.style.display = on ? '' : 'none';
+  if(ed) ed.style.display = on ? 'none' : '';
+  if(gu) gu.style.display = on ? '' : 'none';
+  if(ca) ca.style.display = on ? '' : 'none';
+}
+function _editarEntregaAsesor(nombre){
+  const box=_boxEntregaAsesor(nombre);
+  _setEntregaEditable(box, true);
+}
+function _cancelarEntregaAsesor(nombre){
+  _cargarEntregaAsesor(nombre);
+}
+function _confirmarGuardarEntregaAsesor(nombre){
+  if(!confirm('¿Está seguro que desea guardar la entrega de liquidación de '+nombre+'?')) return;
+  _guardarEntregaAsesor(nombre).then(()=>{
+    const box=_boxEntregaAsesor(nombre);
+    _setEntregaEditable(box, false);
+  });
+}
+
 function _parseMontoLiq(raw){
   const s=String(raw||'').trim();
   if(!s) return {ok:true, valor:0};
@@ -824,8 +858,7 @@ function _htmlFilaFaltanteAsesor(i,monto,motivo){
 }
 function _guardarEntregaDesdeFila(el){
   const box=el.closest('.liq-entrega-asesor');
-  const nombre=box&&box.dataset.asesor;
-  if(nombre) _guardarEntregaAsesorDebounced(nombre);
+  if(box) _actualizarCuadreBox(box);
 }
 function _agregarFaltanteAsesor(btn){
   const box=btn.closest('.liq-entrega-asesor');
@@ -889,6 +922,7 @@ async function _cargarEntregaAsesor(nombre){
     if(list) list.innerHTML=(filas.length?filas:[{monto:'',motivo:''}]).map((f,i)=>_htmlFilaFaltanteAsesor(i,f.monto,f.motivo)).join('');
     const st=box.querySelector('.liq-entrega-status');
     if(st) st.textContent=snap.exists?'Entrega guardada de este asesor.':'Sin entrega registrada aún.';
+    _setEntregaEditable(box, false);
     _actualizarCuadreBox(box);
   }catch(err){
     console.warn('cierresLiquidacion lectura:', err);
@@ -3184,6 +3218,7 @@ function agregarRegaliaLinea(i){
    colección) y registra cada campo que cambió en historialCambios para auditoría. */
 async function guardarEdicionPedido(){
   if(!editandoPedidoActual) return;
+  if(!confirm('¿Está seguro que desea guardar los cambios de este pedido?')) return;
   const original = _pedidosRaw.find(x => x._id === editandoPedidoActual._id);
   if(!original){ alert('El pedido ya no existe.'); cerrarEditarPedido(); return; }
 
@@ -3734,6 +3769,7 @@ function cerrarEditarPagoGasto(){
 
 async function guardarEdicionPagoGasto(){
   if(!_editandoPagoGasto) return;
+  if(!confirm('¿Está seguro que desea guardar los cambios?')) return;
   const { tipo, id } = _editandoPagoGasto;
   const monto = parseFloat(document.getElementById('epgMonto').value);
   if(!monto || monto <= 0){ alert('Ingresa un monto válido mayor a $0.'); return; }
