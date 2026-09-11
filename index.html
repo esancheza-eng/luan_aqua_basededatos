@@ -1172,9 +1172,9 @@ async function doLogin(){
     // no aquí. Antes se colaba como si fuera asesor y veía el campo de
     // Ruta/Asesor bloqueado y vacío, porque no tiene ninguna ruta asignada.
     if(perfil.esSecretaria === true){
-      // No hacer signOut: mismo dominio + misma Auth que el Dashboard.
-      mostrarErrorLogin('Esta pantalla es solo para asesores. Tu usuario de Secretaria entra en el Dashboard.');
-      setTimeout(function(){ location.href = 'https://sistemaaqualuan.elhyai.com'; }, 900);
+      // Dos dominios distintos: no redirigir al Dashboard (eso cierra esta pestaña/PWA).
+      await auth.signOut();
+      mostrarErrorLogin('Esta pantalla es solo para asesores. La Secretaria entra en sistemaaqualuan.elhyai.com');
       return;
     }
     document.getElementById('loginPass').value='';
@@ -1246,8 +1246,8 @@ auth.onAuthStateChanged(async (user)=>{
       // [NEW] Mismo bloqueo que en doLogin — si la sesión de una Secretaria
       // se restaura sola (recarga de página), también se cierra aquí.
       if(perfil.esSecretaria === true){
-        mostrarErrorLogin('Esta pantalla es solo para asesores. Tu usuario de Secretaria entra en el Dashboard.');
-        setTimeout(function(){ location.href = 'https://sistemaaqualuan.elhyai.com'; }, 600);
+        mostrarErrorLogin('Esta pantalla es solo para asesores. La Secretaria entra en sistemaaqualuan.elhyai.com');
+        await auth.signOut();
         return;
       }
       usuarioActual={ uid:user.uid, nombre:perfil.nombre, rol:perfil.rol||(perfil.esAdmin?'ADMIN':'OPERADOR'), ruta:perfil.ruta||null, esAdmin:!!perfil.esAdmin };
