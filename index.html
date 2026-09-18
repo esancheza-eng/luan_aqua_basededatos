@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!--
   ╔══════════════════════════════════════════════════════════════════════╗
-  ║  AQUA LUAN — Sistema de Pedidos (Firebase Edition — Fase 1)         ║
+  ║  AQUA LUAN — Sistema de Pedidos (Firebase / Firestore)              ║
   ║  Login: Firebase Authentication (correo/contraseña)                 ║
   ║  Usuarios: Firestore, colección "usuarios"                          ║
-  ║  Pedidos/Pagos/Gastos: siguen en Google Sheets por ahora (Fase 2)   ║
+  ║  Pedidos / Pagos / Gastos: Firestore (pedidos, pagos, gastos)       ║
   ╚══════════════════════════════════════════════════════════════════════╝
 -->
 <title>Aqua Luan v3.0 — Sistema de Pedidos Empresarial</title>
@@ -1105,6 +1105,30 @@ function _fechaLocalHoy(){
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
+/* Asesor: fecha fija de hoy (no puede retroceder). Admin: puede cambiar la fecha. */
+function _fechaParaGuardar(valorCampo){
+  if(usuarioActual&&usuarioActual.esAdmin) return valorCampo || _fechaLocalHoy();
+  return _fechaLocalHoy();
+}
+function _aplicarRestriccionFechas(){
+  const hoyStr=_fechaLocalHoy();
+  const esAdmin=!!(usuarioActual&&usuarioActual.esAdmin);
+  ['fecha','pago-fecha','gasto-fecha'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    if(esAdmin){
+      el.removeAttribute('min');
+      el.removeAttribute('max');
+      el.readOnly=false;
+    }else{
+      el.value=hoyStr;
+      el.min=hoyStr;
+      el.max=hoyStr;
+      el.readOnly=true;
+    }
+  });
+}
+
 function generarTokenSesion() {
   const arr = new Uint8Array(32);
   crypto.getRandomValues(arr);
@@ -1379,6 +1403,7 @@ function aplicarUsuario(){
   _iniciarListenerProductos(); // [NEW] catálogo de productos en tiempo real
   _iniciarListenerAsesoresRutas(); // [NEW] rutas/asesores reales para los selects del admin
   _cargarClientesConocidos(); // [NEW] autocompletar Teléfono/Dirección al elegir un cliente ya registrado
+  _aplicarRestriccionFechas();
   if(u.esAdmin)return;
   // [FIX] Un asesor (no admin) nunca dispara _iniciarListenerAsesoresRutas() (esa función
   // corta de inmediato si no es admin), así que LISTAS_BLANCAS.empleado/empleadoGasto se
@@ -1425,6 +1450,7 @@ let _fechaActualApp = null;
   document.getElementById('fecha').value=hoyStr;
   document.getElementById('pago-fecha').value=hoyStr;
   document.getElementById('gasto-fecha').value=hoyStr;
+  _aplicarRestriccionFechas();
   try{localStorage.removeItem('aqualuan-pendientes-ls');}catch{}
   actualizarBanners();
   // [NEW] La restauración de sesión ahora la maneja auth.onAuthStateChanged() más arriba —
@@ -1437,6 +1463,7 @@ function _verificarCambioDeDia(){
   if(hoyStr===_fechaActualApp) return;
   _fechaActualApp=hoyStr;
   ['fecha','pago-fecha','gasto-fecha'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=hoyStr; });
+  _aplicarRestriccionFechas();
   sessionStorage.removeItem('aqualuan-historial');
   if(usuarioActual){
     _iniciarListenersDelDia(usuarioActual); // [FIX] re-suscribe con la fecha del nuevo día
@@ -1677,7 +1704,7 @@ async function abrirModal(){
   const formapago=document.getElementById('formapago').value;
   const nombre=sanitizarTexto(document.getElementById('nombre').value,100);
   const telefono=sanitizarTexto(document.getElementById('telefono').value,20);
-  const fecha=document.getElementById('fecha').value;
+  const fecha=_fechaParaGuardar(document.getElementById('fecha').value);
   const direccion=sanitizarTexto(document.getElementById('direccion').value,200);
   const notas=sanitizarTexto(document.getElementById('notas').value,500);
   if(!esValorSeguro(empleado,LISTAS_BLANCAS.empleado)){setStatus('error','Selecciona un asesor válido.');return;}
@@ -1891,7 +1918,7 @@ function nuevoPedido(){ limpiarFormulario(); }
 
 async function registrarPago(){
   const empleado=document.getElementById('pago-empleado').value;
-  const fecha=document.getElementById('pago-fecha').value;
+  const fecha=_fechaParaGuardar(document.getElementById('pago-fecha').value);
   const cliente=sanitizarTexto(document.getElementById('pago-cliente').value,100);
   const monto=parseMonto(document.getElementById('pago-monto').value);
   const forma=document.getElementById('pago-forma').value;
@@ -2218,15 +2245,13 @@ function descargarPDFLiquidacion(){
 
 async function registrarGasto(){
   const empleado=document.getElementById('gasto-empleado').value;
-  const fecha=document.getElementById('gasto-fecha').value;
+  const fecha=_fechaParaGuardar(document.getElementById('gasto-fecha').value);
   const categoria=sanitizarTexto(document.getElementById('gasto-categoria').value,100);
   const monto=parseMonto(document.getElementById('gasto-monto').value);
   const desc=sanitizarTexto(document.getElementById('gasto-desc').value,300);
   const ref=sanitizarTexto(document.getElementById('gasto-ref').value,100);
   if(!esValorSeguro(empleado,LISTAS_BLANCAS.empleadoGasto)){setStatusGastos('error','Selecciona el responsable.');return;}
-  if(!categoria){setStatusGastos('error','Selecciona la categoría del gasto.');return;}
   if(!validarMonto(monto)){setStatusGastos('error','Ingresa un monto válido mayor a $0.');return;}
-  if(!desc){setStatusGastos('error','Describe el gasto.');return;}
   /* [FIX] Mismo problema y misma solución que en registrarPago(): sin internet, un await
      directo sobre .add() se queda colgado hasta que vuelve la señal. */
   const modoOfflineGasto=!navigator.onLine;
