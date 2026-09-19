@@ -3158,8 +3158,11 @@ function renderTabla(pedidos) {
     const pago  = etiquetaPago ? `<span class="badge badge-teal">${escHTML(etiquetaPago)}</span>${detallePago}` : '';
     /* [NEW] Botón Editar — solo funciona si la fila trae el id real del pedido en Firestore
        (las filas de pagos/gastos no lo traen, pero renderTabla solo recibe pedidos con producto) */
-    const puedeAB = r['_pedidoId'] && (ROL_ACTUAL === 'admin' || ROL_ACTUAL === 'secretaria') && _esRegistroDeHoy(r['FECHA']||r['fecha']);
-    const accion = puedeAB ? `<button class="btn-editar-fila" onclick="abrirEditarPedido('${r['_pedidoId']}')" title="Editar este pedido">✏ Editar</button><button class="btn-eliminar-fila" onclick="eliminarPedidoCompleto('${r['_pedidoId']}')" title="Eliminar este pedido">🗑 Eliminar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>';
+    const puedeEditar = r['_pedidoId'] && ROL_ACTUAL === 'admin';
+    const puedeEliminar = r['_pedidoId'] && (ROL_ACTUAL === 'admin' || ROL_ACTUAL === 'secretaria') && _esRegistroDeHoy(r['FECHA']||r['fecha']);
+    const accion = (puedeEditar || puedeEliminar)
+      ? `${puedeEditar?`<button class="btn-editar-fila" onclick="abrirEditarPedido('${r['_pedidoId']}')" title="Editar este pedido">✏ Editar</button>`:''}${puedeEliminar?`<button class="btn-eliminar-fila" onclick="eliminarPedidoCompleto('${r['_pedidoId']}')" title="Eliminar este pedido">🗑 Eliminar</button>`:''}`
+      : '<span style="color:var(--muted);font-size:11px">—</span>';
     const fila = `<tr>
       <td style="white-space:nowrap;font-size:12px">${limpiarFecha(r['FECHA'])}</td>
       <td style="white-space:nowrap;font-size:12px;color:var(--muted)">${escHTML(r['HORA REGISTRO']||'-')}</td>
@@ -3301,8 +3304,11 @@ function actualizarTablaCentral(datos) {
     const gps   = r['LINK GPS'] ? `<a href="${r['LINK GPS']}" target="_blank" style="color:var(--teal);font-weight:700;font-size:11px">📍 Ver</a>` : '<span style="color:var(--muted);font-size:11px">—</span>';
     const total = r['TOTAL PEDIDO ($)'] ? `<strong style="color:var(--teal)">$${parseFloat(r['TOTAL PEDIDO ($)']).toFixed(2)}</strong>` : '';
     const pago  = r['FORMA DE PAGO'] ? `<span class="badge badge-teal">${r['FORMA DE PAGO']}</span>` : '';
-    const puedeAB = r['_pedidoId'] && (ROL_ACTUAL === 'admin' || ROL_ACTUAL === 'secretaria') && _esRegistroDeHoy(r['FECHA']||r['fecha']);
-    const accion = puedeAB ? `<button class="btn-editar-fila" onclick="abrirEditarPedido('${r['_pedidoId']}')" title="Editar este pedido">✏ Editar</button><button class="btn-eliminar-fila" onclick="eliminarPedidoCompleto('${r['_pedidoId']}')" title="Eliminar este pedido">🗑 Eliminar</button>` : '<span style="color:var(--muted);font-size:11px">—</span>';
+    const puedeEditar = r['_pedidoId'] && ROL_ACTUAL === 'admin';
+    const puedeEliminar = r['_pedidoId'] && (ROL_ACTUAL === 'admin' || ROL_ACTUAL === 'secretaria') && _esRegistroDeHoy(r['FECHA']||r['fecha']);
+    const accion = (puedeEditar || puedeEliminar)
+      ? `${puedeEditar?`<button class="btn-editar-fila" onclick="abrirEditarPedido('${r['_pedidoId']}')" title="Editar este pedido">✏ Editar</button>`:''}${puedeEliminar?`<button class="btn-eliminar-fila" onclick="eliminarPedidoCompleto('${r['_pedidoId']}')" title="Eliminar este pedido">🗑 Eliminar</button>`:''}`
+      : '<span style="color:var(--muted);font-size:11px">—</span>';
     const fila = `<tr>
       <td style="white-space:nowrap;font-size:12px">${limpiarFecha(r['FECHA'])}</td>
       <td style="white-space:nowrap;font-size:12px;color:var(--muted)">${escHTML(r['HORA REGISTRO']||'-')}</td>
@@ -4942,7 +4948,9 @@ function exportarExcel() {
 ════════════════════════════════════════════════════════════ */
 function abrirEditarPedido(pedidoId){
   const p = _pedidosRaw.find(x => x._id === pedidoId);
-  if(p && !_esRegistroDeHoy(p.fecha||p.FECHA)){ alert('Solo se pueden editar pedidos del día de hoy.'); return; }
+  if(ROL_ACTUAL !== 'admin'){
+    if(p && !_esRegistroDeHoy(p.fecha||p.FECHA)){ alert('Solo el administrador puede editar pedidos de fechas anteriores.'); return; }
+  }
   if(!p){ alert('No se encontró el pedido — puede que otro admin lo haya eliminado.'); return; }
   // Copia editable e independiente, para no mutar los datos en vivo del listener mientras se edita
   editandoPedidoActual = JSON.parse(JSON.stringify(p));
@@ -5099,7 +5107,10 @@ function agregarRegaliaLinea(i){
    colección) y registra cada campo que cambió en historialCambios para auditoría. */
 async function guardarEdicionPedido(){
   if(!editandoPedidoActual) return;
-  if(!_esRegistroDeHoy(editandoPedidoActual.fecha||editandoPedidoActual.FECHA)){ alert('Solo se pueden editar pedidos del día de hoy.'); return; }
+  if(ROL_ACTUAL !== 'admin' && !_esRegistroDeHoy(editandoPedidoActual.fecha||editandoPedidoActual.FECHA)){
+    alert('Solo el administrador puede guardar cambios de pedidos de fechas anteriores.');
+    return;
+  }
   if(!confirm('¿Está seguro que desea guardar los cambios de este pedido?')) return;
   const original = _pedidosRaw.find(x => x._id === editandoPedidoActual._id);
   if(!original){ alert('El pedido ya no existe.'); cerrarEditarPedido(); return; }
