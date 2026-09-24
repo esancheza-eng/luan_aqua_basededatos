@@ -1065,9 +1065,9 @@ firebase.initializeApp(firebaseConfig);
    servidores de Google cada cierto tiempo, y si el asesor está sin señal en ese momento,
    la escritura a Firestore se queda esperando ese token y nunca guarda. La capacidad
    offline es el núcleo del negocio en ruta, así que App Check se deja SOLO en el
-   Dashboard (dashboard.html) — el admin siempre trabaja con internet en oficina. */
+   Dashboard (repo aqua-luan-gestion, sistemaaqualuan.elhyai.com) — el admin siempre trabaja con internet en oficina. */
 const auth = firebase.auth();
-// [FIX] Mismo ajuste que en dashboard.js: el authDomain de Firebase
+// [FIX] Mismo ajuste que en el dashboard (repo aqua-luan-gestion): el authDomain de Firebase
 // ("luan-aqua.firebaseapp.com") es distinto al dominio real de esta app, así
 // que por defecto Firebase Auth depende de un iframe oculto hacia ese dominio
 // para sincronizar la sesión — navegadores con "Tracking Prevention" (Edge)
