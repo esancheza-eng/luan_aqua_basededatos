@@ -2623,7 +2623,7 @@ function _buildTicketHTML(d){
   <table class="t-tbl"><tr><td>Pedido:</td><td class="t-r">${fechaStr}</td></tr>
   ${horaTicket?`<tr><td>Hora:</td><td class="t-r">${escHTML(horaTicket)}</td></tr>`:''}
   <tr><td>Ruta:</td><td class="t-r">${escHTML(d.empleado||'-')}</td></tr>
-  <tr><td>Pago:</td><td class="t-r t-pago-val">${escHTML(_textoDesglosePago(d))}</td></tr></table>
+  ${(()=>{const _pp=_textoDesglosePago(d).split(' + ');return _pp.length>1?`<tr><td colspan="2">Pago:</td></tr>${_pp.map(x=>`<tr><td colspan="2" class="t-pago-val" style="padding-left:4px">${escHTML(x)}</td></tr>`).join('')}`:`<tr><td>Pago:</td><td class="t-r t-pago-val">${escHTML(_pp[0])}</td></tr>`;})()}</table>
   <div class="t-line"></div>
   <div class="t-bold">CLIENTE: ${escHTML(d.nombre||'-')}</div>
   ${d.telefono?`<div class="t-small">Tel: ${escHTML(d.telefono)}</div>`:''}
