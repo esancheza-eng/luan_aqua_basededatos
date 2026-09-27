@@ -703,7 +703,7 @@ body { padding: 1rem 0.75rem 3rem; }
       <div class="section-title">Datos del cliente</div>
       <div class="field">
         <label for="nombre">Nombre completo</label>
-        <input type="text" id="nombre" placeholder="Ej. Maria Garcia Lopez" autocomplete="off" required maxlength="100" list="clientesDatalist" oninput="_autocompletarClienteSeleccionado()">
+        <input type="text" id="nombre" class="mayus" placeholder="Ej. Maria Garcia Lopez" autocomplete="off" required maxlength="100" list="clientesDatalist" oninput="_autocompletarClienteSeleccionado()">
         <datalist id="clientesDatalist"></datalist>
       </div>
       <div class="grid-2">
@@ -718,7 +718,7 @@ body { padding: 1rem 0.75rem 3rem; }
       </div>
       <div class="field" style="margin-bottom:0">
         <label for="direccion">Direccion</label>
-        <input type="text" id="direccion" placeholder="Calle, numero, sector" autocomplete="off" maxlength="200">
+        <input type="text" id="direccion" class="mayus" placeholder="Calle, numero, sector" autocomplete="off" maxlength="200">
       </div>
     </div>
 
@@ -781,7 +781,7 @@ body { padding: 1rem 0.75rem 3rem; }
     <div class="card">
       <div class="field">
         <label for="notas">Notas adicionales</label>
-        <textarea id="notas" placeholder="Observaciones, condiciones de pago, entregas..." maxlength="500"></textarea>
+        <textarea id="notas" class="mayus" placeholder="Observaciones, condiciones de pago, entregas..." maxlength="500"></textarea>
       </div>
       <button class="btn" id="btnGuardar" onclick="abrirModal()">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.5 10v2a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 12v-2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M8 2v7M5.5 6.5 8 9l2.5-2.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -827,12 +827,12 @@ body { padding: 1rem 0.75rem 3rem; }
         <div class="field"><label>Asesor / Ruta</label><div id="wrap-pago-empleado"><select id="pago-empleado" class="focus-blue"><option value="">Cargando...</option></select></div></div>
         <div class="field"><label for="pago-fecha">Fecha</label><input type="date" id="pago-fecha" class="focus-blue"></div>
       </div>
-      <div class="field"><label for="pago-cliente">Cliente</label><input type="text" id="pago-cliente" placeholder="Nombre del cliente" autocomplete="off" class="focus-blue" maxlength="100"></div>
+      <div class="field"><label for="pago-cliente">Cliente</label><input type="text" id="pago-cliente" placeholder="Nombre del cliente" autocomplete="off" class="focus-blue mayus" maxlength="100"></div>
       <div class="grid-2">
         <div class="field"><label for="pago-monto">Monto recibido ($)</label><input type="text" id="pago-monto" placeholder="0.00" inputmode="decimal" autocomplete="off" maxlength="10" class="focus-blue" oninput="filtrarInputMonto(this)"></div>
         <div class="field"><label for="pago-forma">Forma de pago</label><select id="pago-forma" class="focus-blue"><option value="">-- Selecciona --</option><option value="Efectivo">Efectivo</option><option value="Transferencia">Transferencia</option><option value="Cheque">Cheque</option></select></div>
       </div>
-      <div class="field" style="margin-bottom:0"><label for="pago-notas">Referencia / Notas</label><input type="text" id="pago-notas" placeholder="N° transferencia, observación..." autocomplete="off" class="focus-blue" maxlength="200"></div>
+      <div class="field" style="margin-bottom:0"><label for="pago-notas">Referencia / Notas</label><input type="text" id="pago-notas" placeholder="N° transferencia, observación..." autocomplete="off" class="focus-blue mayus" maxlength="200"></div>
     </div>
     <div class="card"><button class="btn blue" onclick="registrarPago()"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1.5" y="4" width="13" height="9" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M1.5 7h13" stroke="currentColor" stroke-width="1.5"/><path d="M5 10.5h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Registrar pago</button><div class="status" id="status-pagos"></div></div>
     <div class="card">
@@ -861,13 +861,13 @@ body { padding: 1rem 0.75rem 3rem; }
         <div class="field"><label>Responsable</label><div id="wrap-gasto-empleado"><select id="gasto-empleado" class="focus-red"><option value="">Cargando...</option></select></div></div>
         <div class="field"><label for="gasto-fecha">Fecha</label><input type="date" id="gasto-fecha" class="focus-red"></div>
       </div>
-      <datalist id="gasto-categorias-list"><option value="Combustible"><option value="Almuerzos"><option value="Ascensor"><option value="Triciclo"><option value="Otro"></datalist>
+      <datalist id="gasto-categorias-list"><option value="COMBUSTIBLE"><option value="ALMUERZOS"><option value="ASCENSOR"><option value="TRICICLO"><option value="OTRO"></datalist>
       <div class="grid-2">
-        <div class="field"><label for="gasto-categoria">Categoría</label><input type="text" id="gasto-categoria" list="gasto-categorias-list" placeholder="Combustible, Almuerzos..." autocomplete="off" class="focus-red" maxlength="100"></div>
+        <div class="field"><label for="gasto-categoria">Categoría</label><input type="text" id="gasto-categoria" list="gasto-categorias-list" placeholder="Combustible, Almuerzos..." autocomplete="off" class="focus-red mayus" maxlength="100"></div>
         <div class="field"><label for="gasto-monto">Monto ($)</label><input type="text" id="gasto-monto" placeholder="0.00" inputmode="decimal" autocomplete="off" maxlength="10" class="focus-red" oninput="filtrarInputMonto(this)"></div>
       </div>
-      <div class="field"><label for="gasto-desc">Descripción</label><input type="text" id="gasto-desc" placeholder="Describe el gasto..." autocomplete="off" class="focus-red" maxlength="300"></div>
-      <div class="field" style="margin-bottom:0"><label for="gasto-ref">Comprobante / Referencia</label><input type="text" id="gasto-ref" placeholder="N° factura, voucher, nota..." autocomplete="off" class="focus-red" maxlength="100"></div>
+      <div class="field"><label for="gasto-desc">Descripción</label><input type="text" id="gasto-desc" placeholder="Describe el gasto..." autocomplete="off" class="focus-red mayus" maxlength="300"></div>
+      <div class="field" style="margin-bottom:0"><label for="gasto-ref">Comprobante / Referencia</label><input type="text" id="gasto-ref" placeholder="N° factura, voucher, nota..." autocomplete="off" class="focus-red mayus" maxlength="100"></div>
     </div>
     <div class="card"><button class="btn red" onclick="registrarGasto()"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v12M4 6l4-4 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Registrar gasto</button><div class="status" id="status-gastos"></div></div>
     <div class="card">
@@ -1151,6 +1151,21 @@ const LISTAS_BLANCAS = {
 };
 function esValorSeguro(v,l){ return l.includes(String(v).trim()); }
 function sanitizarTexto(s,m=255){ if(!s)return''; return String(s).trim().slice(0,m); }
+/* [NEW] Todo lo que escriben los asesores se guarda en MAYÚSCULAS (pedido pedido por
+   administración: la base se está normalizando para el control de créditos y pagos).
+   Se aplica en dos capas: (1) mientras escriben, los campos con clase .mayus se
+   convierten al instante; (2) al guardar, textoMayus() lo vuelve a forzar por si el
+   valor llegó por autocompletar/pegar/datalist sin pasar por el evento input. */
+function textoMayus(s,m=255){ return sanitizarTexto(s,m).toLocaleUpperCase('es-EC'); }
+document.addEventListener('input',function(e){
+  const el=e.target;
+  if(!el||!el.classList||!el.classList.contains('mayus')) return;
+  const v=el.value, up=v.toLocaleUpperCase('es-EC');
+  if(v===up) return;
+  const ini=el.selectionStart, fin=el.selectionEnd;
+  el.value=up;
+  try{ if(ini!=null) el.setSelectionRange(ini,fin); }catch(_){}
+},true); // captura: corre ANTES del oninput propio del campo (ej. autocompletar cliente)
 function validarMonto(v){ const n=parseFloat(v); return !isNaN(n)&&n>0&&n<1000000; }
 
 function parseMonto(v){
@@ -1702,11 +1717,11 @@ function capturarGPS(){
 async function abrirModal(){
   const empleado=document.getElementById('empleado').value;
   const formapago=document.getElementById('formapago').value;
-  const nombre=sanitizarTexto(document.getElementById('nombre').value,100);
+  const nombre=textoMayus(document.getElementById('nombre').value,100);
   const telefono=sanitizarTexto(document.getElementById('telefono').value,20);
   const fecha=_fechaParaGuardar(document.getElementById('fecha').value);
-  const direccion=sanitizarTexto(document.getElementById('direccion').value,200);
-  const notas=sanitizarTexto(document.getElementById('notas').value,500);
+  const direccion=textoMayus(document.getElementById('direccion').value,200);
+  const notas=textoMayus(document.getElementById('notas').value,500);
   if(!esValorSeguro(empleado,LISTAS_BLANCAS.empleado)){setStatus('error','Selecciona un asesor válido.');return;}
   if(!nombre){setStatus('error','Ingresa el nombre del cliente.');return;}
   if(productos.length===0){setStatus('error','Agrega al menos un producto.');return;}
@@ -1919,10 +1934,10 @@ function nuevoPedido(){ limpiarFormulario(); }
 async function registrarPago(){
   const empleado=document.getElementById('pago-empleado').value;
   const fecha=_fechaParaGuardar(document.getElementById('pago-fecha').value);
-  const cliente=sanitizarTexto(document.getElementById('pago-cliente').value,100);
+  const cliente=textoMayus(document.getElementById('pago-cliente').value,100);
   const monto=parseMonto(document.getElementById('pago-monto').value);
   const forma=document.getElementById('pago-forma').value;
-  const notas=sanitizarTexto(document.getElementById('pago-notas').value,200);
+  const notas=textoMayus(document.getElementById('pago-notas').value,200);
   if(!esValorSeguro(empleado,LISTAS_BLANCAS.empleado)){setStatusPagos('error','Selecciona el asesor / ruta.');return;}
   if(!cliente){setStatusPagos('error','Ingresa el nombre del cliente.');return;}
   if(!validarMonto(monto)){setStatusPagos('error','Ingresa un monto válido mayor a $0.');return;}
@@ -2246,10 +2261,10 @@ function descargarPDFLiquidacion(){
 async function registrarGasto(){
   const empleado=document.getElementById('gasto-empleado').value;
   const fecha=_fechaParaGuardar(document.getElementById('gasto-fecha').value);
-  const categoria=sanitizarTexto(document.getElementById('gasto-categoria').value,100);
+  const categoria=textoMayus(document.getElementById('gasto-categoria').value,100);
   const monto=parseMonto(document.getElementById('gasto-monto').value);
-  const desc=sanitizarTexto(document.getElementById('gasto-desc').value,300);
-  const ref=sanitizarTexto(document.getElementById('gasto-ref').value,100);
+  const desc=textoMayus(document.getElementById('gasto-desc').value,300);
+  const ref=textoMayus(document.getElementById('gasto-ref').value,100);
   if(!esValorSeguro(empleado,LISTAS_BLANCAS.empleadoGasto)){setStatusGastos('error','Selecciona el responsable.');return;}
   if(!validarMonto(monto)){setStatusGastos('error','Ingresa un monto válido mayor a $0.');return;}
   /* [FIX] Mismo problema y misma solución que en registrarPago(): sin internet, un await
@@ -2565,10 +2580,11 @@ async function _cargarClientesConocidos(){
     snap.forEach(doc=>{
       const d = doc.data();
       if(!d.cliente) return;
+      const clienteKey = String(d.cliente).trim().toLocaleUpperCase('es-EC'); // [NEW] agrupa "maria" y "MARIA"
       const ts = (d.creadoEn && d.creadoEn.toMillis) ? d.creadoEn.toMillis() : 0;
-      if(!mapa[d.cliente]) mapa[d.cliente] = { telefono:'', direccion:'', _ts:0, precios:{} };
-      const actual = mapa[d.cliente];
-      if(ts >= actual._ts){ actual.telefono = d.telefono||actual.telefono; actual.direccion = d.direccion||actual.direccion; actual._ts = ts; }
+      if(!mapa[clienteKey]) mapa[clienteKey] = { telefono:'', direccion:'', _ts:0, precios:{} };
+      const actual = mapa[clienteKey];
+      if(ts >= actual._ts){ actual.telefono = d.telefono||actual.telefono; actual.direccion = (d.direccion||actual.direccion||'').toLocaleUpperCase('es-EC'); actual._ts = ts; }
       (d.productos||[]).forEach(p=>{
         if(!p.nombre || p.precio==null) return;
         const pActual = actual.precios[p.nombre];
@@ -2581,7 +2597,7 @@ async function _cargarClientesConocidos(){
   }catch(e){ console.error('No se pudo cargar la lista de clientes conocidos:', e); }
 }
 function _autocompletarClienteSeleccionado(){
-  const nombre = document.getElementById('nombre').value.trim();
+  const nombre = document.getElementById('nombre').value.trim().toLocaleUpperCase('es-EC');
   const info = _clientesConocidosMap[nombre];
   if(!info) return;
   const elTel = document.getElementById('telefono'), elDir = document.getElementById('direccion');
@@ -2593,7 +2609,7 @@ function _autocompletarClienteSeleccionado(){
    Se llama al elegir el cliente (si ya hay producto elegido) y al elegir el producto
    (si ya hay cliente elegido) -- cualquiera de los dos que se complete después del otro. */
 function _autocompletarPrecioProducto(){
-  const nombre = document.getElementById('nombre').value.trim();
+  const nombre = document.getElementById('nombre').value.trim().toLocaleUpperCase('es-EC');
   const producto = document.getElementById('sel-producto').value;
   if(!nombre || !producto) return;
   const info = _clientesConocidosMap[nombre];
