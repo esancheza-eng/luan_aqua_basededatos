@@ -2592,9 +2592,29 @@ async function _cargarClientesConocidos(){
       });
     });
     _clientesConocidosMap = mapa;
-    const dl = document.getElementById('clientesDatalist');
-    if(dl) dl.innerHTML = Object.keys(mapa).sort((a,b)=>a.localeCompare(b,'es')).map(n=>`<option value="${escHTML(n)}">`).join('');
   }catch(e){ console.error('No se pudo cargar la lista de clientes conocidos:', e); }
+  /* [NEW] Lista de precios oficial importada desde el dashboard (colección 'preciosClientes').
+     Tiene PRIORIDAD sobre el último precio vendido. Va en su propio try para que, si
+     falla (ej. reglas de Firestore sin publicar), el autocompletado normal siga funcionando.
+     Los clientes que solo están en la lista (sin pedidos aún) también aparecen en la búsqueda. */
+  try{
+    let qp = db.collection('preciosClientes');
+    if(!usuarioActual.esAdmin && usuarioActual.ruta) qp = qp.where('empleado','==',usuarioActual.ruta);
+    const snapP = await qp.get();
+    const mapa = _clientesConocidosMap;
+    snapP.forEach(doc=>{
+      const d = doc.data();
+      if(!d.cliente) return;
+      const clienteKey = String(d.cliente).trim().toLocaleUpperCase('es-EC');
+      if(!mapa[clienteKey]) mapa[clienteKey] = { telefono:'', direccion:'', _ts:0, precios:{} };
+      const info = mapa[clienteKey];
+      if(!info.telefono && d.telefono) info.telefono = d.telefono;
+      if(!info.direccion && d.direccion) info.direccion = String(d.direccion).toLocaleUpperCase('es-EC');
+      info.preciosLista = Object.assign(info.preciosLista||{}, d.precios||{});
+    });
+  }catch(e){ console.error('No se pudo cargar la lista de precios importada (preciosClientes):', e); }
+  const dl = document.getElementById('clientesDatalist');
+  if(dl) dl.innerHTML = Object.keys(_clientesConocidosMap).sort((a,b)=>a.localeCompare(b,'es')).map(n=>`<option value="${escHTML(n)}">`).join('');
 }
 function _autocompletarClienteSeleccionado(){
   const nombre = document.getElementById('nombre').value.trim().toLocaleUpperCase('es-EC');
@@ -2613,10 +2633,14 @@ function _autocompletarPrecioProducto(){
   const producto = document.getElementById('sel-producto').value;
   if(!nombre || !producto) return;
   const info = _clientesConocidosMap[nombre];
-  const precioInfo = info && info.precios ? info.precios[producto] : null;
-  if(!precioInfo) return;
+  if(!info) return;
+  // [NEW] Primero la lista de precios importada; si ese producto no está en la lista, el último precio vendido
+  const precioLista = info.preciosLista ? parseFloat(info.preciosLista[producto]) : NaN;
+  const precioInfo = info.precios ? info.precios[producto] : null;
+  const precio = !isNaN(precioLista) && precioLista > 0 ? precioLista : (precioInfo ? precioInfo.precio : null);
+  if(precio==null) return;
   const elPrecio = document.getElementById('sel-precio');
-  if(elPrecio) elPrecio.value = precioInfo.precio.toFixed(2);
+  if(elPrecio) elPrecio.value = Number(precio).toFixed(2);
 }
 
 function _buildTicketHTML(d){
