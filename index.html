@@ -1715,6 +1715,7 @@ function capturarGPS(){
 }
 
 async function abrirModal(){
+  if(_ticketPendienteBloquea()) return; // [NEW] Ticket obligatorio
   const empleado=document.getElementById('empleado').value;
   const formapago=document.getElementById('formapago').value;
   const nombre=textoMayus(document.getElementById('nombre').value,100);
@@ -1831,6 +1832,7 @@ async function confirmarEnvio(){
     creadoPor:usuarioActual?.uid||null, creadoEn:firebase.firestore.FieldValue.serverTimestamp()
   };
   const modoOffline=!navigator.onLine;
+  const _ticketToken=Date.now()+'-'+Math.random().toString(36).slice(2); // [NEW] Ticket obligatorio: identifica este guardado
   /* [NEW] Extraído de la versión anterior (Google Sheets): esa versión nunca esperaba
      una respuesta de red indefinidamente — si ya sabía que no había internet, guardaba
      localmente al instante (`guardarEnLocalStorageSync` + `onExito(true)`, sin await).
@@ -1842,6 +1844,7 @@ async function confirmarEnvio(){
   const escrituraPedido = db.collection('pedidos').add(doc)
     .then(refPedido => {
       _descontarInventarioAutomatico(doc, refPedido.id);
+      _ticketIdConocido(_ticketToken, refPedido.id); // [NEW] Ticket obligatorio
       // [NEW] Si hubo abono en efectivo, lo registra como un Pago normal —
       // así aparece automáticamente en cierre de caja, resumen del día y
       // dashboards, sin tener que tocar esa lógica en ningún otro lado.
@@ -1862,6 +1865,7 @@ async function confirmarEnvio(){
 
   const mostrarExito = () => {
     ultimoRegistro={...dataPendiente};
+    _ticketMarcarPendiente(_ticketToken, ultimoRegistro); // [NEW] Ticket obligatorio
     // [FIX] Ya no hace falta guardarEnHistorial() manual — el listener en tiempo real
     // de Firestore actualiza el Historial solo, apenas se confirma este pedido.
     cerrarModal();
@@ -2734,6 +2738,57 @@ function _abrirVentanaTicket(contenido){
 function imprimirTicketAsesor(){
   if(!ultimoRegistro){alert('Primero guarda el registro.');return;}
   _abrirVentanaTicket(_buildTicketHTML(ultimoRegistro));
+  _ticketMarcarImpreso(); // [NEW] Ticket obligatorio
+}
+/* [NEW] Ticket térmico obligatorio.
+   - Al guardar un pedido queda "ticket pendiente" en el celular (localStorage, por usuario),
+     así que recargar la página o cerrar Chrome no lo borra.
+   - Un asesor (no admin) no puede abrir la confirmación de un pedido nuevo mientras
+     haya un ticket pendiente; se le vuelve a mostrar el botón de imprimir.
+   - Al tocar "Imprimir ticket" se libera el bloqueo y se marca en el pedido de Firestore
+     ticketImpreso:true + ticketImpresoEn (hora del servidor), una sola vez.
+   No cambia el diseño del ticket, la impresión (RawBT) ni la forma de guardar el pedido. */
+const _ticketIdsPorToken={};
+const _ticketImpresosSinId={};
+let _ticketAvisoMostrado=false;
+function _ticketKey(){ return 'aqualuan-ticket-pendiente-'+(usuarioActual?.uid||'anon'); }
+function _ticketLeer(){ try{ return JSON.parse(localStorage.getItem(_ticketKey())||'null'); }catch{ return null; } }
+function _ticketEscribir(v){ try{ if(v) localStorage.setItem(_ticketKey(),JSON.stringify(v)); else localStorage.removeItem(_ticketKey()); }catch{} }
+function _ticketRegistrarEnFirestore(pedidoId){
+  if(!pedidoId) return;
+  db.collection('pedidos').doc(pedidoId).update({
+    ticketImpreso:true,
+    ticketImpresoEn:firebase.firestore.FieldValue.serverTimestamp()
+  }).catch(e=>console.warn('No se pudo registrar el ticket impreso:',e));
+}
+function _ticketMarcarPendiente(token, registro){
+  _ticketEscribir({ token, pedidoId:_ticketIdsPorToken[token]||null, registro, impreso:false });
+}
+function _ticketIdConocido(token, pedidoId){
+  _ticketIdsPorToken[token]=pedidoId;
+  if(_ticketImpresosSinId[token]){ delete _ticketImpresosSinId[token]; _ticketRegistrarEnFirestore(pedidoId); }
+  const t=_ticketLeer();
+  if(t && t.token===token){
+    if(t.impreso){ _ticketEscribir(null); }
+    else { t.pedidoId=pedidoId; _ticketEscribir(t); }
+  }
+}
+function _ticketMarcarImpreso(){
+  const t=_ticketLeer();
+  if(!t || t.impreso) return;
+  if(t.pedidoId){ _ticketRegistrarEnFirestore(t.pedidoId); _ticketEscribir(null); }
+  else { _ticketImpresosSinId[t.token]=true; t.impreso=true; _ticketEscribir(t); }
+  if(_ticketAvisoMostrado){ _ticketAvisoMostrado=false; setStatus('success','✓ Ticket enviado a imprimir. Ya puedes registrar el siguiente pedido.'); }
+}
+function _ticketPendienteBloquea(){
+  if(!usuarioActual || usuarioActual.esAdmin) return false;
+  const t=_ticketLeer();
+  if(!t || t.impreso || !t.registro) return false;
+  ultimoRegistro=t.registro;
+  document.getElementById('btnTicket').style.display='flex';
+  _ticketAvisoMostrado=true;
+  setStatus('error','🖨️ Primero imprime el ticket del pedido anterior ('+(t.registro.nombre||'cliente')+'). Toca "Imprimir ticket (impresora térmica)" para continuar.');
+  return true;
 }
 function imprimirTicketDesde(idx){
   let hist=[]; try{hist=JSON.parse(sessionStorage.getItem('aqualuan-historial')||'[]');}catch{}
