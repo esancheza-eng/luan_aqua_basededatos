@@ -1216,6 +1216,13 @@ async function doLogin(){
       mostrarErrorLogin('Esta pantalla es solo para asesores. La Secretaria entra en sistemaaqualuan.elhyai.com');
       return;
     }
+    // [NEW] Bloquea el acceso a esta app para los usuarios de Bodega (Persona 1–4):
+    // trabajan solo en su propia app (bodegaaqualuan.elhyai.com), nunca aquí.
+    if(perfil.esBodega === true && perfil.esAdmin !== true){
+      await auth.signOut();
+      mostrarErrorLogin('Esta pantalla es solo para asesores. El personal de Bodega entra en bodegaaqualuan.elhyai.com');
+      return;
+    }
     document.getElementById('loginPass').value='';
     usuarioActual={ uid:cred.user.uid, nombre:perfil.nombre, rol:perfil.rol||(perfil.esAdmin?'ADMIN':'OPERADOR'), ruta:perfil.ruta||null, esAdmin:!!perfil.esAdmin };
     document.getElementById('loginOverlay').style.display='none';
@@ -1286,6 +1293,12 @@ auth.onAuthStateChanged(async (user)=>{
       // se restaura sola (recarga de página), también se cierra aquí.
       if(perfil.esSecretaria === true){
         mostrarErrorLogin('Esta pantalla es solo para asesores. La Secretaria entra en sistemaaqualuan.elhyai.com');
+        await auth.signOut();
+        return;
+      }
+      // [NEW] Mismo bloqueo para usuarios de Bodega si la sesión se restaura sola (recarga de página)
+      if(perfil.esBodega === true && perfil.esAdmin !== true){
+        mostrarErrorLogin('Esta pantalla es solo para asesores. El personal de Bodega entra en bodegaaqualuan.elhyai.com');
         await auth.signOut();
         return;
       }
