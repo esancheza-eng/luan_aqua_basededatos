@@ -3278,5 +3278,216 @@ async function eliminarProductoSeleccionado(){
 document.getElementById('modalProductoOverlay').addEventListener('click',function(e){ if(e.target===this)cerrarModalProducto(); });
 </script>
 
+<!-- ══════════════════════════════════════════════════════════════════════
+     [NEW] ENVASES EN PRÉSTAMO — bloque 100% agregado.
+     No modifica ninguna función, fórmula ni dato existente: los pedidos,
+     totales, inventario, pagos y ticket siguen exactamente igual.
+     - El asesor anota (opcional) envases que PRESTÓ o que le DEVOLVIERON.
+     - Se guarda aparte, en la colección `envasesPrestamos`, solo DESPUÉS de
+       que el pedido se guardó con éxito.
+     - Muestra al asesor cuántos envases le debe el cliente.
+     ══════════════════════════════════════════════════════════════════════ -->
+<style>
+.env-card .section-title small{font-weight:600;opacity:.6;text-transform:none;letter-spacing:0}
+.env-info{display:none;padding:9px 11px;border-radius:10px;font-size:13px;font-weight:700;margin-bottom:10px;background:#fff7e6;color:#8a5300;border:1px solid #f5d699}
+.env-info.ok{background:#e6f4f2;color:#085f54;border-color:#a7dccf}
+.env-linea{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:#f0f5f8;margin-bottom:6px;font-size:13px;font-weight:700}
+.env-linea span{flex:1}
+.env-linea .p{color:#b45309}.env-linea .d{color:#0a7c6e}
+.env-linea button{border:0;background:#fdecea;color:#b71c1c;border-radius:8px;padding:4px 9px;font-weight:800;cursor:pointer}
+.env-pend-row{display:flex;justify-content:space-between;gap:8px;padding:7px 2px;border-bottom:1px solid rgba(0,0,0,.07);font-size:13px}
+.env-pend-row b{color:#b45309;white-space:nowrap}
+</style>
+<script>
+(function(){
+  try{
+    var _envLineas = [];          // líneas del pedido actual: {accion, envase, cantidad}
+    var _envMovs = [];            // préstamos/devoluciones ya guardados (de esta ruta)
+    var _envUnsub = null, _envUid = null;
+
+    function _envEsc(s){ return (typeof escHTML==='function') ? escHTML(String(s==null?'':s)) : String(s==null?'':s); }
+    function _envMayus(s,m){ return (typeof textoMayus==='function') ? textoMayus(s,m) : String(s||'').trim().toUpperCase(); }
+
+    /* ── Saldo por cliente y envase (prestado − devuelto) ── */
+    function _envSaldos(){
+      var r = {};
+      _envMovs.forEach(function(m){
+        if(m.anulado) return;
+        var c = m.cliente||'', e = m.envase||'';
+        r[c] = r[c] || {};
+        r[c][e] = (r[c][e]||0) + (m.tipo==='PRESTAMO' ? 1 : -1) * (Number(m.cantidad)||0);
+      });
+      return r;
+    }
+    function _envAsegurarListener(){
+      if(typeof usuarioActual==='undefined' || !usuarioActual || !usuarioActual.uid) return;
+      if(_envUid === usuarioActual.uid) return;
+      if(_envUnsub){ try{_envUnsub();}catch(e){} _envUnsub=null; }
+      _envUid = usuarioActual.uid;
+      var q = db.collection('envasesPrestamos');
+      if(!usuarioActual.esAdmin){
+        if(!usuarioActual.ruta) return;
+        q = q.where('empleado','==',usuarioActual.ruta);
+      }
+      _envUnsub = q.onSnapshot(function(snap){
+        _envMovs = snap.docs.map(function(d){ return d.data(); });
+        _envPintarInfoCliente();
+        var lp = document.getElementById('envPendientesLista');
+        if(lp && lp.dataset.abierto==='1') _envPintarPendientes();
+      }, function(err){ console.warn('envasesPrestamos:', err && err.code); });
+    }
+    if(typeof auth!=='undefined' && auth.onAuthStateChanged){
+      auth.onAuthStateChanged(function(u){
+        if(!u){ if(_envUnsub){ try{_envUnsub();}catch(e){} } _envUnsub=null; _envUid=null; _envMovs=[]; _envLineas=[]; _envPintarLineas(); }
+      });
+    }
+    setInterval(_envAsegurarListener, 3000);
+
+    /* ── Tarjeta en el formulario (se inserta antes de "Notas adicionales") ── */
+    function _envOpcionesEnvase(){
+      var lista = (typeof LISTAS_BLANCAS!=='undefined' && LISTAS_BLANCAS.productos) ? LISTAS_BLANCAS.productos : [];
+      return lista.map(function(n){ return '<option value="'+_envEsc(n)+'">'+_envEsc(n)+'</option>'; }).join('');
+    }
+    function _envCrearTarjeta(){
+      var notas = document.getElementById('notas');
+      if(!notas || document.getElementById('envPrestCard')) return;
+      var cardNotas = notas.closest('.card');
+      if(!cardNotas) return;
+      var card = document.createElement('div');
+      card.className = 'card env-card';
+      card.id = 'envPrestCard';
+      card.innerHTML =
+        '<div class="section-title">♻ Envases en préstamo <small>(opcional)</small></div>'+
+        '<div class="env-info" id="envInfoCliente"></div>'+
+        '<div class="grid-2">'+
+          '<div class="field"><label for="envAccion">Movimiento</label>'+
+            '<select id="envAccion"><option value="PRESTAMO">Le PRESTÉ envase</option><option value="DEVOLUCION">Me DEVOLVIÓ envase prestado</option></select></div>'+
+          '<div class="field"><label for="envTipo">Envase</label><select id="envTipo"></select></div>'+
+        '</div>'+
+        '<div class="field"><label for="envCant">Cantidad</label>'+
+          '<div style="display:flex;gap:8px;align-items:stretch"><input type="number" id="envCant" min="1" step="1" inputmode="numeric" placeholder="1" style="flex:1;min-width:0">'+
+          '<button type="button" class="btn btn-outline" id="envBtnAgregar" style="margin:0;width:auto;flex:0 0 auto;padding:0 18px">+ Agregar</button></div></div>'+
+        '<div id="envLista"></div>'+
+        '<button type="button" class="btn btn-outline" id="envBtnPend" style="margin-top:6px">Ver mis clientes con envases pendientes</button>'+
+        '<div id="envPendientesLista" style="display:none;margin-top:8px"></div>';
+      cardNotas.parentNode.insertBefore(card, cardNotas);
+      document.getElementById('envTipo').innerHTML = _envOpcionesEnvase();
+      document.getElementById('envBtnAgregar').addEventListener('click', _envAgregar);
+      document.getElementById('envBtnPend').addEventListener('click', function(){
+        var lp = document.getElementById('envPendientesLista');
+        var abrir = lp.dataset.abierto!=='1';
+        lp.dataset.abierto = abrir ? '1' : '0';
+        lp.style.display = abrir ? 'block' : 'none';
+        if(abrir){ _envAsegurarListener(); _envPintarPendientes(); }
+      });
+      document.getElementById('envTipo').addEventListener('focus', function(){
+        var sel = this, v = sel.value; sel.innerHTML = _envOpcionesEnvase(); if(v) sel.value = v;
+      });
+      var nombre = document.getElementById('nombre');
+      if(nombre){ nombre.addEventListener('input', function(){ _envAsegurarListener(); _envPintarInfoCliente(); });
+                  nombre.addEventListener('change', _envPintarInfoCliente); }
+    }
+    function _envAgregar(){
+      var accion = document.getElementById('envAccion').value;
+      var envase = document.getElementById('envTipo').value;
+      var cant = Math.floor(Number(document.getElementById('envCant').value)||0);
+      if(!envase){ alert('Selecciona el envase.'); return; }
+      if(cant<1){ alert('Ingresa una cantidad válida.'); return; }
+      if(accion==='DEVOLUCION'){
+        var cli = _envMayus((document.getElementById('nombre')||{}).value||'',100);
+        var debe = ((_envSaldos()[cli]||{})[envase]||0) - _envLineas.filter(function(l){return l.accion==='DEVOLUCION'&&l.envase===envase;}).reduce(function(a,l){return a+l.cantidad;},0);
+        if(cant>debe && !confirm('Según tu registro, este cliente debe '+Math.max(0,debe)+' '+envase+'.\n¿Registrar igual la devolución de '+cant+'?')) return;
+      }
+      _envLineas.push({accion:accion, envase:envase, cantidad:cant});
+      document.getElementById('envCant').value='';
+      _envPintarLineas();
+    }
+    function _envQuitar(i){ _envLineas.splice(i,1); _envPintarLineas(); }
+    window._envQuitar = _envQuitar;
+    function _envPintarLineas(){
+      var cont = document.getElementById('envLista'); if(!cont) return;
+      cont.innerHTML = _envLineas.map(function(l,i){
+        return '<div class="env-linea"><span class="'+(l.accion==='PRESTAMO'?'p':'d')+'">'+
+          (l.accion==='PRESTAMO'?'↗ PRESTADO: ':'↙ DEVUELTO: ')+l.cantidad+' '+_envEsc(l.envase)+'</span>'+
+          '<button type="button" onclick="_envQuitar('+i+')">✕</button></div>';
+      }).join('');
+    }
+    function _envPintarInfoCliente(){
+      var box = document.getElementById('envInfoCliente'); if(!box) return;
+      var cli = _envMayus((document.getElementById('nombre')||{}).value||'',100);
+      if(!cli){ box.style.display='none'; return; }
+      var s = _envSaldos()[cli]||{};
+      var deudas = Object.keys(s).filter(function(e){ return s[e]>0; });
+      if(!deudas.length){ box.style.display='none'; return; }
+      box.className='env-info';
+      box.innerHTML = '⚠ Este cliente debe: '+deudas.map(function(e){ return s[e]+' '+_envEsc(e); }).join(', ');
+      box.style.display='block';
+    }
+    function _envPintarPendientes(){
+      var lp = document.getElementById('envPendientesLista'); if(!lp) return;
+      var s = _envSaldos(), filas = [];
+      Object.keys(s).sort().forEach(function(c){
+        Object.keys(s[c]).forEach(function(e){ if(s[c][e]>0) filas.push('<div class="env-pend-row"><span>'+_envEsc(c)+'</span><b>'+s[c][e]+' '+_envEsc(e)+'</b></div>'); });
+      });
+      lp.innerHTML = filas.length ? filas.join('') : '<div class="env-pend-row"><span>No tienes clientes con envases pendientes.</span></div>';
+    }
+
+    /* ── Muestra el préstamo en la ventana "Confirmar pedido" (sin tocar abrirModal) ── */
+    var _abrirModalOriginal = abrirModal;
+    abrirModal = async function(){
+      var r = await _abrirModalOriginal.apply(this, arguments);
+      try{
+        var tabla = document.querySelector('#modalOverlay .modal-table');
+        var fila = document.getElementById('m-envases-row');
+        if(tabla && !fila){
+          fila = document.createElement('tr'); fila.id='m-envases-row';
+          fila.innerHTML = '<td>Envases préstamo</td><td id="m-envases">-</td>';
+          tabla.appendChild(fila);
+        }
+        if(fila){
+          fila.style.display = _envLineas.length ? 'table-row' : 'none';
+          document.getElementById('m-envases').textContent = _envLineas.map(function(l){
+            return (l.accion==='PRESTAMO'?'Prestó ':'Devolvió ')+l.cantidad+' '+l.envase; }).join(' · ');
+        }
+      }catch(e){ console.warn(e); }
+      return r;
+    };
+
+    /* ── Guarda el préstamo SOLO si el pedido se guardó (sin tocar confirmarEnvio) ── */
+    var _confirmarEnvioOriginal = confirmarEnvio;
+    confirmarEnvio = async function(){
+      var dp = (typeof dataPendiente!=='undefined') ? dataPendiente : null;
+      var lineas = _envLineas.slice();
+      var antes = (typeof ultimoRegistro!=='undefined') ? ultimoRegistro : null;
+      var r = await _confirmarEnvioOriginal.apply(this, arguments);
+      try{
+        var guardado = (typeof ultimoRegistro!=='undefined') && ultimoRegistro && ultimoRegistro!==antes;
+        if(guardado && dp && lineas.length){
+          var lote = db.batch();
+          lineas.forEach(function(l){
+            lote.set(db.collection('envasesPrestamos').doc(), {
+              tipo: l.accion, envase: l.envase, cantidad: l.cantidad,
+              cliente: dp.nombre||'', telefono: dp.telefono||'', empleado: dp.empleado||'', fecha: dp.fecha||'',
+              anulado: false, origen: 'app_pedidos',
+              creadoPor: (usuarioActual&&usuarioActual.uid)||null,
+              creadoEn: firebase.firestore.FieldValue.serverTimestamp(), creadoLocal: Date.now()
+            });
+          });
+          lote.commit().catch(function(err){
+            console.warn('No se pudo guardar el préstamo de envases:', err);
+            alert('⚠ El pedido SÍ se guardó, pero no se pudo registrar el préstamo de envases. Avísale al administrador.');
+          });
+          _envLineas = []; _envPintarLineas(); _envPintarInfoCliente();
+        }
+      }catch(e){ console.warn(e); }
+      return r;
+    };
+
+    if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', _envCrearTarjeta);
+    else _envCrearTarjeta();
+  }catch(err){ console.warn('Módulo de envases en préstamo no se pudo iniciar:', err); }
+})();
+</script>
+
 </body>
 </html>
