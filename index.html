@@ -3344,8 +3344,10 @@ document.getElementById('modalProductoOverlay').addEventListener('click',functio
     setInterval(_envAsegurarListener, 3000);
 
     /* ── Tarjeta en el formulario (se inserta antes de "Notas adicionales") ── */
+    /* [CAMBIO] Envases de préstamo: lista fija (ya no la lista de productos) */
+    var _ENV_TIPOS = ['ENVASE AZUL','ENVASE LLAVE','OFICINA - ENVASE'];
     function _envOpcionesEnvase(){
-      var lista = (typeof LISTAS_BLANCAS!=='undefined' && LISTAS_BLANCAS.productos) ? LISTAS_BLANCAS.productos : [];
+      var lista = _ENV_TIPOS;
       return lista.map(function(n){ return '<option value="'+_envEsc(n)+'">'+_envEsc(n)+'</option>'; }).join('');
     }
     function _envCrearTarjeta(){
@@ -3361,7 +3363,7 @@ document.getElementById('modalProductoOverlay').addEventListener('click',functio
         '<div class="env-info" id="envInfoCliente"></div>'+
         '<div class="grid-2">'+
           '<div class="field"><label for="envAccion">Movimiento</label>'+
-            '<select id="envAccion"><option value="PRESTAMO">PRESTÉ envase</option><option value="DEVOLUCION">DEVOLVIÓ envase prestado</option></select></div>'+
+            '<select id="envAccion"><option value="PRESTAMO">Prestamo de Envases</option><option value="DEVOLUCION">Retiro de Envases</option></select></div>'+
           '<div class="field"><label for="envTipo">Envase</label><select id="envTipo"></select></div>'+
         '</div>'+
         '<div class="field"><label for="envCant">Cantidad</label>'+
@@ -3393,7 +3395,7 @@ document.getElementById('modalProductoOverlay').addEventListener('click',functio
       var cant = Math.floor(Number(document.getElementById('envCant').value)||0);
       var _envCliNom = String((document.getElementById('nombre')||{}).value||'').trim();
       if(!_envCliNom){
-        alert('Primero escribe el NOMBRE DEL CLIENTE antes de agregar un envase prestado o devuelto.');
+        alert('Primero escribe el NOMBRE DEL CLIENTE antes de agregar un préstamo o retiro de envases.');
         var _envNomInp = document.getElementById('nombre'); if(_envNomInp){ try{ _envNomInp.focus(); }catch(e){} }
         return;
       }
@@ -3402,7 +3404,7 @@ document.getElementById('modalProductoOverlay').addEventListener('click',functio
       if(accion==='DEVOLUCION'){
         var cli = _envMayus((document.getElementById('nombre')||{}).value||'',100);
         var debe = ((_envSaldos()[cli]||{})[envase]||0) - _envLineas.filter(function(l){return l.accion==='DEVOLUCION'&&l.envase===envase;}).reduce(function(a,l){return a+l.cantidad;},0);
-        if(cant>debe && !confirm('Según tu registro, este cliente debe '+Math.max(0,debe)+' '+envase+'.\n¿Registrar igual la devolución de '+cant+'?')) return;
+        if(cant>debe && !confirm('Según tu registro, este cliente debe '+Math.max(0,debe)+' '+envase+'.\n¿Registrar igual el retiro de '+cant+'?')) return;
       }
       _envLineas.push({accion:accion, envase:envase, cantidad:cant});
       document.getElementById('envCant').value='';
@@ -3414,7 +3416,7 @@ document.getElementById('modalProductoOverlay').addEventListener('click',functio
       var cont = document.getElementById('envLista'); if(!cont) return;
       cont.innerHTML = _envLineas.map(function(l,i){
         return '<div class="env-linea"><span class="'+(l.accion==='PRESTAMO'?'p':'d')+'">'+
-          (l.accion==='PRESTAMO'?'↗ PRESTADO: ':'↙ DEVUELTO: ')+l.cantidad+' '+_envEsc(l.envase)+'</span>'+
+          (l.accion==='PRESTAMO'?'↗ PRÉSTAMO: ':'↙ RETIRO: ')+l.cantidad+' '+_envEsc(l.envase)+'</span>'+
           '<button type="button" onclick="_envQuitar('+i+')">✕</button></div>';
       }).join('');
     }
@@ -3453,7 +3455,7 @@ document.getElementById('modalProductoOverlay').addEventListener('click',functio
         if(fila){
           fila.style.display = _envLineas.length ? 'table-row' : 'none';
           document.getElementById('m-envases').textContent = _envLineas.map(function(l){
-            return (l.accion==='PRESTAMO'?'Prestó ':'Devolvió ')+l.cantidad+' '+l.envase; }).join(' · ');
+            return (l.accion==='PRESTAMO'?'Préstamo ':'Retiro ')+l.cantidad+' '+l.envase; }).join(' · ');
         }
       }catch(e){ console.warn(e); }
       return r;
