@@ -3361,7 +3361,7 @@ document.getElementById('modalProductoOverlay').addEventListener('click',functio
         '<div class="env-info" id="envInfoCliente"></div>'+
         '<div class="grid-2">'+
           '<div class="field"><label for="envAccion">Movimiento</label>'+
-            '<select id="envAccion"><option value="PRESTAMO">Le PRESTÉ envase</option><option value="DEVOLUCION">Me DEVOLVIÓ envase prestado</option></select></div>'+
+            '<select id="envAccion"><option value="PRESTAMO">PRESTÉ envase</option><option value="DEVOLUCION">DEVOLVIÓ envase prestado</option></select></div>'+
           '<div class="field"><label for="envTipo">Envase</label><select id="envTipo"></select></div>'+
         '</div>'+
         '<div class="field"><label for="envCant">Cantidad</label>'+
@@ -3391,6 +3391,12 @@ document.getElementById('modalProductoOverlay').addEventListener('click',functio
       var accion = document.getElementById('envAccion').value;
       var envase = document.getElementById('envTipo').value;
       var cant = Math.floor(Number(document.getElementById('envCant').value)||0);
+      var _envCliNom = String((document.getElementById('nombre')||{}).value||'').trim();
+      if(!_envCliNom){
+        alert('Primero escribe el NOMBRE DEL CLIENTE antes de agregar un envase prestado o devuelto.');
+        var _envNomInp = document.getElementById('nombre'); if(_envNomInp){ try{ _envNomInp.focus(); }catch(e){} }
+        return;
+      }
       if(!envase){ alert('Selecciona el envase.'); return; }
       if(cant<1){ alert('Ingresa una cantidad válida.'); return; }
       if(accion==='DEVOLUCION'){
