@@ -3594,7 +3594,7 @@ input.cp-invalido{border-color:#c0392b!important;background:#fff7f6!important}
       if(pr.classList.contains('cp-bloqueado')){ pr.classList.remove('cp-bloqueado'); pr.value=''; }
       if(!_cpAplica()){ pr.readOnly=false; pr.classList.remove('cp-bloqueado'); _cpHint('cpHintPrecio',''); return; }
       var producto=_cpEl('sel-producto') ? _cpEl('sel-producto').value : '';
-      if(_cpNuevo){ pr.readOnly=false; pr.classList.remove('cp-bloqueado'); _cpHint('cpHintPrecio', producto?'warn':'', producto?'🆕 Cliente nuevo: escribe el precio que te indica el cliente (pendiente de aprobación).':''); return; }
+      if(_cpNuevo){ pr.readOnly=false; pr.classList.remove('cp-bloqueado'); _cpHint('cpHintPrecio', producto?'warn':'', producto?'🆕 Cliente Nuevo: Escribe nombre, teléfono, y dirección. Puedes agregar el precio autorizado para la ruta; quedará pendiente de aprobación en administración.':''); return; }
       var info=_cpInfo();
       if(!info){ pr.readOnly=true; pr.classList.remove('cp-bloqueado'); pr.value=''; _cpHint('cpHintPrecio', producto?'err':'', producto?'Primero elige un cliente de tu base (o ➕ Cliente nuevo).':''); return; }
       if(!producto){ pr.readOnly=true; pr.classList.remove('cp-bloqueado'); _cpHint('cpHintPrecio',''); return; }
