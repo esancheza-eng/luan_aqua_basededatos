@@ -3497,5 +3497,202 @@ document.getElementById('modalProductoOverlay').addEventListener('click',functio
 })();
 </script>
 
+<!-- ═══════════ [NEW] CLIENTES Y PRECIOS BLOQUEADOS (solo asesores de rutas con lista de precios) ═══════════
+     · El asesor solo puede ELEGIR un cliente de su base (no escribir nombres libres).
+     · El precio sale BLOQUEADO con el de la lista oficial (preciosClientes, importada/gestionada en el dashboard).
+     · Precio libre solo en dos casos, que quedan "pendientes de aprobación" en el dashboard (Clientes y Precios):
+         1) Cliente nuevo (botón "➕ Cliente nuevo").
+         2) Cliente de la base sin precio en lista para ese producto.
+     · El administrador no tiene bloqueos. Las rutas sin lista cargada siguen exactamente igual.
+     · No reescribe funciones existentes: solo las envuelve (mismo patrón que el módulo de envases). -->
+<style>
+.cp-btn-nuevo{border:1.5px dashed var(--teal);background:#fff;color:var(--teal-dark);border-radius:8px;padding:4px 10px;font-size:11.5px;font-weight:800;cursor:pointer;margin-left:8px;vertical-align:middle}
+.cp-btn-nuevo.on{background:#fdecea;border-color:#c0392b;color:#c0392b;border-style:solid}
+.cp-hint{display:none;margin-top:6px;font-size:12px;font-weight:600;border-radius:8px;padding:6px 10px;line-height:1.35}
+.cp-hint.ok{display:block;background:var(--teal-light);color:var(--teal-dark)}
+.cp-hint.warn{display:block;background:#fff4e5;color:#b45309}
+.cp-hint.err{display:block;background:#fdecea;color:#c0392b}
+input.cp-bloqueado{background:var(--teal-light)!important;border-color:var(--teal)!important;color:var(--teal-dark)!important;font-weight:800}
+input.cp-invalido{border-color:#c0392b!important;background:#fff7f6!important}
+</style>
+<script>
+(function(){
+  try{
+    var _cpNuevo = false;        // modo "cliente nuevo" activo
+    var _cpActivo = false;       // la ruta del asesor tiene lista de precios cargada
+
+    function _cpNorm(s){ return String(s||'').trim().toLocaleUpperCase('es-EC'); }
+    function _cpEl(id){ return document.getElementById(id); }
+    function _cpMapa(){ return (typeof _clientesConocidosMap!=='undefined' && _clientesConocidosMap) ? _clientesConocidosMap : {}; }
+    function _cpInfo(){ var n=_cpNorm(_cpEl('nombre') && _cpEl('nombre').value); return n ? _cpMapa()[n] : null; }
+    function _cpClienteValido(){ return !!_cpInfo(); }
+    function _cpPrecioLista(info, producto){
+      if(!info || !info.preciosLista || !producto) return NaN;
+      var v = parseFloat(info.preciosLista[producto]);
+      return (v>0) ? v : NaN;
+    }
+    function _cpAplica(){ return _cpActivo && typeof usuarioActual!=='undefined' && usuarioActual && !usuarioActual.esAdmin; }
+    function _cpHint(id, tipo, txt){ var h=_cpEl(id); if(!h) return; h.className='cp-hint'+(tipo?(' '+tipo):''); h.innerHTML=txt||''; }
+
+    /* ── Elementos de interfaz (se insertan una sola vez) ── */
+    function _cpCrearUI(){
+      var inp=_cpEl('nombre'); if(!inp || _cpEl('cpBtnNuevo')) return;
+      var lbl=document.querySelector('label[for="nombre"]');
+      var b=document.createElement('button'); b.type='button'; b.id='cpBtnNuevo'; b.className='cp-btn-nuevo'; b.style.display='none';
+      b.textContent='➕ Cliente nuevo'; b.onclick=function(){ _cpSetNuevo(!_cpNuevo); };
+      if(lbl) lbl.appendChild(b);
+      var h=document.createElement('div'); h.id='cpHintCliente'; h.className='cp-hint'; inp.parentNode.appendChild(h);
+      var row=document.querySelector('.add-row');
+      if(row){ var h2=document.createElement('div'); h2.id='cpHintPrecio'; h2.className='cp-hint'; row.parentNode.insertBefore(h2, row.nextSibling); }
+      inp.addEventListener('change', _cpRevisarCliente);
+      inp.addEventListener('blur', _cpRevisarCliente);
+    }
+
+    function _cpSetNuevo(on){
+      _cpNuevo = !!on;
+      var b=_cpEl('cpBtnNuevo');
+      if(b){ b.classList.toggle('on',_cpNuevo); b.textContent=_cpNuevo?'✕ Cancelar cliente nuevo':'➕ Cliente nuevo'; }
+      if(_cpNuevo){
+        var inp=_cpEl('nombre');
+        if(inp && _cpClienteValido()){ inp.value=''; ['telefono','direccion'].forEach(function(id){ if(_cpEl(id)) _cpEl(id).value=''; }); }
+        if(inp) inp.focus();
+      }
+      _cpRevisarCliente(); _cpRevisarPrecio();
+    }
+
+    function _cpRevisarCliente(){
+      var inp=_cpEl('nombre'), b=_cpEl('cpBtnNuevo');
+      if(!_cpAplica()){ if(b) b.style.display='none'; _cpHint('cpHintCliente',''); if(inp) inp.classList.remove('cp-invalido'); return; }
+      if(b) b.style.display='inline-block';
+      var nombre=_cpNorm(inp && inp.value);
+      if(_cpNuevo){
+        if(nombre && _cpMapa()[nombre]){
+          // Ya existe en la base: se sale del modo nuevo para que use su precio de lista
+          _cpNuevo=false; if(b){ b.classList.remove('on'); b.textContent='➕ Cliente nuevo'; }
+          _cpHint('cpHintCliente','ok','✓ Ese cliente ya existe en tu base: se usan sus precios de lista.');
+          if(typeof _autocompletarClienteSeleccionado==='function') _autocompletarClienteSeleccionado();
+        } else {
+          _cpHint('cpHintCliente','warn','🆕 Cliente nuevo: escribe nombre, teléfono y dirección. Puedes poner el precio que te indique el cliente; quedará pendiente de aprobación en administración.');
+        }
+        if(inp) inp.classList.remove('cp-invalido');
+        return;
+      }
+      if(!nombre){ _cpHint('cpHintCliente',''); if(inp) inp.classList.remove('cp-invalido'); return; }
+      if(_cpMapa()[nombre]){
+        if(inp) inp.classList.remove('cp-invalido');
+        var info=_cpMapa()[nombre];
+        _cpHint('cpHintCliente','ok', info.preciosLista ? '✓ Cliente de tu base — precios de lista bloqueados 🔒' : '✓ Cliente de tu base (aún sin lista de precios: los precios que pongas quedarán pendientes de aprobación).');
+      } else {
+        if(inp) inp.classList.add('cp-invalido');
+        _cpHint('cpHintCliente','err','Este cliente no está en tu base. Elígelo de la lista que aparece al escribir, o presiona <b>➕ Cliente nuevo</b>.');
+      }
+    }
+
+    function _cpRevisarPrecio(){
+      var pr=_cpEl('sel-precio'); if(!pr) return;
+      // Si venía de un precio bloqueado y ahora el precio es libre, se vacía para no arrastrar el precio de lista anterior
+      if(pr.classList.contains('cp-bloqueado')){ pr.classList.remove('cp-bloqueado'); pr.value=''; }
+      if(!_cpAplica()){ pr.readOnly=false; pr.classList.remove('cp-bloqueado'); _cpHint('cpHintPrecio',''); return; }
+      var producto=_cpEl('sel-producto') ? _cpEl('sel-producto').value : '';
+      if(_cpNuevo){ pr.readOnly=false; pr.classList.remove('cp-bloqueado'); _cpHint('cpHintPrecio', producto?'warn':'', producto?'🆕 Cliente nuevo: escribe el precio que te indica el cliente (pendiente de aprobación).':''); return; }
+      var info=_cpInfo();
+      if(!info){ pr.readOnly=true; pr.classList.remove('cp-bloqueado'); pr.value=''; _cpHint('cpHintPrecio', producto?'err':'', producto?'Primero elige un cliente de tu base (o ➕ Cliente nuevo).':''); return; }
+      if(!producto){ pr.readOnly=true; pr.classList.remove('cp-bloqueado'); _cpHint('cpHintPrecio',''); return; }
+      var lp=_cpPrecioLista(info, producto);
+      if(!isNaN(lp)){
+        pr.value=lp.toFixed(2); pr.readOnly=true; pr.classList.add('cp-bloqueado');
+        _cpHint('cpHintPrecio','ok','🔒 Precio de lista del cliente: $'+lp.toFixed(2));
+      } else {
+        pr.readOnly=false; pr.classList.remove('cp-bloqueado');
+        _cpHint('cpHintPrecio','warn','Este cliente no tiene precio de lista para '+producto+'. Escribe el precio; quedará pendiente de aprobación.');
+      }
+    }
+
+    /* ── Se activa cuando termina de cargar la base de clientes del asesor ── */
+    var _origCargar = _cargarClientesConocidos;
+    _cargarClientesConocidos = async function(){
+      var r = await _origCargar.apply(this, arguments);
+      try{
+        var m=_cpMapa();
+        _cpActivo = Object.keys(m).some(function(k){ return m[k] && m[k].preciosLista && Object.keys(m[k].preciosLista).length; });
+        _cpCrearUI(); _cpRevisarCliente(); _cpRevisarPrecio();
+      }catch(e){ console.warn('Clientes y precios:', e); }
+      return r;
+    };
+
+    var _origAutoPrecio = _autocompletarPrecioProducto;
+    _autocompletarPrecioProducto = function(){
+      var r = _origAutoPrecio.apply(this, arguments);
+      try{ _cpRevisarPrecio(); }catch(e){ console.warn(e); }
+      return r;
+    };
+    var _origAutoCliente = _autocompletarClienteSeleccionado;
+    _autocompletarClienteSeleccionado = function(){
+      var r = _origAutoCliente.apply(this, arguments);
+      try{
+        if(_cpAplica()){
+          // Mientras escribe: si ya coincide con un cliente (o está en modo nuevo) se valida;
+          // si aún no coincide, no se marca error hasta que salga del campo.
+          if(_cpNuevo || _cpClienteValido()) _cpRevisarCliente();
+          else { _cpHint('cpHintCliente',''); _cpEl('nombre').classList.remove('cp-invalido'); }
+          _cpRevisarPrecio();
+        }
+      }catch(e){ console.warn(e); }
+      return r;
+    };
+
+    /* ── Agregar producto: exige cliente válido y fuerza el precio de lista ── */
+    var _origAgregar = agregarProducto;
+    agregarProducto = function(){
+      try{
+        if(_cpAplica() && !_cpNuevo){
+          var info=_cpInfo();
+          if(!info){ _cpRevisarCliente(); alert('Primero elige un cliente de tu base, o presiona "➕ Cliente nuevo".'); return; }
+          var lp=_cpPrecioLista(info, _cpEl('sel-producto').value);
+          if(!isNaN(lp)) _cpEl('sel-precio').value=lp.toFixed(2);
+        }
+      }catch(e){ console.warn(e); }
+      var r = _origAgregar.apply(this, arguments);
+      try{ _cpRevisarPrecio(); }catch(e){}
+      return r;
+    };
+
+    /* ── Antes de abrir "Confirmar pedido": valida cliente y corrige precios de lista ── */
+    var _origAbrir = abrirModal;
+    abrirModal = async function(){
+      try{
+        if(_cpAplica()){
+          if(!_cpNuevo){
+            var info=_cpInfo();
+            if(!info){ _cpRevisarCliente(); setStatus('error','El cliente no está en tu base. Elígelo de la lista o presiona "➕ Cliente nuevo".'); return; }
+            var corregidos=0;
+            (productos||[]).forEach(function(p){
+              var lp=_cpPrecioLista(info, p.nombre);
+              if(!isNaN(lp) && Math.abs((p.precio||0)-lp)>0.0001){ p.precio=lp; p.subtotal=p.cantidad*lp; corregidos++; }
+            });
+            if(corregidos){ renderLista(); }
+          } else if(_cpMapa()[_cpNorm(_cpEl('nombre').value)]){
+            _cpRevisarCliente(); setStatus('error','Ese cliente ya existe en tu base. Revisa los precios y vuelve a presionar Guardar.');
+            (productos||[]).forEach(function(p){ var lp=_cpPrecioLista(_cpInfo(), p.nombre); if(!isNaN(lp)){ p.precio=lp; p.subtotal=p.cantidad*lp; } });
+            renderLista(); return;
+          }
+        }
+      }catch(e){ console.warn(e); }
+      return _origAbrir.apply(this, arguments);
+    };
+
+    /* ── Al limpiar el formulario se sale del modo "cliente nuevo" ── */
+    var _origLimpiar = limpiarSoloFormulario;
+    limpiarSoloFormulario = function(){
+      var r = _origLimpiar.apply(this, arguments);
+      try{ _cpNuevo=false; var b=_cpEl('cpBtnNuevo'); if(b){ b.classList.remove('on'); b.textContent='➕ Cliente nuevo'; } _cpRevisarCliente(); _cpRevisarPrecio(); }catch(e){}
+      return r;
+    };
+
+    window._cpEstado = function(){ return { activo:_cpActivo, aplica:_cpAplica(), nuevo:_cpNuevo }; };
+  }catch(err){ console.warn('Módulo de clientes y precios no se pudo iniciar:', err); }
+})();
+</script>
+
 </body>
 </html>
