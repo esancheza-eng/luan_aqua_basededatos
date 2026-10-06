@@ -3572,7 +3572,7 @@ input.cp-invalido{border-color:#c0392b!important;background:#fff7f6!important}
           _cpHint('cpHintCliente','ok','✓ Ese cliente ya existe en tu base: se usan sus precios de lista.');
           if(typeof _autocompletarClienteSeleccionado==='function') _autocompletarClienteSeleccionado();
         } else {
-          _cpHint('cpHintCliente','warn','🆕 Cliente nuevo: escribe nombre, teléfono y dirección. Puedes poner el precio que te indique el cliente; quedará pendiente de aprobación en administración.');
+          _cpHint('cpHintCliente','warn','🆕 Cliente nuevo: escribe nombre, teléfono y dirección. Puedes poner el precio autorizado por la ruta; quedará pendiente de aprobación en administración.');
         }
         if(inp) inp.classList.remove('cp-invalido');
         return;
