@@ -3694,5 +3694,89 @@ input.cp-invalido{border-color:#c0392b!important;background:#fff7f6!important}
 })();
 </script>
 
+<script>
+/* ════════════════════════════════════════════════════════════
+   [NEW] Buscador de clientes SIN importar tildes
+   La lista nativa del navegador (datalist) solo encuentra "JOSÉ" si se escribe
+   con tilde. Aquí se muestra una lista propia que busca igual con o sin tilde
+   ("jose" = "JOSÉ", "peña" = "PENA"). Lee los mismos nombres que ya carga
+   _cargarClientesConocidos() en #clientesDatalist, así que no cambia cómo se
+   cargan ni se guardan los clientes. Al elegir uno se disparan los mismos
+   eventos que al escribir, para que el autocompletado de teléfono, dirección,
+   precios y envases siga funcionando igual.
+════════════════════════════════════════════════════════════ */
+(function(){
+  try{
+    var inp = document.getElementById('nombre');
+    var dl  = document.getElementById('clientesDatalist');
+    if(!inp || !dl) return;
+
+    function sinTildes(t){
+      return String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'')
+        .toLocaleUpperCase('es-EC').replace(/\s+/g,' ').trim();
+    }
+
+    // La lista nativa no ignora tildes: se reemplaza visualmente por la propia.
+    inp.removeAttribute('list');
+
+    var cont = inp.parentNode;
+    if(getComputedStyle(cont).position === 'static') cont.style.position = 'relative';
+    var box = document.createElement('div');
+    box.id = 'cliSugerenciasSinTilde';
+    box.setAttribute('role','listbox');
+    box.style.cssText = 'display:none;position:absolute;left:0;right:0;top:100%;z-index:60;margin-top:2px;'
+      + 'background:var(--surface,#fff);border:1.5px solid var(--border-focus,#0a7c6e);border-radius:10px;'
+      + 'box-shadow:var(--shadow,0 4px 20px rgba(0,0,0,.12));max-height:240px;overflow-y:auto;';
+    inp.insertAdjacentElement('afterend', box);
+
+    var eligiendo = false;
+    function ocultar(){ box.style.display = 'none'; box.innerHTML = ''; }
+
+    function pintar(){
+      if(eligiendo) return;
+      var q = sinTildes(inp.value);
+      if(!q){ ocultar(); return; }
+      var res = [], ops = dl.options;
+      for(var i=0; i<ops.length && res.length<30; i++){
+        var n = ops[i].value;
+        if(n && sinTildes(n).indexOf(q) >= 0) res.push(n);
+      }
+      // Si ya está escrito exactamente el único resultado, no estorbar.
+      if(!res.length || (res.length === 1 && res[0] === inp.value.trim())){ ocultar(); return; }
+      box.innerHTML = '';
+      res.forEach(function(n){
+        var it = document.createElement('div');
+        it.setAttribute('role','option');
+        it.textContent = n;
+        it.style.cssText = 'padding:10px 12px;font-size:14px;font-weight:600;color:var(--text,#1a3a5c);'
+          + 'cursor:pointer;border-bottom:1px solid var(--border,#e5e5e5);';
+        it.addEventListener('mouseenter', function(){ it.style.background = 'var(--teal-light,#e6f4f2)'; });
+        it.addEventListener('mouseleave', function(){ it.style.background = ''; });
+        it.addEventListener('click', function(){ elegir(n); });
+        box.appendChild(it);
+      });
+      box.style.display = 'block';
+    }
+
+    function elegir(n){
+      eligiendo = true;
+      try{
+        inp.value = n;
+        inp.dispatchEvent(new Event('input',  { bubbles:true }));
+        inp.dispatchEvent(new Event('change', { bubbles:true }));
+      } finally { eligiendo = false; }
+      ocultar();
+    }
+
+    // Evita que el campo pierda el foco al tocar una sugerencia.
+    box.addEventListener('mousedown', function(e){ e.preventDefault(); });
+    inp.addEventListener('input', pintar);
+    inp.addEventListener('focus', pintar);
+    inp.addEventListener('blur', function(){ setTimeout(ocultar, 180); });
+    inp.addEventListener('keydown', function(e){ if(e.key === 'Escape') ocultar(); });
+  }catch(err){ console.warn('Buscador de clientes sin tildes no se pudo iniciar:', err); }
+})();
+</script>
+
 </body>
 </html>
