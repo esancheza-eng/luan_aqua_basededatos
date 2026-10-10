@@ -882,7 +882,7 @@ body { padding: 1rem 0.75rem 3rem; }
     <div class="card">
       <div class="historial-header-row">
         <div class="section-title" style="margin-bottom:0;flex:1">Pedidos de esta sesión</div>
-        <button class="btn-limpiar-hist" onclick="imprimirResumenDia()" title="Resumen impreso de todas las ventas del asesor en el día">🖨️ Resumen del día</button>
+        <button class="btn-limpiar-hist" id="btnResumenDia" style="display:none" onclick="imprimirResumenDia()" title="Resumen impreso de todas las ventas del asesor en el día">🖨️ Resumen del día</button>
       </div>
       <div id="historialLista"></div>
     </div>
@@ -1427,6 +1427,7 @@ function aplicarUsuario(){
   document.getElementById('btnGestionAsesores').style.display=u.esAdmin?'flex':'none';
   document.getElementById('btnGestionProductos').style.display=u.esAdmin?'flex':'none';
   document.getElementById('tab-liquidacion').style.display=u.esAdmin?'flex':'none'; /* [NEW] Liquid. solo visible para el administrador, no para los asesores de ruta */
+  document.getElementById('btnResumenDia').style.display=u.esAdmin?'':'none'; /* [NEW] Resumen del día solo visible para el administrador, oculto para los asesores */
   _iniciarListenersDelDia(u);
   _iniciarListenerProductos(); // [NEW] catálogo de productos en tiempo real
   _iniciarListenerAsesoresRutas(); // [NEW] rutas/asesores reales para los selects del admin
