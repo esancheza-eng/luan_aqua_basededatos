@@ -3779,5 +3779,85 @@ input.cp-invalido{border-color:#c0392b!important;background:#fff7f6!important}
 })();
 </script>
 
+<script>
+/* ════════════════════════════════════════════════════════════
+   [NEW] Buscador de clientes en PAGOS — igual al de Ventas
+   El campo Cliente de "Registrar pago recibido" era texto libre y no mostraba
+   la base de clientes. Ahora, al escribir, aparece la misma lista que en Ventas
+   (leída de #clientesDatalist, que ya llena _cargarClientesConocidos()): el
+   asesor ve los clientes de su ruta y el administrador ve todos. Busca con o
+   sin tildes. Sigue permitiendo escribir un nombre nuevo que no esté en la lista.
+   No cambia cómo se guardan los pagos.
+════════════════════════════════════════════════════════════ */
+(function(){
+  try{
+    var inp = document.getElementById('pago-cliente');
+    var dl  = document.getElementById('clientesDatalist');
+    if(!inp || !dl) return;
+
+    function sinTildes(t){
+      return String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'')
+        .toLocaleUpperCase('es-EC').replace(/\s+/g,' ').trim();
+    }
+
+    var cont = inp.parentNode;
+    if(getComputedStyle(cont).position === 'static') cont.style.position = 'relative';
+    var box = document.createElement('div');
+    box.id = 'pagoCliSugerencias';
+    box.setAttribute('role','listbox');
+    box.style.cssText = 'display:none;position:absolute;left:0;right:0;top:100%;z-index:60;margin-top:2px;'
+      + 'background:var(--surface,#fff);border:1.5px solid var(--blue,#1565c0);border-radius:10px;'
+      + 'box-shadow:var(--shadow,0 4px 20px rgba(0,0,0,.12));max-height:240px;overflow-y:auto;';
+    inp.insertAdjacentElement('afterend', box);
+
+    var eligiendo = false;
+    function ocultar(){ box.style.display = 'none'; box.innerHTML = ''; }
+
+    function pintar(){
+      if(eligiendo) return;
+      var q = sinTildes(inp.value);
+      if(!q){ ocultar(); return; }
+      var res = [], ops = dl.options;
+      for(var i=0; i<ops.length && res.length<30; i++){
+        var n = ops[i].value;
+        if(n && sinTildes(n).indexOf(q) >= 0) res.push(n);
+      }
+      if(!res.length || (res.length === 1 && sinTildes(res[0]) === q)){ ocultar(); return; }
+      box.innerHTML = '';
+      res.forEach(function(n){
+        var it = document.createElement('div');
+        it.setAttribute('role','option');
+        it.textContent = n;
+        it.style.cssText = 'padding:10px 12px;font-size:14px;font-weight:600;color:var(--text,#1a3a5c);'
+          + 'cursor:pointer;border-bottom:1px solid var(--border,#e5e5e5);';
+        it.addEventListener('mouseenter', function(){ it.style.background = 'var(--blue-light,#e8f0fb)'; });
+        it.addEventListener('mouseleave', function(){ it.style.background = ''; });
+        it.addEventListener('click', function(){ elegir(n); });
+        box.appendChild(it);
+      });
+      box.style.display = 'block';
+    }
+
+    function elegir(n){
+      eligiendo = true;
+      try{
+        inp.value = n;
+        inp.dispatchEvent(new Event('input',  { bubbles:true }));
+        inp.dispatchEvent(new Event('change', { bubbles:true }));
+      } finally { eligiendo = false; }
+      ocultar();
+      var sig = document.getElementById('pago-monto');
+      if(sig) sig.focus();
+    }
+
+    box.addEventListener('mousedown', function(e){ e.preventDefault(); });
+    inp.addEventListener('input', pintar);
+    inp.addEventListener('focus', pintar);
+    inp.addEventListener('blur', function(){ setTimeout(ocultar, 180); });
+    inp.addEventListener('keydown', function(e){ if(e.key === 'Escape') ocultar(); });
+  }catch(err){ console.warn('Buscador de clientes en Pagos no se pudo iniciar:', err); }
+})();
+</script>
+
 </body>
 </html>
