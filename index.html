@@ -404,12 +404,12 @@ align-items: center;
 .pago-item:nth-child(even) { background: var(--blue-light); }
 .pago-monto { font-size: 13px; font-weight: 700; text-align: right; color: var(--blue); }
 .gastos-header {
-display: grid; grid-template-columns: 1fr 100px 90px 80px 32px;
+display: grid; grid-template-columns: 1fr 90px 80px 32px 32px;
 gap: 8px; padding: 9px 12px; background: var(--red);
 font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255,255,255,0.9);
 }
 .gasto-item {
-display: grid; grid-template-columns: 1fr 100px 90px 80px 32px;
+display: grid; grid-template-columns: 1fr 90px 80px 32px 32px;
 gap: 8px; padding: 10px 12px;
 background: var(--surface); border-top: 1px solid var(--border);
 align-items: center;
@@ -468,7 +468,7 @@ body { padding: 1rem 0.75rem 3rem; }
 .add-row .btn-add { grid-column: 1 / -1; width: 100%; }
 .lista-header, .lista-item { grid-template-columns: 1fr 48px 68px 68px 28px; font-size: 12px; }
 .pagos-header, .pago-item { grid-template-columns: 1fr 80px 70px 64px 28px 28px 28px; font-size: 12px; }
-.gastos-header, .gasto-item { grid-template-columns: 1fr 90px 70px 64px 28px 28px; font-size: 12px; }
+.gastos-header, .gasto-item { grid-template-columns: 1fr 70px 64px 28px 28px; font-size: 12px; }
 .modal-btns { grid-template-columns: 1fr; }
 .resumen-grid { grid-template-columns: 1fr; }
 .tab-btn { font-size: 11px; }
@@ -861,18 +861,16 @@ body { padding: 1rem 0.75rem 3rem; }
         <div class="field"><label>Responsable</label><div id="wrap-gasto-empleado"><select id="gasto-empleado" class="focus-red"><option value="">Cargando...</option></select></div></div>
         <div class="field"><label for="gasto-fecha">Fecha</label><input type="date" id="gasto-fecha" class="focus-red"></div>
       </div>
-      <datalist id="gasto-categorias-list"><option value="COMBUSTIBLE"><option value="ALMUERZOS"><option value="ASCENSOR"><option value="TRICICLO"><option value="OTRO"></datalist>
-      <div class="grid-2">
-        <div class="field"><label for="gasto-categoria">Categoría</label><input type="text" id="gasto-categoria" list="gasto-categorias-list" placeholder="Combustible, Almuerzos..." autocomplete="off" class="focus-red mayus" maxlength="100"></div>
+            <div class="grid-2">
+        <div class="field"><label for="gasto-categoria">Descripción del gasto</label><select id="gasto-categoria" class="focus-red"><option value="">Selecciona...</option></select></div>
         <div class="field"><label for="gasto-monto">Monto ($)</label><input type="text" id="gasto-monto" placeholder="0.00" inputmode="decimal" autocomplete="off" maxlength="10" class="focus-red" oninput="filtrarInputMonto(this)"></div>
       </div>
-      <div class="field"><label for="gasto-desc">Descripción</label><input type="text" id="gasto-desc" placeholder="Describe el gasto..." autocomplete="off" class="focus-red mayus" maxlength="300"></div>
-      <div class="field" style="margin-bottom:0"><label for="gasto-ref">Comprobante / Referencia</label><input type="text" id="gasto-ref" placeholder="N° factura, voucher, nota..." autocomplete="off" class="focus-red mayus" maxlength="100"></div>
+            <div class="field" style="margin-bottom:0"><label for="gasto-ref">Comprobante / Referencia</label><input type="text" id="gasto-ref" placeholder="N° factura, voucher, nota..." autocomplete="off" class="focus-red mayus" maxlength="100"></div>
     </div>
     <div class="card"><button class="btn red" onclick="registrarGasto()"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v12M4 6l4-4 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Registrar gasto</button><div class="status" id="status-gastos"></div></div>
     <div class="card">
       <div class="section-title red">Gastos registrados hoy</div>
-      <div class="reg-lista empty" id="gastosLista"><div class="gastos-header"><span>Descripción</span><span>Categoría</span><span style="text-align:center">Responsable</span><span style="text-align:right">Monto</span><span></span><span></span></div><div id="gastosItems"></div></div>
+      <div class="reg-lista empty" id="gastosLista"><div class="gastos-header"><span>Descripción</span><span style="text-align:center">Responsable</span><span style="text-align:right">Monto</span><span></span><span></span></div><div id="gastosItems"></div></div>
       <div id="gastosEmptyMsg" class="empty-msg">Aún no hay gastos registrados.</div>
     </div>
   </div>
@@ -1147,6 +1145,9 @@ const LISTAS_BLANCAS = {
   empleadoGasto: [], // [NEW] ídem + 'Administración'
   formapago: ['Contado','Crédito','Transferencia','Cheque','Mixto'],
   pagoForma: ['Efectivo','Transferencia','Cheque'],
+  /* [NEW] Listado cerrado de gastos — el asesor solo puede escoger una de estas opciones
+     (no puede escribir). Debe ser IGUAL a GASTOS_PERMITIDOS en dashboard.js (aqua-luan-gestion). */
+  gastoDesc: ['COMBUSTIBLE','DEPOSITO','ALMUERZO','PEAJE','RETENCION','TRICICLO','ENCOMIENDAS','VIGILANTE','AIRE PARA LLANTAS','RECARGAS','SACOS DE SAL','ASCENSOR','VACUNAS','RECARGUE DE GAS','JUGOS BODEGUEROS','IMPRESION DE FACTURAS','CANECA DE JABON NEUTRO','PALLETS','PARCHE PARA LLANTA','MOTOTAXI','CAMBIO DE LLANTAS','COMPRA DE ACEITE PARA MOTOR','CAMBIO DE ACEITE','LIQUIDO DE FRENO','CLORO EN GRANO','MANO DE OBRA (CAMION)','REPUESTOS PARA CAMION','OTROS GASTOS DE CAMION','COMPRAS DE OFICINA'],
   productos: ['BOTELLON 20LT','BOTELLON CON LLAVE','PACA 625ML AZUL','PACA 600ML VERDE','PACA 1000ML','PACA 400ML','GALONES 4LT','POMA 5LTS','ENVASE CON LLAVE','ENVASE AZUL ADICIONAL']
 };
 function esValorSeguro(v,l){ return l.includes(String(v).trim()); }
@@ -1688,6 +1689,12 @@ function eliminarProducto(i){ if(i>=0&&i<productos.length)productos.splice(i,1);
 function setStatus(t,m){_setStatus('status',t,m);}
 function setStatusPagos(t,m){_setStatus('status-pagos',t,m);}
 function setStatusGastos(t,m){_setStatus('status-gastos',t,m);}
+/* [NEW] Llena el <select> de Gastos con el listado cerrado (LISTAS_BLANCAS.gastoDesc) */
+function renderOpcionesGastoSelect(){
+  const sel=document.getElementById('gasto-categoria'); if(!sel) return;
+  sel.innerHTML='<option value="">Selecciona...</option>'+LISTAS_BLANCAS.gastoDesc.map(o=>`<option value="${escHTML(o)}">${escHTML(o)}</option>`).join('');
+}
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',renderOpcionesGastoSelect); else renderOpcionesGastoSelect();
 function _setStatus(id,t,m){ const el=document.getElementById(id); el.className='status '+t; el.textContent=m; }
 
 function resetGpsBadge(){ document.getElementById('gpsBadge').className='gps-badge wait'; document.getElementById('gpsBadgeText').textContent=navigator.onLine?'Obteniendo ubicación GPS...':'Obteniendo ubicación GPS (sin internet, puede tardar más)...'; document.getElementById('m-gps').textContent='-'; }
@@ -2279,11 +2286,12 @@ function descargarPDFLiquidacion(){
 async function registrarGasto(){
   const empleado=document.getElementById('gasto-empleado').value;
   const fecha=_fechaParaGuardar(document.getElementById('gasto-fecha').value);
-  const categoria=textoMayus(document.getElementById('gasto-categoria').value,100);
+  const categoria=String(document.getElementById('gasto-categoria').value||'').trim(); // [NEW] solo opciones del listado
   const monto=parseMonto(document.getElementById('gasto-monto').value);
-  const desc=textoMayus(document.getElementById('gasto-desc').value,300);
+  const desc=categoria; // [NEW] la descripción ES la opción escogida — así se refleja igual en el Dashboard
   const ref=textoMayus(document.getElementById('gasto-ref').value,100);
   if(!esValorSeguro(empleado,LISTAS_BLANCAS.empleadoGasto)){setStatusGastos('error','Selecciona el responsable.');return;}
+  if(!esValorSeguro(categoria,LISTAS_BLANCAS.gastoDesc)){setStatusGastos('error','Selecciona la descripción del gasto del listado.');return;}
   if(!validarMonto(monto)){setStatusGastos('error','Ingresa un monto válido mayor a $0.');return;}
   /* [FIX] Mismo problema y misma solución que en registrarPago(): sin internet, un await
      directo sobre .add() se queda colgado hasta que vuelve la señal. */
@@ -2301,7 +2309,7 @@ async function registrarGasto(){
     const elGastoEmpleado=document.getElementById('gasto-empleado');
     if(elGastoEmpleado && elGastoEmpleado.tagName==='SELECT') elGastoEmpleado.value='';
     document.getElementById('gasto-categoria').value='';
-    ['gasto-monto','gasto-desc','gasto-ref'].forEach(id=>document.getElementById(id).value='');
+    ['gasto-monto','gasto-ref'].forEach(id=>document.getElementById(id).value='');
     setStatusGastos(modoOfflineGasto?'warning':'success', modoOfflineGasto?`📥 Sin internet — gasto de $${monto.toFixed(2)} guardado, se sincroniza solo al volver la señal.`:`✓ Gasto de $${monto.toFixed(2)} registrado — ${escHTML(desc)}.`);
   };
 
@@ -2382,16 +2390,16 @@ function imprimirGasto(id){
   let y = _dibujarEncabezadoComprobante(doc, 'COMPROBANTE DE GASTO');
   doc.setFillColor(240,245,248);doc.roundedRect(margin,y,210-margin*2,34,3,3,'F');
   doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(10,124,110);
-  doc.text('RESPONSABLE',margin+4,y+7);doc.text('CATEGORÍA',110,y+7);
+  doc.text('RESPONSABLE',margin+4,y+7);doc.text('DESCRIPCIÓN',110,y+7);
   doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(26,58,92);
-  doc.text(g.empleado||'-',margin+4,y+15);doc.text(g.categoria||'-',110,y+15);
+  doc.text(g.empleado||'-',margin+4,y+15);doc.text(doc.splitTextToSize(g.desc||g.categoria||'-',80)[0],110,y+15);
   doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(10,124,110);
   doc.text('FECHA / HORA',margin+4,y+23);doc.text('COMPROBANTE / REF.',110,y+23);
   doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(26,58,92);
   doc.text(`${g.fecha||'-'} ${g.hora||''}`,margin+4,y+31);doc.text(g.ref||'-',110,y+31);
   y+=42;
-  if(g.desc){ doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(10,124,110);doc.text('DESCRIPCIÓN',margin+4,y);
-    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(60,80,100);doc.text(doc.splitTextToSize(g.desc,170),margin+4,y+7); y+=18; }
+  if(g.categoria && g.desc && g.categoria!==g.desc){ /* [NEW] solo gastos antiguos (antes del listado cerrado) */ doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(10,124,110);doc.text('CATEGORÍA (ANTERIOR)',margin+4,y);
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(60,80,100);doc.text(doc.splitTextToSize(g.categoria,170),margin+4,y+7); y+=18; }
   doc.setFillColor(122,32,32);doc.roundedRect(margin,y,210-margin*2,14,3,3,'F');
   doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(240,210,210);doc.text('MONTO DEL GASTO',margin+4,y+9);
   doc.setFontSize(15);doc.setTextColor(255,180,180);doc.text(`$${(parseFloat(g.monto)||0).toFixed(2)}`,210-margin-4,y+9.5,{align:'right'});
@@ -2456,7 +2464,7 @@ function imprimirReporteGastos(){
     let y=46;
     doc.setFillColor(122,32,32);doc.rect(margin,y,pageW-margin*2,8,'F');
     doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(255,255,255);
-    doc.text('DESCRIPCIÓN',margin+3,y+5.5);doc.text('CATEGORÍA',80,y+5.5);doc.text('RESPONSABLE',130,y+5.5,{align:'center'});doc.text('MONTO',pageW-margin-2,y+5.5,{align:'right'});
+    doc.text('DESCRIPCIÓN',margin+3,y+5.5);doc.text('RESPONSABLE',130,y+5.5,{align:'center'});doc.text('MONTO',pageW-margin-2,y+5.5,{align:'right'});
     return y+8;
   }
   let y = encabezado();
@@ -2464,7 +2472,7 @@ function imprimirReporteGastos(){
     if(y+7>pageH-40){ doc.addPage(); y=encabezado(); }
     if(idx%2===0){doc.setFillColor(250,240,240);doc.rect(margin,y,pageW-margin*2,7,'F');}
     doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(26,58,92);
-    doc.text((g.desc||'-').slice(0,40),margin+3,y+5);doc.text(g.categoria||'-',80,y+5);doc.text((g.empleado||'-').replace('RUTA ','R.'),130,y+5,{align:'center'});
+    doc.text((g.desc||g.categoria||'-').slice(0,48),margin+3,y+5);doc.text((g.empleado||'-').replace('RUTA ','R.'),130,y+5,{align:'center'});
     doc.setFont('helvetica','bold');doc.setTextColor(122,32,32);doc.text(`$${(parseFloat(g.monto)||0).toFixed(2)}`,pageW-margin-2,y+5,{align:'right'});
     y+=7;
   });
@@ -2482,7 +2490,7 @@ function renderGastos(){
   const lista=document.getElementById('gastosLista'),empty=document.getElementById('gastosEmptyMsg'),items=document.getElementById('gastosItems');
   if(listaGastos.length===0){lista.classList.add('empty');empty.style.display='block';}else{lista.classList.remove('empty');empty.style.display='none';}
   const puedeEliminar=usuarioActual&&usuarioActual.esAdmin; /* [NEW] solo el administrador puede eliminar gastos */
-  items.innerHTML=listaGastos.map(g=>`<div class="gasto-item"><div><div style="font-size:13px;font-weight:600;color:var(--navy)">${escHTML(g.desc)}</div><div style="font-size:11px;color:var(--muted)">${escHTML((g.empleado||'').replace('RUTA ','R.'))} · ${escHTML(g.hora||'')}${g.ref?' · '+escHTML(g.ref):''}</div></div><div style="text-align:center">${categoriaBadge(g.categoria)}</div><div style="font-size:11px;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHTML(g.empleado?.split(':')[1]?.trim()||g.empleado||'')}</div><span class="gasto-monto">$${(parseFloat(g.monto)||0).toFixed(2)}</span><button class="btn-imprimir-mini" onclick="imprimirGasto('${escHTML(g.id)}')" title="Imprimir comprobante">🖨️</button>${puedeEliminar?`<button class="btn-remove" onclick="eliminarGasto('${escHTML(g.id)}')">&times;</button>`:'<span></span>'}</div>`).join('');
+  items.innerHTML=listaGastos.map(g=>`<div class="gasto-item"><div><div style="font-size:13px;font-weight:600;color:var(--navy)">${escHTML(g.desc||g.categoria||'-')}</div><div style="font-size:11px;color:var(--muted)">${escHTML((g.empleado||'').replace('RUTA ','R.'))} · ${escHTML(g.hora||'')}${g.ref?' · '+escHTML(g.ref):''}${g.categoria&&g.categoria!==g.desc?' · '+escHTML(g.categoria):''}</div></div><div style="font-size:11px;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHTML(g.empleado?.split(':')[1]?.trim()||g.empleado||'')}</div><span class="gasto-monto">$${(parseFloat(g.monto)||0).toFixed(2)}</span><button class="btn-imprimir-mini" onclick="imprimirGasto('${escHTML(g.id)}')" title="Imprimir comprobante">🖨️</button>${puedeEliminar?`<button class="btn-remove" onclick="eliminarGasto('${escHTML(g.id)}')">&times;</button>`:'<span></span>'}</div>`).join('');
 }
 function actualizarResumenGastos(){
   const t=listaGastos.reduce((s,g)=>s+(parseFloat(g.monto)||0),0);
