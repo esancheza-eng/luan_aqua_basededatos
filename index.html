@@ -862,8 +862,12 @@ body { padding: 1rem 0.75rem 3rem; }
         <div class="field"><label for="gasto-fecha">Fecha</label><input type="date" id="gasto-fecha" class="focus-red"></div>
       </div>
             <div class="grid-2">
-        <div class="field"><label for="gasto-categoria">Descripción del gasto</label><select id="gasto-categoria" class="focus-red"><option value="">Selecciona...</option></select></div>
+        <div class="field"><label for="gasto-categoria">Descripción del gasto</label><select id="gasto-categoria" class="focus-red" onchange="toggleGastoOtros()"><option value="">Selecciona...</option></select></div>
         <div class="field"><label for="gasto-monto">Monto ($)</label><input type="text" id="gasto-monto" placeholder="0.00" inputmode="decimal" autocomplete="off" maxlength="10" class="focus-red" oninput="filtrarInputMonto(this)"></div>
+      </div>
+      <div class="field" id="wrap-gasto-otros" style="display:none;margin-top:8px;">
+        <label for="gasto-otros-desc">Especifica el gasto (Otros)</label>
+        <input type="text" id="gasto-otros-desc" placeholder="Escribe aquí la descripción del gasto..." autocomplete="off" class="focus-red mayus" maxlength="100">
       </div>
             <div class="field" style="margin-bottom:0"><label for="gasto-ref">Detalle de Gastos</label><input type="text" id="gasto-ref" placeholder="N° factura, voucher, nota..." autocomplete="off" class="focus-red mayus" maxlength="100"></div>
     </div>
@@ -1147,7 +1151,7 @@ const LISTAS_BLANCAS = {
   pagoForma: ['Efectivo','Transferencia','Cheque'],
   /* [NEW] Listado cerrado de gastos — el asesor solo puede escoger una de estas opciones
      (no puede escribir). Debe ser IGUAL a GASTOS_PERMITIDOS en dashboard.js (aqua-luan-gestion). */
-  gastoDesc: ['COMBUSTIBLE','DEPOSITO','ALMUERZO','PEAJE','RETENCION','TRICICLO','ENCOMIENDAS','VIGILANTE','AIRE PARA LLANTAS','RECARGAS','SACOS DE SAL','ASCENSOR','VACUNAS','RECARGUE DE GAS','JUGOS BODEGUEROS','IMPRESION DE FACTURAS','CANECA DE JABON NEUTRO','PALLETS','PARCHE PARA LLANTA','MOTOTAXI','CAMBIO DE LLANTAS','COMPRA DE ACEITE PARA MOTOR','CAMBIO DE ACEITE','LIQUIDO DE FRENO','CLORO EN GRANO','MANO DE OBRA (CAMION)','REPUESTOS PARA CAMION','OTROS GASTOS DE CAMION','COMPRAS DE OFICINA'],
+  gastoDesc: ['COMBUSTIBLE','DEPOSITO','ALMUERZO','PEAJE','RETENCION','TRICICLO','ENCOMIENDAS','VIGILANTE','AIRE PARA LLANTAS','RECARGAS','SACOS DE SAL','ASCENSOR','VACUNAS','RECARGUE DE GAS','JUGOS BODEGUEROS','IMPRESION DE FACTURAS','CANECA DE JABON NEUTRO','PALLETS','PARCHE PARA LLANTA','MOTOTAXI','CAMBIO DE LLANTAS','COMPRA DE ACEITE PARA MOTOR','CAMBIO DE ACEITE','LIQUIDO DE FRENO','CLORO EN GRANO','MANO DE OBRA (CAMION)','REPUESTOS PARA CAMION','OTROS GASTOS DE CAMION','COMPRAS DE OFICINA','OTROS'],
   productos: ['BOTELLON 20LT','BOTELLON CON LLAVE','PACA 625ML AZUL','PACA 600ML VERDE','PACA 1000ML','PACA 400ML','GALONES 4LT','POMA 5LTS','ENVASE CON LLAVE','ENVASE AZUL ADICIONAL']
 };
 function esValorSeguro(v,l){ return l.includes(String(v).trim()); }
@@ -1693,6 +1697,15 @@ function setStatusGastos(t,m){_setStatus('status-gastos',t,m);}
 function renderOpcionesGastoSelect(){
   const sel=document.getElementById('gasto-categoria'); if(!sel) return;
   sel.innerHTML='<option value="">Selecciona...</option>'+LISTAS_BLANCAS.gastoDesc.map(o=>`<option value="${escHTML(o)}">${escHTML(o)}</option>`).join('');
+}
+function toggleGastoOtros(){
+  const sel=document.getElementById('gasto-categoria');
+  const wrap=document.getElementById('wrap-gasto-otros');
+  const input=document.getElementById('gasto-otros-desc');
+  if(!sel||!wrap) return;
+  const esOtros=String(sel.value||'').trim()==='OTROS';
+  wrap.style.display=esOtros?'block':'none';
+  if(!esOtros && input) input.value='';
 }
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',renderOpcionesGastoSelect); else renderOpcionesGastoSelect();
 function _setStatus(id,t,m){ const el=document.getElementById(id); el.className='status '+t; el.textContent=m; }
@@ -2286,12 +2299,18 @@ function descargarPDFLiquidacion(){
 async function registrarGasto(){
   const empleado=document.getElementById('gasto-empleado').value;
   const fecha=_fechaParaGuardar(document.getElementById('gasto-fecha').value);
-  const categoria=String(document.getElementById('gasto-categoria').value||'').trim(); // [NEW] solo opciones del listado
+  let categoria=String(document.getElementById('gasto-categoria').value||'').trim();
   const monto=parseMonto(document.getElementById('gasto-monto').value);
-  const desc=categoria; // [NEW] la descripción ES la opción escogida — así se refleja igual en el Dashboard
+  let desc=categoria;
   const ref=textoMayus(document.getElementById('gasto-ref').value,100);
   if(!esValorSeguro(empleado,LISTAS_BLANCAS.empleadoGasto)){setStatusGastos('error','Selecciona el responsable.');return;}
   if(!esValorSeguro(categoria,LISTAS_BLANCAS.gastoDesc)){setStatusGastos('error','Selecciona la descripción del gasto del listado.');return;}
+  if(categoria==='OTROS'){
+    const otrosDesc=textoMayus(document.getElementById('gasto-otros-desc').value,100);
+    if(!otrosDesc){setStatusGastos('error','Cuando seleccionas OTROS, debes escribir la descripción del gasto.');return;}
+    desc=otrosDesc;
+    // categoria se mantiene como 'OTROS' para el listado, desc lleva el texto libre
+  }
   if(!validarMonto(monto)){setStatusGastos('error','Ingresa un monto válido mayor a $0.');return;}
   /* [FIX] Mismo problema y misma solución que en registrarPago(): sin internet, un await
      directo sobre .add() se queda colgado hasta que vuelve la señal. */
@@ -2309,6 +2328,10 @@ async function registrarGasto(){
     const elGastoEmpleado=document.getElementById('gasto-empleado');
     if(elGastoEmpleado && elGastoEmpleado.tagName==='SELECT') elGastoEmpleado.value='';
     document.getElementById('gasto-categoria').value='';
+    const otrosInput=document.getElementById('gasto-otros-desc');
+    if(otrosInput) otrosInput.value='';
+    const wrapOtros=document.getElementById('wrap-gasto-otros');
+    if(wrapOtros) wrapOtros.style.display='none';
     ['gasto-monto','gasto-ref'].forEach(id=>document.getElementById(id).value='');
     setStatusGastos(modoOfflineGasto?'warning':'success', modoOfflineGasto?`📥 Sin internet — gasto de $${monto.toFixed(2)} guardado, se sincroniza solo al volver la señal.`:`✓ Gasto de $${monto.toFixed(2)} registrado — ${escHTML(desc)}.`);
   };
