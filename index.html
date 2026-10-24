@@ -865,7 +865,7 @@ body { padding: 1rem 0.75rem 3rem; }
         <div class="field"><label for="gasto-categoria">Descripción del gasto</label><select id="gasto-categoria" class="focus-red"><option value="">Selecciona...</option></select></div>
         <div class="field"><label for="gasto-monto">Monto ($)</label><input type="text" id="gasto-monto" placeholder="0.00" inputmode="decimal" autocomplete="off" maxlength="10" class="focus-red" oninput="filtrarInputMonto(this)"></div>
       </div>
-            <div class="field" style="margin-bottom:0"><label for="gasto-ref">Comprobante / Referencia</label><input type="text" id="gasto-ref" placeholder="N° factura, voucher, nota..." autocomplete="off" class="focus-red mayus" maxlength="100"></div>
+            <div class="field" style="margin-bottom:0"><label for="gasto-ref">Detalle de Gastos</label><input type="text" id="gasto-ref" placeholder="N° factura, voucher, nota..." autocomplete="off" class="focus-red mayus" maxlength="100"></div>
     </div>
     <div class="card"><button class="btn red" onclick="registrarGasto()"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v12M4 6l4-4 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Registrar gasto</button><div class="status" id="status-gastos"></div></div>
     <div class="card">
