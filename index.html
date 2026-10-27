@@ -2022,6 +2022,12 @@ async function eliminarPago(id){
   const p = listaPagos.find(x=>x.id===id);
   try{
     await db.collection('pagos').doc(id).delete();
+    // [NEW 27-oct] Aviso para "Consultar por Cliente" del dashboard (relee solo este pago). Nunca bloquea.
+    db.collection('cambiosRegistros').add({
+      coleccion:'pagos', ids:[id], accion:'eliminación',
+      por: String(usuarioActual.nombre || usuarioActual.uid || 'admin').slice(0,80),
+      creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(e=>console.warn('Aviso de cambio no registrado:', e));
     // [NEW] Registro de auditoría — mismo helper que usa el Dashboard
     db.collection('historialCambios').add({
       tipo:'pago', accion:'eliminación', registroId:id,
